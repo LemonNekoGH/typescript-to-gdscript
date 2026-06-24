@@ -1,3 +1,17 @@
+## [0.1.3](https://github.com/nnn3d/typescript-to-gdscript/compare/v0.1.2...v0.1.3) (2026-06-24)
+
+### Features
+
+* **typings:** support `uid://` paths ([d3fb3c7](https://github.com/nnn3d/typescript-to-gdscript/commit/d3fb3c779ba3556c1d63c5f90ffbf709e0bb1720))
+* **typings:** use generics in Object methods ([6708cbf](https://github.com/nnn3d/typescript-to-gdscript/commit/6708cbf29d82224a7f76a4b533961ccc5d858eae))
+
+### Bug Fixes
+
+* **gd-to-ts:** fix bare `new()` call convertion and G_ name escape ([2e247ee](https://github.com/nnn3d/typescript-to-gdscript/commit/2e247eee8998b3d6c510ba283e624709b4586d54))
+* **gd-to-ts:** fix Dictionary convertion with generics ([85a2397](https://github.com/nnn3d/typescript-to-gdscript/commit/85a239759a3f2ca4d9cf678bfceeedc13cb56c19))
+* **gd-to-ts:** fix static funcs and internal class constructor convertion ([3f853a9](https://github.com/nnn3d/typescript-to-gdscript/commit/3f853a914fd4db3b93844ed21deb887c562e6f6c))
+* **gd-to-ts:** fix ts reserved vars convertion ([5675bd8](https://github.com/nnn3d/typescript-to-gdscript/commit/5675bd8f157977afed754576c67e41b11e757554))
+* **typings:** fix ts path name normalization ([387cbe6](https://github.com/nnn3d/typescript-to-gdscript/commit/387cbe6ef7aaa60143aa9d4fa4475a72058127b8))
 ## [0.1.2](https://github.com/nnn3d/typescript-to-gdscript/compare/v0.1.1...v0.1.2) (2026-06-21)
 
 ### Features
