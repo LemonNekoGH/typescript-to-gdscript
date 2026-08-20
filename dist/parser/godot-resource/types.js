@@ -1,0 +1,22 @@
+export const SyntaxType = {
+    ERROR: "ERROR",
+    Arguments: "arguments",
+    Array: "array",
+    Attribute: "attribute",
+    Constructor: "constructor",
+    Dictionary: "dictionary",
+    Identifier: "identifier",
+    Pair: "pair",
+    Property: "property",
+    Resource: "resource",
+    Section: "section",
+    Comment: "comment",
+    False: "false",
+    Float: "float",
+    Integer: "integer",
+    Null: "null",
+    Path: "path",
+    String: "string",
+    True: "true",
+};
+//# sourceMappingURL=types.js.map
