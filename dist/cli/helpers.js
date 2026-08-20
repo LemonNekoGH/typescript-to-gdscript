@@ -1,0 +1,180 @@
+/**
+ * Shared CLI helpers used by multiple commands.
+ */
+import { readdirSync, statSync, existsSync, writeFileSync, globSync } from 'fs';
+import { join, resolve } from 'path';
+import { shouldIgnore } from "../config/index.js";
+import { generateTypings, generateAddonTypings } from "../typings/scenes.js";
+import { ProjectCache } from "../cache/index.js";
+/**
+ * CLI-scoped debug flag. Set once at CLI startup by the `preAction` hook in
+ * `src/cli/index.ts` and read by `debugLog()` and `isDebugEnabled()`.
+ *
+ * This is intentional module state — it is NOT a library-level singleton. The
+ * flag is local to the short-lived CLI process; library code (`generateTypings`,
+ * `Watcher`, etc.) accepts an explicit `onDebug` callback instead of reading
+ * this flag, so test isolation is not affected.
+ */
+let _debugEnabled = false;
+export function setDebugEnabled(enabled) {
+    _debugEnabled = enabled;
+}
+export function isDebugEnabled() {
+    return _debugEnabled;
+}
+/** Print a message only when --debug is enabled. CLI-scoped (see {@link _debugEnabled}). */
+export function debugLog(message) {
+    if (_debugEnabled) {
+        console.log(message);
+    }
+}
+/** Recursively find all .ts files (excluding .d.ts, node_modules, hidden dirs, and ignored patterns) */
+export function findTsFiles(dir, rootDir, ignore) {
+    const results = [];
+    try {
+        for (const entry of readdirSync(dir)) {
+            if (entry.startsWith('.') ||
+                entry === 'node_modules' ||
+                entry === 'addons')
+                continue;
+            const fullPath = join(dir, entry);
+            if (shouldIgnore(fullPath, rootDir, ignore))
+                continue;
+            if (statSync(fullPath).isDirectory()) {
+                results.push(...findTsFiles(fullPath, rootDir, ignore));
+            }
+            else if (entry.endsWith('.ts') && !entry.endsWith('.d.ts')) {
+                results.push(fullPath);
+            }
+        }
+    }
+    catch {
+        // skip inaccessible
+    }
+    return results;
+}
+/** Recursively find all .gd files (excluding node_modules, hidden dirs, and ignored patterns) */
+export function findGdFiles(dir, rootDir, ignore) {
+    const results = [];
+    try {
+        for (const entry of readdirSync(dir)) {
+            if (entry.startsWith('.') ||
+                entry === 'node_modules' ||
+                entry === 'addons')
+                continue;
+            const fullPath = join(dir, entry);
+            if (shouldIgnore(fullPath, rootDir, ignore))
+                continue;
+            if (statSync(fullPath).isDirectory()) {
+                results.push(...findGdFiles(fullPath, rootDir, ignore));
+            }
+            else if (entry.endsWith('.gd')) {
+                results.push(fullPath);
+            }
+        }
+    }
+    catch {
+        // skip inaccessible
+    }
+    return results;
+}
+/** Recursively find all .gd files inside the addons/ directory */
+export function findAddonGdFiles(rootDir, ignore) {
+    const addonsDir = join(rootDir, 'addons');
+    if (!existsSync(addonsDir))
+        return [];
+    return findGdFilesRecursive(addonsDir, rootDir, ignore);
+}
+function findGdFilesRecursive(dir, rootDir, ignore) {
+    const results = [];
+    try {
+        for (const entry of readdirSync(dir)) {
+            if (entry.startsWith('.') || entry === 'node_modules')
+                continue;
+            const fullPath = join(dir, entry);
+            if (shouldIgnore(fullPath, rootDir, ignore))
+                continue;
+            if (statSync(fullPath).isDirectory()) {
+                results.push(...findGdFilesRecursive(fullPath, rootDir, ignore));
+            }
+            else if (entry.endsWith('.gd')) {
+                results.push(fullPath);
+            }
+        }
+    }
+    catch {
+        // skip inaccessible
+    }
+    return results;
+}
+/**
+ * Resolve file arguments: if patterns are provided, expand them via glob;
+ * otherwise return all files of the given extension in the source directory.
+ */
+export function resolveFiles(patterns, ext, sourceDir, rootDir, ignore) {
+    if (patterns && patterns.length > 0) {
+        const files = [];
+        for (const pattern of patterns) {
+            const matches = globSync(pattern, {
+                cwd: process.cwd(),
+            }).map((m) => resolve(m));
+            for (const match of matches) {
+                const m = match.replace(/\\/g, '/');
+                if (ext === '.ts' && m.endsWith('.d.ts'))
+                    continue;
+                if (m.endsWith(ext) && !shouldIgnore(resolve(m), rootDir, ignore)) {
+                    files.push(resolve(m));
+                }
+            }
+        }
+        return files;
+    }
+    return ext === '.ts'
+        ? findTsFiles(sourceDir, rootDir, ignore)
+        : findGdFiles(sourceDir, rootDir, ignore);
+}
+/** Generate class typings (globals.d.ts) and scene typings (scene-typings.d.ts) */
+export function generateAllTypings(cfg) {
+    const tsFiles = cfg.tsFiles ?? findTsFiles(cfg.tsDir, cfg.rootDir, cfg.ignore);
+    if (tsFiles.length === 0)
+        return;
+    const cache = cfg.cacheDir ? new ProjectCache(cfg.cacheDir) : undefined;
+    const writtenFiles = generateTypings({
+        rootDir: cfg.rootDir,
+        tsDir: cfg.tsDir,
+        gdDir: cfg.gdDir,
+        files: tsFiles,
+        outputDir: cfg.typingsDir,
+        scenesDir: cfg.scenesDir,
+        tsConfigPath: cfg.tsconfig ? resolve(cfg.tsconfig) : undefined,
+        ignore: cfg.ignore,
+        projectFile: cfg.projectFile,
+        cache,
+        onDebug: debugLog,
+        godotTypingsDir: cfg.godotTypingsDir,
+        generateGlobalClassTypes: cfg.converterOptions?.generateGlobalClassTypes,
+    });
+    const addonFiles = generateAddonTypings({
+        rootDir: cfg.rootDir,
+        outputDir: cfg.typingsDir,
+        ignore: cfg.ignore,
+        cache,
+        onDebug: debugLog,
+        tsConfigPath: cfg.tsconfig ? resolve(cfg.tsconfig) : undefined,
+    });
+    debugLog(`Generated ${writtenFiles.length + addonFiles.length} typings files in ${cfg.typingsDir}`);
+}
+/** Helper functions for generate-gdscript-global-typings command */
+/**
+ * Write the entry-point `index.d.ts` referencing the static `globals/`
+ * folder and the generated `classes/` folder. Used as a fallback when
+ * the static files cannot be located (e.g. running outside an
+ * installed package layout); the normal path is to copy the canonical
+ * `index.d.ts` from the package's bundled `typings/` so the file
+ * stays in sync with the bundled `globals/` folder.
+ */
+export function writeTypingsIndexDts(typingsDir) {
+    const content = `/// <reference path="globals/globals.d.ts" />\n/// <reference path="globals/gd-helpers.d.ts" />\n/// <reference path="classes/index.d.ts" />\n`;
+    writeFileSync(join(typingsDir, 'index.d.ts'), content);
+}
+//# sourceMappingURL=helpers.js.map

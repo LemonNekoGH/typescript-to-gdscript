@@ -1,0 +1,339 @@
+import { writeFileSync, readFileSync, existsSync, mkdirSync, rmSync, } from 'fs';
+import { join } from 'path';
+import { parseAllClassXmls, parseClassXml, generateRegistryData, GodotClassRegistry, } from "./godot-registry.js";
+import { godotTypeToTs, deriveValueTypes, deriveVariantParamConverts, loadNonNullableOverrides, emptyTypeContext, sanitizeClassName, INTERFACE_CLASSES, CLASS_NAME_CONFLICTS, } from "./type-mapping.js";
+import { generateClassDeclaration, generateValueTypeDeclaration, generateInterfaceDeclaration, generateConstructorInterface, } from "./class-generator.js";
+import { SKIP_CLASSES, generateGlobalScopeDeclaration, generateGDScriptDeclaration, generateNumberOperatorOverloads, computeDictOnlyOverrides, collectAllDictMembers, } from "./global-generator.js";
+import { loadOverrides, loadGlobalOverrides, applyOverride, applyGlobalOverrides, } from "./override-system.js";
+// ─── Re-exports (public API) ─────────────────────────────────────
+export { godotTypeToTs } from "./type-mapping.js";
+/**
+ * Emit a standalone interface declaration from a parsed override (header +
+ * members + extras). Used for override-defined interfaces that aren't merged
+ * into a generated declaration (e.g. DictionaryKeyMethods, DictionaryConstructor,
+ * CallableFunction).
+ */
+function emitOverrideInterface(ov) {
+    const lines = [(ov.header ?? '') + ' {'];
+    for (const [, text] of ov.members)
+        lines.push(text);
+    for (const extra of ov.extras)
+        lines.push(extra);
+    lines.push('}');
+    return lines.join('\n');
+}
+// ─── Main entry point ────────────────────────────────────────────
+/**
+ * Generates TypeScript typings from Godot XML class documentation.
+ * Also generates the class registry JSON if registryOutputPath is specified.
+ * Returns the GodotClassRegistry if generated.
+ */
+export function generateGodotDocsTypings(options) {
+    const classes = parseAllClassXmls(options.classDocsDir);
+    // `@GDScript.xml` lives in `modules/gdscript/doc_classes/` (a sibling
+    // of `doc/classes/`). Preferred path: caller already passes that dir
+    // in `classDocsDir` (multi-dir API), so the class is in the merged
+    // map. Fallback: legacy single-dir callers still get auto-detection
+    // via the sibling-of-first-dir path so existing scripts keep working.
+    let gdscriptCls = classes.get('@GDScript') ?? null;
+    if (!gdscriptCls) {
+        const firstDir = Array.isArray(options.classDocsDir)
+            ? options.classDocsDir[0]
+            : options.classDocsDir;
+        if (firstDir) {
+            const gdscriptXmlPath = join(firstDir, '../../modules/gdscript/doc_classes/@GDScript.xml');
+            if (existsSync(gdscriptXmlPath)) {
+                const xmlContent = readFileSync(gdscriptXmlPath, 'utf-8');
+                gdscriptCls = parseClassXml(xmlContent);
+            }
+        }
+    }
+    // Build the type context used throughout generation (replaces module-level state).
+    // Bootstrap order matters: deriveValueTypes calls godotTypeToTs (which reads
+    // ctx.knownClasses), so we pass a minimal ctx with only knownClasses populated.
+    const knownClasses = new Set([...classes.keys()].filter((n) => !n.startsWith('@')));
+    const bootstrapCtx = { ...emptyTypeContext(), knownClasses };
+    const overrideDirs = options.overrideDirs ?? [];
+    const typeCtx = {
+        knownClasses,
+        valueTypes: deriveValueTypes(classes, bootstrapCtx),
+        variantParamConverts: deriveVariantParamConverts(classes),
+        nonNullableMembers: loadNonNullableOverrides(overrideDirs),
+    };
+    // Load override .d.ts files (merged across all override dirs)
+    const overrides = loadOverrides(overrideDirs);
+    const globalOverrides = loadGlobalOverrides(overrideDirs);
+    // Report unmatched overrides (class name not found in Godot docs)
+    // Special overrides that don't map to a Godot class directly
+    const SPECIAL_OVERRIDES = new Set(['CallableFunction']);
+    for (const overrideName of overrides.keys()) {
+        if (SPECIAL_OVERRIDES.has(overrideName))
+            continue;
+        // Map interface names back to GD class names for validation
+        var found = false;
+        for (const [gdName, tsName] of INTERFACE_CLASSES) {
+            if (tsName === overrideName) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            const sanitizedName = [...CLASS_NAME_CONFLICTS.entries()].find(([_, v]) => v === overrideName)?.[0] ?? overrideName;
+            found = classes.has(sanitizedName) || classes.has(overrideName);
+        }
+        if (!found) {
+            console.warn(`Warning: override for "${overrideName}" does not match any Godot class`);
+        }
+    }
+    // Compute Dictionary-only member names that no Object subclass defines.
+    const dictOnlyOverrides = computeDictOnlyOverrides(classes);
+    // Collect all Dictionary members for value type anti-dict overrides
+    const allDictMembers = collectAllDictMembers(classes);
+    // Prepare classes/ subdirectory — clean and recreate
+    const classesDir = join(options.outputDir, 'classes');
+    if (existsSync(classesDir)) {
+        rmSync(classesDir, { recursive: true, force: true });
+    }
+    mkdirSync(classesDir, { recursive: true });
+    const header = '// AUTO-GENERATED from Godot class documentation.\n// Manual overrides applied from typings-overrides/*.d.ts\n';
+    // Track generated files for the index
+    const generatedFiles = [];
+    // Build set of singleton class names (from @GlobalScope properties)
+    const globalScope = classes.get('@GlobalScope');
+    const singletonClassNames = new Set(globalScope?.properties.map((p) => p.type) ?? []);
+    // Find singletons that are extended by other classes —
+    // these need `declare var` with `new()` instead of `declare const`
+    const extendedSingletons = new Set();
+    for (const [, cls] of classes) {
+        if (cls.inherits && singletonClassNames.has(cls.inherits)) {
+            extendedSingletons.add(cls.inherits);
+        }
+    }
+    const valueTypes = typeCtx.valueTypes;
+    // Sort class names for deterministic output
+    const sortedNames = [...classes.keys()].sort();
+    for (const name of sortedNames) {
+        const cls = classes.get(name);
+        if (name === '@GlobalScope') {
+            let globalsContent = generateGlobalScopeDeclaration(cls, typeCtx);
+            // Append @GDScript built-in constants, functions, and annotation decorators
+            if (gdscriptCls) {
+                globalsContent += generateGDScriptDeclaration(gdscriptCls, typeCtx);
+            }
+            globalsContent = applyGlobalOverrides(globalsContent, globalOverrides);
+            const content = header + '\n' + globalsContent + '\n';
+            const fileName = '_globals.d.ts';
+            writeFileSync(join(classesDir, fileName), content);
+            generatedFiles.push(fileName);
+            continue;
+        }
+        // Skip other @-prefixed special docs
+        if (name.startsWith('@'))
+            continue;
+        // Skip primitive types handled by gd-helpers.d.ts or TS builtins
+        if (SKIP_CLASSES.has(name))
+            continue;
+        // StringName has identical API to String — emit as a type alias
+        if (name === 'StringName') {
+            const content = header + '\ntype StringName = String;\n';
+            const fileName = 'StringName.d.ts';
+            writeFileSync(join(classesDir, fileName), content);
+            generatedFiles.push(fileName);
+            continue;
+        }
+        // Some GD classes are emitted as TS interfaces (replacing built-in types)
+        const interfaceName = INTERFACE_CLASSES.get(name);
+        if (interfaceName) {
+            const fileLines = [];
+            var declaration = generateInterfaceDeclaration(cls, interfaceName, typeCtx);
+            // Apply overrides if available (by TS interface name)
+            const override = overrides.get(interfaceName);
+            if (override) {
+                declaration = applyOverride(declaration, override);
+            }
+            fileLines.push(declaration);
+            fileLines.push('');
+            // Emit renamed alias so existing references still work
+            const renamedName = CLASS_NAME_CONFLICTS.get(name);
+            if (renamedName) {
+                fileLines.push(`type ${renamedName} = ${interfaceName};`);
+            }
+            // Dictionary → Object interface + Dictionary<K,V> type alias + constructor
+            if (name === 'Dictionary') {
+                // DictionaryTypedMethods (the typed method signatures) and
+                // DictionaryConstructor come from the override system
+                // (typings-overrides/dictionary.d.ts). DictionaryKeyMethods is derived
+                // mechanically from DictionaryTypedMethods, so it's generated here: it
+                // keeps the structural Object methods minus the typed ones and mixes the
+                // typed ones back in (single source of truth = DictionaryTypedMethods).
+                const dtmOverride = overrides.get('DictionaryTypedMethods');
+                if (dtmOverride) {
+                    fileLines.push(emitOverrideInterface(dtmOverride));
+                }
+                fileLines.push('interface DictionaryKeyMethods<K = unknown, V = unknown>');
+                fileLines.push('  extends Omit<Object, keyof DictionaryTypedMethods>,');
+                fileLines.push('    DictionaryTypedMethods<K, V> {}');
+                // `Dictionary<K, V>` is a conditional type alias (type aliases aren't
+                // handled by the override system, so it stays here):
+                //  - string/number keys → a plain index-signature object, so object
+                //    literals (`{}`, `{ a: 1 }`) are assignable and `d[k]` is typed
+                //    (access methods come from the ambient `Object` `this: T` overrides,
+                //    see typings-overrides/object-dict.d.ts);
+                //  - any other key type → `DictionaryKeyMethods<K, V>` (typed
+                //    get/set/keys/... by K/V; a bare `Dictionary` is
+                //    `DictionaryKeyMethods<unknown, unknown>`, which still accepts `{}`).
+                fileLines.push('type Dictionary<K = unknown, V = unknown> =');
+                fileLines.push('  [K] extends [string | number]');
+                fileLines.push('    ? { [P in K & (string | number)]: V }');
+                fileLines.push('    : DictionaryKeyMethods<K, V>;');
+                const ctorOverride = overrides.get('DictionaryConstructor');
+                if (ctorOverride) {
+                    fileLines.push(emitOverrideInterface(ctorOverride));
+                }
+                fileLines.push('declare const Dictionary: DictionaryConstructor;');
+                fileLines.push('declare var Object: typeof GodotObject;');
+            }
+            // Callable → Function, keep Callable alias + constructor + CallableFunction/NewableFunction
+            if (name === 'Callable') {
+                fileLines.push(`type Callable = Function;`);
+                fileLines.push(generateConstructorInterface(cls, 'Callable', 'Callable', typeCtx));
+                const cfOverride = overrides.get('CallableFunction');
+                if (cfOverride) {
+                    const cfHeader = cfOverride.header.replace(/^(interface|class)\s/m, 'declare $1 ');
+                    const cfLines = [cfHeader + ' {'];
+                    for (const [, text] of cfOverride.members) {
+                        cfLines.push(text);
+                    }
+                    for (const extra of cfOverride.extras) {
+                        cfLines.push(extra);
+                    }
+                    cfLines.push('}');
+                    fileLines.push(cfLines.join('\n'));
+                }
+                else {
+                    fileLines.push('declare interface CallableFunction extends Function {}');
+                }
+                fileLines.push('declare interface NewableFunction extends Function {}');
+            }
+            // Array → ArrayConstructor with call signatures only (GDScript arrays can't use `new`)
+            if (name === 'Array') {
+                const hasGenerics = override?.header?.includes('<') ?? false;
+                const typeParam = hasGenerics ? '<T>' : '';
+                fileLines.push('declare interface ArrayConstructor {');
+                fileLines.push(`  ${typeParam}(): Array${typeParam};`);
+                fileLines.push(`  ${typeParam}(...items: ${hasGenerics ? 'T' : 'unknown'}[]): Array${typeParam};`);
+                // "from" constructors from Godot XML (PackedByteArray → Array<int>, etc.)
+                for (const ctor of cls.constructors) {
+                    if (ctor.parameters.length !== 1)
+                        continue;
+                    const param = ctor.parameters[0];
+                    if (param.name !== 'from' && !param.name.startsWith('from'))
+                        continue;
+                    const paramType = godotTypeToTs(param.type, typeCtx);
+                    // Skip the `from: Array` variant (redundant with `(): Array`)
+                    if (paramType.startsWith('Array'))
+                        continue;
+                    fileLines.push(`  ${typeParam}(from_: ${paramType}): Array${typeParam};`);
+                }
+                fileLines.push('}');
+                fileLines.push('declare var Array: ArrayConstructor;');
+            }
+            const fileName = `${name}.d.ts`;
+            writeFileSync(join(classesDir, fileName), header + '\n' + fileLines.join('\n') + '\n');
+            generatedFiles.push(fileName);
+            continue;
+        }
+        // Value types: emitted as interface + constructor function (no `new`)
+        if (valueTypes.has(name)) {
+            var valueDecl = generateValueTypeDeclaration(cls, allDictMembers, typeCtx);
+            // Apply overrides if available
+            const className = sanitizeClassName(name);
+            const classOverride = overrides.get(className);
+            if (classOverride) {
+                valueDecl = applyOverride(valueDecl, classOverride);
+            }
+            const fileName = `${name}.d.ts`;
+            writeFileSync(join(classesDir, fileName), header + '\n' + valueDecl + '\n');
+            generatedFiles.push(fileName);
+            continue;
+        }
+        // Collect explicit method names and property names from ancestor classes.
+        // Generated setter/getter methods must not clash with inherited explicit methods
+        // (which may have different signatures) or inherited properties (TS can't have
+        // a method override a property).
+        const inheritedMemberNames = new Set();
+        let ancestor = cls.inherits;
+        while (ancestor) {
+            const ancestorCls = classes.get(ancestor);
+            if (!ancestorCls)
+                break;
+            for (const m of ancestorCls.methods)
+                inheritedMemberNames.add(m.name);
+            for (const p of ancestorCls.properties) {
+                inheritedMemberNames.add(p.name);
+                if (p.setter)
+                    inheritedMemberNames.add(p.setter);
+                if (p.getter)
+                    inheritedMemberNames.add(p.getter);
+            }
+            ancestor = ancestorCls.inherits;
+        }
+        // Dict-only overrides on Object add `name: never` properties — any descendant
+        // must not generate a setter/getter method with the same name.
+        if (name !== 'Object' && dictOnlyOverrides) {
+            for (const n of dictOnlyOverrides)
+                inheritedMemberNames.add(n);
+        }
+        var classDecl = generateClassDeclaration(cls, typeCtx, name === 'Object' ? dictOnlyOverrides : undefined, inheritedMemberNames);
+        // Apply overrides if available (by TS class name)
+        const className = sanitizeClassName(name);
+        const classOverride = overrides.get(className);
+        if (classOverride) {
+            classDecl = applyOverride(classDecl, classOverride);
+        }
+        // Singleton classes: convert to interface + global instance value.
+        // Interfaces can't have `static` members, so strip the `static` keyword.
+        if (singletonClassNames.has(name)) {
+            // Replace `declare class` with `declare interface`
+            classDecl = classDecl.replace(/^declare class /m, 'declare interface ');
+            // Strip `static` keyword from members (interfaces don't support it;
+            // all members become instance members accessible via the global const/var).
+            classDecl = classDecl.replace(/^(\s+)static readonly /gm, '$1readonly ');
+            classDecl = classDecl.replace(/^(\s+)static /gm, '$1');
+            if (extendedSingletons.has(name)) {
+                // Singletons extended by other classes: use `declare var` with `new()`
+                // so TS treats the name as a constructor type for `extends` clauses.
+                classDecl += `\ndeclare var ${className}: ${className} & {\n  new(): ${className};\n  readonly prototype: ${className};\n};\n`;
+            }
+            else {
+                // Singletons NOT extended: use `declare const` (can't construct).
+                classDecl += `\ndeclare const ${className}: ${className};\n`;
+            }
+        }
+        const fileName = `${name}.d.ts`;
+        writeFileSync(join(classesDir, fileName), header + '\n' + classDecl + '\n');
+        generatedFiles.push(fileName);
+    }
+    // Generate Number interface extension with int/float operator overloads
+    const numberOps = generateNumberOperatorOverloads(classes, typeCtx);
+    if (numberOps) {
+        const fileName = '_number-ops.d.ts';
+        writeFileSync(join(classesDir, fileName), header + '\n' + numberOps + '\n');
+        generatedFiles.push(fileName);
+    }
+    // Generate classes/index.d.ts that references all class files
+    const indexLines = generatedFiles
+        .sort()
+        .map((f) => `/// <reference path="${f}" />`);
+    writeFileSync(join(classesDir, 'index.d.ts'), indexLines.join('\n') + '\n');
+    // Generate registry JSON if requested
+    let registry = null;
+    if (options.registryOutputPath) {
+        const data = generateRegistryData(classes, gdscriptCls);
+        data.version = options.version ?? '';
+        writeFileSync(options.registryOutputPath, JSON.stringify(data, null, 2));
+        registry = new GodotClassRegistry(data);
+    }
+    return registry;
+}
+//# sourceMappingURL=godot-docs.js.map
