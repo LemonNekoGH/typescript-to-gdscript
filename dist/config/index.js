@@ -13,6 +13,7 @@ export function resolveConfig(options) {
     const overrides = options?.overrides ?? {};
     // Merge: CLI overrides > config > defaults
     const rootDir = resolve(baseDir, overrides.rootDir ?? config?.rootDir ?? '.');
+    const projectRoot = resolve(rootDir, overrides.projectRoot ?? config?.projectRoot ?? '.');
     const tsDir = resolve(rootDir, overrides.tsDir ?? config?.tsDir ?? 'src');
     const gdDir = resolve(rootDir, overrides.gdDir ?? config?.gdDir ?? 'scripts');
     const typingsDir = resolve(rootDir, overrides.typingsDir ?? config?.typingsDir ?? '_gdtots');
@@ -29,6 +30,7 @@ export function resolveConfig(options) {
         : (findPackageTypingsDir(rootDir) ?? getPackageTypingsDir());
     return {
         rootDir,
+        projectRoot,
         tsDir,
         gdDir,
         typingsDir,

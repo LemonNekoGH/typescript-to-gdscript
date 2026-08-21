@@ -12,7 +12,7 @@ export function registerWatchCommand(program) {
         .option('--tsconfig <path>', 'Path to tsconfig.json')
         .option('--typings-dir <path>', 'Directory for all generated typings (relative to rootDir)')
         .option('--godot-path <path>', 'Path to Godot executable (enables GD validation after conversion)')
-        .option('--project-root <dir>', 'Godot project root for validation')
+        .option('--project-root <dir>', 'Godot project root for external module staging and validation')
         .option('--emit-on-error', 'Emit output files even when conversion errors occur', false)
         .option('--no-check', 'Disable the debounced full-project diagnostic check')
         .action((opts) => {
@@ -21,6 +21,7 @@ export function registerWatchCommand(program) {
                 rootDir: opts.rootDir,
                 tsDir: opts.tsDir,
                 gdDir: opts.gdDir,
+                projectRoot: opts.projectRoot,
                 typingsDir: opts.typingsDir,
                 tsconfig: opts.tsconfig,
                 godotPath: opts.godotPath,
@@ -42,7 +43,7 @@ export function registerWatchCommand(program) {
             ignore: cfg.ignore,
             projectFile: cfg.projectFile,
             godotPath,
-            projectRoot: opts.projectRoot ? resolve(opts.projectRoot) : undefined,
+            projectRoot: cfg.projectRoot,
             emitOnError: opts.emitOnError,
             noCheck: opts.check === false,
             debug: isDebugEnabled(),

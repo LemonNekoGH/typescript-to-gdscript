@@ -21,7 +21,7 @@ export function registerConvertCommand(program) {
         .option('--root-dir <dir>', 'Root directory', '.')
         .option('--tsconfig <path>', 'Path to tsconfig.json')
         .option('--godot-path <path>', 'Path to Godot executable (enables GDScript validation)')
-        .option('--project-root <dir>', 'Godot project root for validation')
+        .option('--project-root <dir>', 'Godot project root for external module staging and validation')
         .option('--use-cache', 'Skip conversion for files with a fresh cache entry. Fast, but can keep ' +
         'stale .gd output when types in imported files or global typings changed ' +
         '(freshness is judged by file content only)', false)
@@ -35,6 +35,7 @@ export function registerConvertCommand(program) {
                 rootDir: opts.rootDir,
                 tsDir: opts.tsDir,
                 gdDir: opts.gdDir,
+                projectRoot: opts.projectRoot,
                 tsconfig: opts.tsconfig,
                 godotPath: opts.godotPath,
             },
@@ -73,7 +74,7 @@ export function registerConvertCommand(program) {
                 const outputOptions = {
                     tsDir: cfg.tsDir,
                     gdDir: cfg.gdDir,
-                    projectRoot: cfg.rootDir,
+                    projectRoot: cfg.projectRoot,
                 };
                 const outputPath = entryFiles.has(filePath)
                     ? gdOutputPath(filePath, outputOptions)
@@ -101,7 +102,7 @@ export function registerConvertCommand(program) {
                     rootDir: cfg.tsDir,
                     tsDir: cfg.tsDir,
                     gdDir: cfg.gdDir,
-                    projectRoot: cfg.rootDir,
+                    projectRoot: cfg.projectRoot,
                     tsConfigPath: cfg.tsconfig ? resolve(cfg.tsconfig) : undefined,
                     sourceMap: true,
                     program: sharedProgram,
@@ -151,14 +152,11 @@ export function registerConvertCommand(program) {
                     // godotPath unavailable — Godot check skipped
                 }
             }
-            const projectRoot = opts.projectRoot
-                ? resolve(opts.projectRoot)
-                : cfg.rootDir;
-            debugLog(`Diagnostic check: godotPath=${godotPath ?? '(skipped)'}, tsConfig=${cfg.tsconfig ?? '(none)'}, projectRoot=${projectRoot}`);
+            debugLog(`Diagnostic check: godotPath=${godotPath ?? '(skipped)'}, tsConfig=${cfg.tsconfig ?? '(none)'}, projectRoot=${cfg.projectRoot}`);
             const checkResult = await collectProjectDiagnostics({
                 tsDir: cfg.tsDir,
                 gdDir: cfg.gdDir,
-                projectRoot,
+                projectRoot: cfg.projectRoot,
                 tsFiles: runtimeFiles,
                 entryFiles: resolvedFiles,
                 tsConfigPath: cfg.tsconfig ? resolve(cfg.tsconfig) : undefined,

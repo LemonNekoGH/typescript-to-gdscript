@@ -232,7 +232,7 @@ export function createLintOverlay(deps) {
                 rootDir: cfg.tsDir,
                 tsDir: cfg.tsDir,
                 gdDir: cfg.gdDir,
-                projectRoot: cfg.rootDir,
+                projectRoot: cfg.projectRoot,
                 sourceMap: true,
                 program,
             });
@@ -311,7 +311,7 @@ export function createLintOverlay(deps) {
             trace(`godot: skip ${fileName} — converter produced no output`);
             return;
         }
-        const projectRoot = cfg.rootDir;
+        const projectRoot = cfg.projectRoot;
         let godotPath;
         try {
             godotPath = resolveGodotPath({ godotPath: cfg.godotPath });

@@ -2,6 +2,8 @@ import { GodotClassRegistry } from '../typings/godot-registry.ts';
 export interface TsToGdConfig {
     /** Root directory (base for relative paths). Defaults to config file directory or CWD. */
     rootDir?: string;
+    /** Godot resource root. External TypeScript packages are staged here. Defaults to rootDir. */
+    projectRoot?: string;
     /** TypeScript source directory (relative to rootDir or absolute). Defaults to `"src"`. */
     tsDir?: string;
     /** GDScript output directory (relative to rootDir or absolute). Defaults to `"scripts"`. */
@@ -50,6 +52,8 @@ export interface ConverterOptions {
 }
 export interface ResolvedConfig {
     rootDir: string;
+    /** Absolute Godot resource root. */
+    projectRoot: string;
     tsDir: string;
     gdDir: string;
     /** Absolute path to the directory for all generated typings (globals.d.ts, scene-typings.d.ts). */
