@@ -57,8 +57,7 @@
     "test:sourcemap": "vitest run tests/typings/ts-to-gd-sourcemap.test.ts",
     "test:gd-registry": "vitest run tests/typings/gd-to-ts-registry.test.ts",
     "test:typecheck": "vitest run tests/typecheck.test.ts",
-    "test:cli": "vitest run tests/cli/cli.test.ts",
-    "prepare": "tsc && husky"
+    "test:cli": "vitest run tests/cli/cli.test.ts"
   },
   "prettier": {
     "trailingComma": "all",
