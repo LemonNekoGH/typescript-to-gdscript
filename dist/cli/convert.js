@@ -1,7 +1,7 @@
 import { writeFileSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
-import { convertTsToGd } from "../converter/ts-to-gd/index.js";
-import { collectRuntimeModules, gdImportOutputPath, gdOutputPath, } from "../converter/ts-to-gd/modules.js";
+import { collectRuntimeModules } from "../converter/ts-to-gd/modules.js";
+import { convertRuntimeModules } from "../converter/ts-to-gd/runtime-modules.js";
 import { createTsProgram } from "../parser/typescript/index.js";
 import { resolveConfig, resolveGodotPath } from "../config/index.js";
 import { ProjectCache } from "../cache/index.js";
@@ -65,25 +65,21 @@ export function registerConvertCommand(program) {
             tsConfigPath: cfg.tsconfig ? resolve(cfg.tsconfig) : undefined,
         });
         const runtimeFiles = collectRuntimeModules(resolvedFiles, sharedProgram);
-        const entryFiles = new Set(resolvedFiles.map((file) => resolve(file)));
         let hasErrors = false;
         let skipped = 0;
         if (!noEmit) {
             // ── Write mode ───────────────────────────────────��─────
-            for (const filePath of runtimeFiles) {
-                const outputOptions = {
-                    tsDir: cfg.tsDir,
-                    gdDir: cfg.gdDir,
-                    projectRoot: cfg.projectRoot,
-                };
-                const outputPath = entryFiles.has(filePath)
-                    ? gdOutputPath(filePath, outputOptions)
-                    : gdImportOutputPath(filePath, outputOptions);
-                if (!outputPath) {
-                    console.error(`Cannot stage runtime module without package.json: ${filePath}`);
-                    hasErrors = true;
-                    continue;
-                }
+            const convertedModules = convertRuntimeModules({
+                entryFiles: resolvedFiles,
+                rootDir: cfg.tsDir,
+                tsDir: cfg.tsDir,
+                gdDir: cfg.gdDir,
+                projectRoot: cfg.projectRoot,
+                tsConfigPath: cfg.tsconfig ? resolve(cfg.tsconfig) : undefined,
+                sourceMap: true,
+                program: sharedProgram,
+            });
+            for (const { sourcePath: filePath, outputPath, result, } of convertedModules) {
                 if (useCacheReads && cache?.isTsToGdFresh(filePath, outputPath)) {
                     debugLog(`Skipped (cache): ${outputPath}`);
                     skipped++;
@@ -97,16 +93,6 @@ export function registerConvertCommand(program) {
                         continue;
                     }
                 }
-                const result = convertTsToGd({
-                    filePath,
-                    rootDir: cfg.tsDir,
-                    tsDir: cfg.tsDir,
-                    gdDir: cfg.gdDir,
-                    projectRoot: cfg.projectRoot,
-                    tsConfigPath: cfg.tsconfig ? resolve(cfg.tsconfig) : undefined,
-                    sourceMap: true,
-                    program: sharedProgram,
-                });
                 // When the post-convert checker runs, it will print converter diagnostics
                 // (from cache or fresh re-convert). Only print here when --no-check is set,
                 // so users with --no-check still see errors.

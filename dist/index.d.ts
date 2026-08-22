@@ -1,4 +1,5 @@
 export { convertTsToGd, type ConvertOptions, } from './converter/ts-to-gd/index.ts';
+export { convertRuntimeModules, type ConvertedRuntimeModule, type ConvertRuntimeModulesOptions, } from './converter/ts-to-gd/runtime-modules.ts';
 export { convertGdToTs, type GdToTsOptions, } from './converter/gd-to-ts/index.ts';
 export { GDScriptParser } from './parser/gdscript/index.ts';
 export { createTsProgram } from './parser/typescript/index.ts';
