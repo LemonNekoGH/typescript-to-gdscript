@@ -49,35 +49,24 @@ export function collectRuntimeModules(entryFiles, program) {
     }
     return [...files];
 }
-/**
- * Return the generated `.gd` destination for a source file. Project files
- * retain the normal tsDir → gdDir mirror; package sources are staged inside
- * the Godot project so generated `preload("res://…")` paths are valid.
- */
+/** Return the generated `.gd` destination for a project or package source. */
 export function gdOutputPath(sourcePath, options) {
     const absoluteSource = resolve(sourcePath);
     const relativeSource = relative(options.tsDir, absoluteSource);
-    return resolve(options.gdDir, toGdPath(relativeSource));
-}
-/**
- * Return the generated `.gd` destination for a module reached through an
- * import. Sources belonging to another package are staged in the Godot
- * project; local project sources retain the normal tsDir → gdDir mirror.
- */
-export function gdImportOutputPath(sourcePath, options) {
-    const absoluteSource = resolve(sourcePath);
-    const pkg = findPackage(absoluteSource);
-    if (pkg && resolve(pkg.root) !== resolve(options.projectRoot)) {
-        const relativePackageSource = relative(pkg.root, absoluteSource);
-        if (isOutside(relativePackageSource))
-            return undefined;
-        return resolve(options.projectRoot, MODULES_DIR, pkg.name, pkg.version, toGdPath(relativePackageSource));
+    if (!isOutside(relativeSource)) {
+        return resolve(options.gdDir, toGdPath(relativeSource));
     }
-    return gdOutputPath(absoluteSource, options);
+    const pkg = findPackage(absoluteSource);
+    if (!pkg)
+        return undefined;
+    const relativePackageSource = relative(pkg.root, absoluteSource);
+    if (isOutside(relativePackageSource))
+        return undefined;
+    return resolve(options.projectRoot, MODULES_DIR, pkg.name, pkg.version, toGdPath(relativePackageSource));
 }
 /** Convert a generated output path into a Godot resource path. */
 export function gdResourcePath(sourcePath, options) {
-    const outputPath = gdImportOutputPath(sourcePath, options);
+    const outputPath = gdOutputPath(sourcePath, options);
     if (!outputPath)
         return undefined;
     const pathFromProject = relative(options.projectRoot, outputPath);

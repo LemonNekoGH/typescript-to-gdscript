@@ -6,8 +6,6 @@ export interface CheckOptions {
     gdDir: string;
     projectRoot: string;
     tsFiles: string[];
-    /** Source files passed to the converter, rather than reached through imports. */
-    entryFiles?: string[];
     tsConfigPath?: string;
     cache: ProjectCache | null;
     godotPath?: string;

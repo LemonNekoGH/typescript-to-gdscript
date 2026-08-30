@@ -2,7 +2,7 @@ import { resolve } from 'path';
 import ts from 'typescript';
 import { createTsProgram } from "../../parser/typescript/index.js";
 import { convertTsToGd } from "./index.js";
-import { collectRuntimeModules, gdImportOutputPath, gdOutputPath, } from "./modules.js";
+import { collectRuntimeModules, gdOutputPath } from "./modules.js";
 /**
  * Convert every source reachable from value imports of the entry files.
  *
@@ -22,12 +22,9 @@ export function convertRuntimeModules(options) {
             files: entryFiles,
             tsConfigPath: options.tsConfigPath,
         });
-    const entryFileSet = new Set(entryFiles);
     const outputOptions = { tsDir, gdDir, projectRoot };
     return collectRuntimeModules(entryFiles, program).map((sourcePath) => {
-        const outputPath = entryFileSet.has(sourcePath)
-            ? gdOutputPath(sourcePath, outputOptions)
-            : gdImportOutputPath(sourcePath, outputOptions);
+        const outputPath = gdOutputPath(sourcePath, outputOptions);
         if (!outputPath) {
             throw new Error(`Cannot determine a GDScript destination for runtime module: ${sourcePath}`);
         }

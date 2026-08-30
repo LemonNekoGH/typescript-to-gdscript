@@ -2,13 +2,12 @@ import { resolve, normalize } from 'path';
 import { readFileSync, existsSync } from 'fs';
 import { createTsProgram } from "../parser/typescript/index.js";
 import { convertTsToGd } from "../converter/ts-to-gd/index.js";
-import { gdImportOutputPath, gdOutputPath, } from "../converter/ts-to-gd/modules.js";
+import { gdOutputPath } from "../converter/ts-to-gd/modules.js";
 import { collectTsDiagnostics } from "./ts-diagnostics.js";
 import { runGodotProjectCheck } from "./godot-project.js";
 export async function collectProjectDiagnostics(opts) {
     const { tsDir, gdDir, projectRoot, tsFiles, cache, noEmit = false, onDebug, } = opts;
     const debug = (msg) => onDebug?.(`[checker] ${msg}`);
-    const entryFiles = new Set((opts.entryFiles ?? tsFiles).map((file) => resolve(file)));
     debug(`Starting (${tsFiles.length} file(s), noEmit=${noEmit})`);
     // Reuse the caller's program when provided (e.g. watcher's cachedProgram
     // built during the conversion batch); otherwise build a fresh one.
@@ -34,9 +33,7 @@ export async function collectProjectDiagnostics(opts) {
         if (tsFile.endsWith('.d.ts'))
             continue;
         const outputOptions = { tsDir, gdDir, projectRoot };
-        const gdPath = entryFiles.has(resolve(tsFile))
-            ? gdOutputPath(tsFile, outputOptions)
-            : gdImportOutputPath(tsFile, outputOptions);
+        const gdPath = gdOutputPath(tsFile, outputOptions);
         if (!gdPath) {
             converterDiagnostics.push({
                 message: 'Runtime module is outside tsDir and has no package.json for staging.',

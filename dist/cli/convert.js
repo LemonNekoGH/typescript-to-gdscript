@@ -144,7 +144,6 @@ export function registerConvertCommand(program) {
                 gdDir: cfg.gdDir,
                 projectRoot: cfg.projectRoot,
                 tsFiles: runtimeFiles,
-                entryFiles: resolvedFiles,
                 tsConfigPath: cfg.tsconfig ? resolve(cfg.tsconfig) : undefined,
                 cache,
                 godotPath,
