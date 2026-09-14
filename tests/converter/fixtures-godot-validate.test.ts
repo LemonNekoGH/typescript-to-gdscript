@@ -34,9 +34,15 @@ const TMP_DIR = join(
  *
  * Every fixture runs by default, so a new one gets Godot coverage
  * without anyone remembering to opt it in; SKIP below is the explicit,
- * reasoned exception list. Each fixture gets its own project because 16
- * of them declare `class_name MyClass`, and two scripts claiming one
- * global class name is itself a parse error.
+ * reasoned exception list, and it is only for fixtures that CANNOT be
+ * validated in isolation — never for output Godot rejects. Each fixture
+ * gets its own project because 16 of them declare `class_name MyClass`,
+ * and two scripts claiming one global class name is itself a parse
+ * error.
+ *
+ * Godot stops at the first parse error in a file, so a fixture can hide
+ * a second defect behind the one you just fixed — re-run after each fix
+ * rather than assuming the file is clean.
  */
 const SKIP = new Map<string, string>([
   // Not validatable in isolation — the fixture needs files a one-file
@@ -53,11 +59,9 @@ const SKIP = new Map<string, string>([
     'gd-eval-comments',
     'preloads a sibling .gd that does not exist in a one-file project',
   ],
-
   // KNOWN BAD OUTPUT — the converter emits GDScript Godot rejects.
-  // Each is a real defect, found the moment this test stopped running
-  // off an opt-in list. Fix the converter and delete the entry; do not
-  // add to this group to make a red suite green.
+  // Each is a real defect. Fix the converter and delete the entry; do
+  // not add to this group to make a red suite green.
   [
     'abstract',
     'BUG: emits a `pass` body under `@abstract` — Godot: "An abstract function cannot have a body"',
@@ -66,12 +70,15 @@ const SKIP = new Map<string, string>([
     'functions',
     'BUG: emits a method named `call`, colliding with Object.call(); also emits a bare `callv()`',
   ],
-  ['gd-eval', 'BUG: same `call`/`callv` collision as `functions`'],
+  ['gd-eval', 'BUG: re-declares `c` in a scope that already has it (line 21)'],
   [
     'match',
-    'BUG: emits non-constant match patterns — Godot requires a constant, identifier, or A.B',
+    'BUG: emits `self.X` in a match pattern — Godot requires a constant, identifier, or A.B',
   ],
-  ['variables', 'BUG: re-declares `c` in a scope that already has it'],
+  [
+    'variables',
+    'BUG: emits `var name` on a Node subclass — Godot: Member "name" redefined (original in native class Node)',
+  ],
 ]);
 
 const FIXTURES = readdirSync(FIXTURES_DIR)
@@ -142,9 +149,14 @@ describe.concurrent('TS to GD: fixture output parses in Godot', () => {
       });
 
       expect(result.godotAvailable).toBe(true);
-      expect(result.diagnostics.map((d) => `${d.line}: ${d.message}`)).toEqual(
-        [],
-      );
+      // Name the fixture INSIDE the compared value, not just in the
+      // test title: vitest collapses failure blocks whose rendered
+      // error is identical and prints only one of them, which
+      // silently attributes another fixture's error to this one.
+      expect({
+        fixture: fixtureName,
+        errors: result.diagnostics.map((d) => `${d.line}: ${d.message}`),
+      }).toEqual({ fixture: fixtureName, errors: [] });
     }, 90000);
   }
 });

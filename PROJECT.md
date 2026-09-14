@@ -99,7 +99,10 @@ tests/
                          # default; one project per fixture because 16 fixtures declare `class_name MyClass` and
                          # two scripts can't claim one global class name. SKIP splits into "can't validate in
                          # isolation" (needs sibling files) and "KNOWN BAD OUTPUT" — real converter defects the
-                         # opt-in list had been hiding: abstract/functions/gd-eval/match/variables)
+                         # opt-in list had been hiding: abstract/functions/gd-eval/match/variables.
+                         # Each failure names its fixture INSIDE the compared value: vitest collapses
+                         # failure blocks whose rendered error is identical and prints only one, which
+                         # silently attributes one fixture's error to another)
   cache/                 # cache.test.ts — ProjectCache (freshness, sourcemap storage, addon/typings entries, version mismatch, atomic writes, gd-output mirror, saveAsync, watch mode)
   checker/               # checker.test.ts (collectProjectDiagnostics, stale-detection), ts-diagnostics.test.ts (filters)
   cli/                   # cli.test.ts (convert + initial-convert-gd-to-ts exit codes, --force, --debug)
