@@ -39,10 +39,12 @@ func varargs(...args):
 func varargs_typed(a: int, ...rest: Array):
 	pass
 
-func call(fn: Callable):
+# Not named `call`: that collides with Object.call(), which Godot
+# refuses to override. `callv` takes the argument array.
+func invoke_callables(fn: Callable):
 	fn.call()
 	fn.call_deferred()
-	fn.callv()
+	fn.callv([])
 	self.var_func.call("")
 	self.var_func.call("")
 	self.say_hello()

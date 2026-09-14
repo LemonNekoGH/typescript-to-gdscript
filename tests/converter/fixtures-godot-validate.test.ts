@@ -59,14 +59,6 @@ const SKIP = new Map<string, string>([
     'gd-eval-comments',
     'preloads a sibling .gd that does not exist in a one-file project',
   ],
-  // KNOWN BAD OUTPUT — the converter emits GDScript Godot rejects.
-  // Each is a real defect. Fix the converter and delete the entry; do
-  // not add to this group to make a red suite green.
-  [
-    'functions',
-    'BUG: emits a method named `call`, colliding with Object.call(); also emits a bare `callv()`',
-  ],
-  ['gd-eval', 'BUG: re-declares `c` in a scope that already has it (line 21)'],
 ]);
 
 const FIXTURES = readdirSync(FIXTURES_DIR)

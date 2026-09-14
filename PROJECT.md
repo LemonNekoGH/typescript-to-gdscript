@@ -97,12 +97,13 @@ tests/
                          # parse, which is how `self.X` inside `static func` shipped. Runs the whole directory
                          # with a documented SKIP map rather than an opt-in list, so a new fixture is covered by
                          # default; one project per fixture because 16 fixtures declare `class_name MyClass` and
-                         # two scripts can't claim one global class name. SKIP splits into "can't validate in
-                         # isolation" (needs sibling files) and "KNOWN BAD OUTPUT" — real converter defects the
-                         # opt-in list had been hiding: abstract/functions/gd-eval/match/variables.
-                         # Each failure names its fixture INSIDE the compared value: vitest collapses
-                         # failure blocks whose rendered error is identical and prints only one, which
-                         # silently attributes one fixture's error to another)
+                         # two scripts can't claim one global class name. SKIP is ONLY for fixtures that can't be
+                         # validated in isolation (needs sibling files), never for output Godot rejects. Inverting
+                         # the old opt-in list exposed five real defects — abstract bodies, match patterns,
+                         # inherited-property clash, and two fixtures whose own raw/GD-name choices were invalid.
+                         # Each failure names its fixture INSIDE the compared value: vitest collapses failure
+                         # blocks whose rendered error is identical and prints only one, silently attributing one
+                         # fixture's error to another — that cost a debugging session once already)
   cache/                 # cache.test.ts — ProjectCache (freshness, sourcemap storage, addon/typings entries, version mismatch, atomic writes, gd-output mirror, saveAsync, watch mode)
   checker/               # checker.test.ts (collectProjectDiagnostics, stale-detection), ts-diagnostics.test.ts (filters)
   cli/                   # cli.test.ts (convert + initial-convert-gd-to-ts exit codes, --force, --debug)
@@ -299,7 +300,7 @@ Everything else is syntactic (literals, operators, control flow, import→preloa
 
 ## Known Edge Cases
 
-- **Open converter defects surfaced by the Godot-validate sweep** (each is a real bug, not a test artefact; the SKIP entries in `tests/converter/fixtures-godot-validate.test.ts` name them): (1) a class member named after a Godot builtin type (`Color`, `Vector2`, …) emits GD that Godot rejects with "cannot have the same name as a builtin type" — derivable from the registry per rule 7, should be a diagnostic (the `merged-namespaces` fixture works around it by naming its enum `Palette`); (2) `@abstract` emits a `pass` body, which Godot rejects ("An abstract function cannot have a body"); (3) a method named `call` collides with `Object.call()`, and `callv()` is emitted with no arguments; (4) `match` patterns emit non-constant expressions where Godot requires a constant, identifier, or `A.B`; (5) a `variables` case re-declares a name already in scope. None is caused by own-class resolution — they were simply invisible while that test ran off an opt-in fixture list
+- **Still-open member-name clashes with Godot** (both emit GD that Godot rejects, both derivable from the registry per rule 7, neither diagnosed yet): (1) a class member named after a Godot builtin type (`Color`, `Vector2`, …) — "cannot have the same name as a builtin type"; the `merged-namespaces` fixture works around it by naming its enum `Palette`. (2) a method whose name collides with a NON-virtual inherited method (`call`, `callv`, …) — "The function signature doesn't match the parent" plus "overrides a method from native class" as a warning-treated-as-error; the `functions` fixture works around it by naming its method `invoke_callables`. Note the asymmetry the property check already encodes: overriding an inherited METHOD is ordinary GDScript (`_ready`, `free` are fine — verified against Godot 4.7), so a blanket method-name check would be wrong; telling virtual from non-virtual needs `is_virtual` in the registry data, which `registry-generator.ts` does not currently carry
 - Numeric literals: use `getText()` to preserve `100.0` (TS parser strips trailing `.0`)
 - Reference-type classification lives in two places that intentionally differ: `isReferenceType()` in `src/converter/common/index.ts` is the canonical registry-only check used at emit time (input: a raw GDScript type string). The typings generator (`src/typings/`) has its own `isNullableGodotType()` in `src/typings/type-mapping.ts` that also consults the derived `valueTypes` / `INTERFACE_CLASSES` sets it builds during generation — those sets don't exist in the converter's runtime context, so duplicating a small amount of logic is preferable to threading the typings `TypeContext` through the converter. Both end up excluding the same things (primitives, value types, enum refs, typed arrays) for the same reasons.
 - Emit-time IN widening needs a separate `classEnumNames: Set<string>` on `GdToTsContext` (populated alongside `classTypeNames` in `class-scope.ts`) because `classTypeNames` holds BOTH inner class names and enum names, and post-qualification text like `Config.Inner` vs `Config.Status` can't be distinguished without knowing which. Enums are numeric (skip widening); inner classes are reference types (widen). Dotted references where the first segment is a Godot registered class (e.g. `Node.ProcessMode`) are treated as class enums; dotted references where the first segment is in `classTypeNames` AND NOT in `classEnumNames` are treated as inner-class references and widened.

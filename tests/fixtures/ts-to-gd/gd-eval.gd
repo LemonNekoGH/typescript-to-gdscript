@@ -18,7 +18,7 @@ func test_eval():
 	var e2 = 10
 	if e2 > 10:
 		e2 = 30
-	var c = "	123"
+	var c2 = "	123"
 	var f = 10
 	if f > 10:
 		f = 30
@@ -28,7 +28,7 @@ func test_eval():
 			f = 30
 	print(f)
 	var v = c
-	var fun1 = func (x: string):
+	var fun1 = func (x: String):
 		print(x)
-	var fun2 = func (x: string):
+	var fun2 = func (x: String):
 		print(x)

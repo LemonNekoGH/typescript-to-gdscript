@@ -45,10 +45,12 @@ export class MyClass extends Node {
   varargs_typed(a: int, ...rest: Array<unknown>) {
   }
 
-  call(fn: () => void) {
+  // Not named `call`: that collides with Object.call(), which Godot
+  // refuses to override. `callv` takes the argument array.
+  invoke_callables(fn: () => void) {
     fn();
     fn.call_deferred();
-    fn.callv();
+    fn.callv([]);
     this.var_func('');
     this.var_func.call('');
     this.say_hello();

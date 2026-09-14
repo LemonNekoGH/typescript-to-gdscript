@@ -26,7 +26,7 @@ if e2 > 10:
   e2 = 30
 `);
     gd.eval(`
-  var c = "\t123"
+  var c2 = "\t123"
   var f = 10
   if f > 10:
      f = 30
@@ -37,11 +37,11 @@ if e2 > 10:
   print(f)
 `);
     const v = gd.eval<string>('c');
-    const fun1 = gd.eval<(x: string) => void>(`func (x: string):
+    const fun1 = gd.eval<(x: string) => void>(`func (x: String):
       print(x)
     `)
     const fun2 = gd.eval<(x: string) => void>(`
-      func (x: string):
+      func (x: String):
         print(x)
     `)
   }
