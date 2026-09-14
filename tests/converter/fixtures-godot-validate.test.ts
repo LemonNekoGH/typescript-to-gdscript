@@ -63,10 +63,6 @@ const SKIP = new Map<string, string>([
   // Each is a real defect. Fix the converter and delete the entry; do
   // not add to this group to make a red suite green.
   [
-    'abstract',
-    'BUG: emits a `pass` body under `@abstract` — Godot: "An abstract function cannot have a body"',
-  ],
-  [
     'functions',
     'BUG: emits a method named `call`, colliding with Object.call(); also emits a bare `callv()`',
   ],

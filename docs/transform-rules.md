@@ -238,8 +238,7 @@ signal died
 
 # Abstract method (auto-translated, no decorator needed)
 @abstract
-func take_damage(amount: int) -> void:
-	pass
+func take_damage(amount: int) -> void
 
 # Constructor → _init
 func _init(speed: float = 200.0):
@@ -583,6 +582,10 @@ var state: State = MyClass.State.IDLE
 - `export abstract class Inner { ... }` → nested `@abstract class Inner:`
 
 Functions, type aliases, and interfaces in the namespace are TS-only (erased) — there's no GDScript counterpart.
+
+## Abstract methods
+
+`abstract take_damage(amount: int): void;` → `@abstract func take_damage(amount: int) -> void` — the signature alone, with no `:` and no body. Godot rejects both a body and a bare trailing colon after an abstract function.
 
 ## Decorators and annotations
 

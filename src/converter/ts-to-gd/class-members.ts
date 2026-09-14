@@ -295,6 +295,20 @@ export function visitMethodDeclaration(
   );
   const staticPrefix = isStatic ? 'static ' : '';
 
+  // An `@abstract` function is the signature ALONE — Godot rejects a
+  // body after it ("An abstract function cannot have a body") and also
+  // rejects a bare trailing colon ("Expected indented block after
+  // function declaration"). TS guarantees `abstract` members have no
+  // body, so there is nothing to drop.
+  if (isAbstract) {
+    t.emitter.writeLine(
+      `${staticPrefix}func ${name}(${params})${returnAnnotation}`,
+      pos.line,
+      pos.col,
+    );
+    return;
+  }
+
   t.emitter.writeLine(
     `${staticPrefix}func ${name}(${params})${returnAnnotation}:`,
     pos.line,
