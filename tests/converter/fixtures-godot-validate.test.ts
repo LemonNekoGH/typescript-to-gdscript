@@ -67,10 +67,6 @@ const SKIP = new Map<string, string>([
     'BUG: emits a method named `call`, colliding with Object.call(); also emits a bare `callv()`',
   ],
   ['gd-eval', 'BUG: re-declares `c` in a scope that already has it (line 21)'],
-  [
-    'variables',
-    'BUG: emits `var name` on a Node subclass — Godot: Member "name" redefined (original in native class Node)',
-  ],
 ]);
 
 const FIXTURES = readdirSync(FIXTURES_DIR)

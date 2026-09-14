@@ -587,6 +587,10 @@ Functions, type aliases, and interfaces in the namespace are TS-only (erased) �
 
 `abstract take_damage(amount: int): void;` → `@abstract func take_damage(amount: int) -> void` — the signature alone, with no `:` and no body. Godot rejects both a body and a bare trailing colon after an abstract function.
 
+## Members that clash with the Godot base class
+
+A field whose name is already a property of the base class is an error: GDScript cannot redefine an inherited property, so `name: string` on a class extending `Node` is reported rather than emitted. Rename the field. Methods are unaffected — overriding `_ready`, `free` and friends is ordinary GDScript.
+
 ## Decorators and annotations
 
 GDScript annotations (`@tool`, `@export`, `@onready`, `@export_range(...)`, `@icon(...)`, `@warning_ignore(...)`, `@abstract`, `@static_unload`, etc.) are written as TypeScript decorators on the class, fields, or methods. The list of bare annotations is derived from the Godot class registry — any annotation Godot recognises is accepted.

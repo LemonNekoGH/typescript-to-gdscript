@@ -2,7 +2,9 @@ export class MyClass extends Node {
   // Variable declarations with types
   speed: float = 10.5;
   health: int = 100;
-  name: string = "Player";
+  // Not `name`: Node already has that property and GDScript cannot
+  // redefine an inherited one.
+  player_name: string = "Player";
   alive: boolean = true;
   position_2d: Vector2 = Vector2(0, 0);
 

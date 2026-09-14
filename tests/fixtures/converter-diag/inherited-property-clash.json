@@ -1,0 +1,10 @@
+[
+  {
+    "message": "`name` is already a property of `Node`",
+    "severity": "error"
+  },
+  {
+    "message": "`owner` is already a property of `Node`",
+    "severity": "error"
+  }
+]

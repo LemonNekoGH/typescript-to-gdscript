@@ -4,7 +4,9 @@ class_name MyClass
 # Variable declarations with types
 var speed: float = 10.5
 var health: int = 100
-var name: String = "Player"
+# Not `name`: Node already has that property and GDScript cannot
+# redefine an inherited one.
+var player_name: String = "Player"
 var alive: bool = true
 var position_2d: Vector2 = Vector2(0, 0)
 

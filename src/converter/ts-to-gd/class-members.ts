@@ -7,6 +7,7 @@ import ts from 'typescript';
 import { tsTypeNodeToGdType } from '../common/index.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
 import { visitGdGetsetProperty } from './gd-getset.ts';
+import { getEnclosingClass } from './own-class-ref.ts';
 
 // ── Signals ──────────────────────────────────────────────────
 
@@ -103,6 +104,47 @@ export function visitEnumDeclaration(
 
 // ── Properties ───────────────────────────────────────────────
 
+/**
+ * Godot base class a TS class extends, or `undefined` when it extends
+ * nothing, extends a user class, or extends via a `res://` path.
+ */
+function godotBaseOf(
+  node: ts.Node,
+  t: TransformerDelegate,
+): string | undefined {
+  const cls = getEnclosingClass(node);
+  const base = cls?.heritageClauses?.find(
+    (c) => c.token === ts.SyntaxKind.ExtendsKeyword,
+  )?.types[0]?.expression;
+  if (!base || !ts.isIdentifier(base)) return undefined;
+  return t.ctx.registry?.hasClass(base.text) ? base.text : undefined;
+}
+
+/**
+ * A field that reuses the name of a property the Godot base class
+ * already has is a parse error on the Godot side — "Member \"name\"
+ * redefined (original in native class 'Node')" — so it is reported
+ * rather than emitted and left to fail in the engine.
+ *
+ * Methods are deliberately NOT checked: overriding an inherited method
+ * (`_ready`, `free`, …) is ordinary GDScript.
+ */
+function reportInheritedPropertyClash(
+  node: ts.PropertyDeclaration,
+  name: string,
+  t: TransformerDelegate,
+): void {
+  const base = godotBaseOf(node, t);
+  if (base === undefined) return;
+  if (!t.ctx.registry!.getPropertyNames(base).has(name)) return;
+  t.addDiagnostic(
+    node,
+    'error',
+    `\`${name}\` is already a property of \`${base}\`, and GDScript ` +
+      'cannot redefine an inherited property. Rename the field.',
+  );
+}
+
 export function visitPropertyDeclaration(
   node: ts.PropertyDeclaration,
   t: TransformerDelegate,
@@ -151,6 +193,8 @@ export function visitPropertyDeclaration(
     t.currentClassName,
     t.ctx.registry,
   );
+
+  reportInheritedPropertyClash(node, name, t);
 
   const staticPrefix = isStatic ? 'static ' : '';
   let decl = `${staticPrefix}var ${name}`;
