@@ -13,7 +13,7 @@ var current_state: int = 0
 
 func set_direction(dir: int):
 	self.current_direction = dir
-	return bool(self.Direction.LEFT or self.State.IDLE)
+	return bool(MyClass.Direction.LEFT or MyClass.State.IDLE)
 
 func test_typed(s: State, w: Weapon):
-	var state: State = self.State.IDLE
+	var state: State = MyClass.State.IDLE

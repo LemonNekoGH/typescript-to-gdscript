@@ -223,7 +223,7 @@ export class Player extends CharacterBody2D {
       /* health is int */
     }
 
-    // Object construction instead of Player.Bullet.new()
+    // Object construction
     let bullet = new Player.Bullet();
 
     // Dictionaries (other keys: gd.dict)
@@ -319,8 +319,8 @@ func _process(delta: float):
 		pass
 	if self.health is int:
 		pass
-	# Object construction instead of Player.Bullet.new()
-	var bullet = self.Bullet.new()
+	# Object construction
+	var bullet = Player.Bullet.new()
 	# Dictionaries (other keys: gd.dict)
 	var stats = {
 		"name": "Hero",

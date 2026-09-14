@@ -1,0 +1,6 @@
+[
+  {
+    "message": "can't be reached from inside an inner class",
+    "severity": "error"
+  }
+]

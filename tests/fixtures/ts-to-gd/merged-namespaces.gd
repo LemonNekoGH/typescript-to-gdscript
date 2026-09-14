@@ -3,7 +3,7 @@ class_name Merged
 
 const FIRST = 1
 
-enum Color { RED, BLUE }
+enum Palette { RED, BLUE }
 
 const SECOND = 2
 
@@ -11,9 +11,9 @@ class Inner:
 	const TAG = "inner"
 	var value: int = 0
 
-var first: int = self.FIRST
-var second: int = self.SECOND
-var color: Color = self.Color.RED
+var first: int = Merged.FIRST
+var second: int = Merged.SECOND
+var color: Palette = Merged.Palette.RED
 
 func pick():
 	return self.FIRST + self.SECOND

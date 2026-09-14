@@ -26,4 +26,10 @@ export class __CLASS__ extends Node {
   set_mode(m: __CLASS__.Mode, c: __CLASS__.Config) {
     let mode: __CLASS__.Mode = __CLASS__.Mode.EASY;
   }
+
+  // Anonymous class: no `class_name` to reference, and no `self` inside
+  // `static func` — class-level members resolve as bare identifiers.
+  static max_health(): int {
+    return __CLASS__.MAX_HEALTH;
+  }
 }

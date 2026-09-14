@@ -128,7 +128,7 @@ export abstract class Player extends CharacterBody2D {
     }
 
     // Object construction
-    let bullet = new Player.Bullet(); // → Bullet.new()
+    let bullet = new Player.Bullet(); // → Player.Bullet.new()
 
     // Dictionaries
     let stats = { name: 'Hero', hp: 100 }; // string keys — plain object literal
@@ -284,7 +284,7 @@ func _process(delta: float):
 	if self.health is int:
 		pass
 	# Object construction
-	var bullet = self.Bullet.new()
+	var bullet = Player.Bullet.new()
 	# Dictionaries
 	var stats = {
 		"name": "Hero",
@@ -458,6 +458,7 @@ Direct method calls (`this.method()`) are not rewritten — only call-via-variab
 ## `this` / `self`
 
 - `this.property` → `self.property` — the explicit form is always preserved.
+- Inside a `static` member, `this` is the class itself: `this.property` → `ClassName.property`. GDScript has no `self` in a `static func`, so routing through the class name is the only valid form.
 
 ## Constants and static fields
 
@@ -480,12 +481,14 @@ export class ConstClass extends Node {
   static HEALTH = 100; // → static var HEALTH = 100
 
   get_health() {
-    return ConstClass.HEALTH; // → self.HEALTH
+    return ConstClass.HEALTH; // → ConstClass.HEALTH
   }
 }
 ```
 
-Inside the class, `ConstClass.HEALTH` resolves to `self.HEALTH` on the GDScript side — GDScript reaches class-level members through `self` rather than through the class name.
+Referring to the class's own members by class name is emitted as written — `ConstClass.HEALTH` stays `ConstClass.HEALTH`. For an **anonymous** class (the `_FileName` convention, which emits no `class_name`) there is no name to use, so it falls back to `self.HEALTH`, or to a bare `HEALTH` inside a `static` member where GDScript has no `self`.
+
+Those two fallbacks only reach members of the class body they sit in, and a bare name loses to a local or parameter spelled the same way. So in an anonymous class the converter reports an error instead of emitting when the reference comes from inside an inner class, or when a local shadows the member — Godot accepts both spellings and would quietly read the wrong thing. Giving the class a name (so it emits a `class_name`) resolves either case.
 
 ## Enums
 
@@ -519,7 +522,7 @@ enum Direction { UP, DOWN, LEFT, RIGHT }
 
 enum State { IDLE, WALKING, RUNNING = 5 }
 
-var state: State = self.State.IDLE
+var state: State = MyClass.State.IDLE
 ```
 
 The enum lifts into the class as a nested enum, accessible from outside as `MyClass.Direction.LEFT` on the TS side and `MyClass.Direction.LEFT` in GDScript too.
@@ -562,7 +565,7 @@ enum State { IDLE, RUNNING }
 class Inner extends Node:
     var value: int = 0
 
-var state: State = self.State.IDLE
+var state: State = MyClass.State.IDLE
 ```
 
 ### Merging rules

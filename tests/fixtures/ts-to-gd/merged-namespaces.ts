@@ -2,10 +2,17 @@
 // merges them natively via declaration merging, and the converter
 // treats them as a single namespace whose members all lift into the
 // paired `class Foo`.
+//
+// The enum is `Palette` and not `Color` because Godot rejects a member
+// named after a builtin type ("cannot have the same name as a builtin
+// type") and the converter does not yet catch that — see PROJECT.md
+// "Known Edge Cases". Keeping the old name would make this fixture fail the
+// Godot-validate test for a reason that has nothing to do with
+// namespace merging.
 
 export namespace Merged {
   export const FIRST = 1;
-  export enum Color { RED, BLUE }
+  export enum Palette { RED, BLUE }
 }
 
 // A second `namespace Merged { ... }` block: its members should also
@@ -29,7 +36,7 @@ export namespace Merged {
 export class Merged extends Node {
   first: int = Merged.FIRST;
   second: int = Merged.SECOND;
-  color: Merged.Color = Merged.Color.RED;
+  color: Merged.Palette = Merged.Palette.RED;
 
   pick() {
     return this.FIRST + this.SECOND;

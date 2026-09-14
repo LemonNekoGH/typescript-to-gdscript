@@ -2,7 +2,7 @@
  * Godot error output parser and false-positive filtering.
  */
 
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { resolve, join, relative, isAbsolute } from 'path';
 import { parseAutoloads } from '../typings/scenes.ts';
 
@@ -52,6 +52,61 @@ export function isAutoloadFalsePositive(
   const match2 = error.message.match(/^Identifier "(\w+)" not declared/);
   if (match2 && autoloadNames.has(match2[1]!)) return true;
   return false;
+}
+
+/**
+ * `class_name` declarations found in the given `.gd` files.
+ *
+ * Unreadable files are skipped — a missing file is the caller's
+ * problem to report, not this helper's.
+ */
+export function collectDeclaredClassNames(
+  gdFilePaths: readonly string[],
+): Set<string> {
+  const names = new Set<string>();
+  for (const filePath of gdFilePaths) {
+    let source: string;
+    try {
+      source = readFileSync(filePath, 'utf-8');
+    } catch {
+      continue;
+    }
+    for (const m of source.matchAll(/^class_name[ 	]+(\w+)/gm)) {
+      names.add(m[1]!);
+    }
+  }
+  return names;
+}
+
+/**
+ * True when the error is an "identifier not found" naming a class that
+ * one of the files under validation declares with `class_name`.
+ *
+ * A script reaches its own class-level members through its class name
+ * (`MyClass.CONST`) — the only spelling valid inside a `static func`,
+ * where `self` doesn't exist. Godot resolves that name through the
+ * project-wide global class cache, which only an import pass
+ * populates, and `--check-only` does not import. So a freshly
+ * generated or just-renamed script reports
+ * `Identifier not found: MyClass` against perfectly good code.
+ *
+ * The class is right there in the source being checked, so this is
+ * Godot's index lagging rather than a real error. Narrow by
+ * construction: a not-found for a name nothing declares still
+ * surfaces.
+ */
+export function isUnindexedOwnClassFalsePositive(
+  error: GodotRawError,
+  declaredClassNames: Set<string>,
+): boolean {
+  if (declaredClassNames.size === 0) return false;
+  return [
+    /Identifier not found: (\w+)/,
+    /Identifier "(\w+)" not declared/,
+  ].some((re) => {
+    const name = error.message.match(re)?.[1];
+    return name !== undefined && declaredClassNames.has(name);
+  });
 }
 
 /**

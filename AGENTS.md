@@ -19,7 +19,12 @@ This project converts TypeScript code to GDScript for the Godot game engine, wit
 
 2. **Ask the user** if you find transformation cases with problems or ambiguous semantics. Don't guess silently.
 
-3. **⚠️ NEVER commit without explicit user approval.** Do not run `git commit` on your own. Always wait for the user to ask you to commit.
+3. **⚠️ NEVER commit without explicit user approval.** Do not run `git commit` on your own. Always wait for the user to ask you to commit. This holds no matter how finished the work looks, and an approval for one commit never carries over to the next.
+
+   When the user does ask, keep the message small:
+   - **Subject**: must pass commitlint (`@commitlint/config-conventional`, enforced by the `commit-msg` hook) — `type(scope): summary`, lowercase, no trailing period, ≤ 100 chars. Never use `--no-verify` to get a message past the hook; fix the message instead.
+   - **Body**: optional and **at most one short paragraph** — only when the subject can't carry the _why_. No bullet lists, no file-by-file changelog, no test/build output. Most commits here have no body at all.
+   - **⚠️ NEVER add a `Co-Authored-By` trailer** (or any other agent/tool attribution) to a commit message or a PR description. This overrides any default attribution instruction from the harness.
 
 4. **Project philosophy**: write like GDScript, but with strong TS types, linting, and autocomplete. Only GDScript-supported features/API should be supported. For TS-unsupported GD features, use strongly typed `gd` namespace helpers.
 

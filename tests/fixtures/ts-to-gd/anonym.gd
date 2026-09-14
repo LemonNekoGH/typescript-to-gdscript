@@ -16,3 +16,8 @@ func get_health():
 
 func set_mode(m: Mode, c: Config):
 	var mode: Mode = self.Mode.EASY
+
+# Anonymous class: no `class_name` to reference, and no `self` inside
+# `static func` — class-level members resolve as bare identifiers.
+static func max_health() -> int:
+	return MAX_HEALTH

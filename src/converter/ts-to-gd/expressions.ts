@@ -9,6 +9,11 @@ import {
 } from './gd-helpers.ts';
 import { typeContainsUndefined } from './parameters.ts';
 import { isPlainObjectType, isAssignmentTarget } from './access-rewrite.ts';
+import {
+  getOwnClassName,
+  isStaticContext,
+  resolveOwnClassRef,
+} from './own-class-ref.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
 
 // ---- Main Expression Emitter ----
@@ -30,9 +35,25 @@ export function emitExpression(
     return text;
   }
 
-  // this -> self
+  // this -> self. Inside a `static` member there is no `self` in
+  // GDScript, and TS `this` means the class itself there, so it
+  // resolves through the class name instead.
   if (node.kind === ts.SyntaxKind.ThisKeyword) {
-    return 'self';
+    if (!isStaticContext(node)) return 'self';
+    const ownName = getOwnClassName(node, t.currentClassName);
+    if (ownName === null) {
+      t.addDiagnostic(
+        node,
+        'error',
+        '`this` as a value inside a `static` member of an anonymous ' +
+          'class has no GDScript equivalent — `self` does not exist in a ' +
+          '`static func`, and the `_Name` convention emits no ' +
+          '`class_name` to name the class instead. Rename the class so it ' +
+          'emits a `class_name`.',
+      );
+      return 'self';
+    }
+    return ownName;
   }
 
   // null keyword
@@ -408,12 +429,20 @@ export function emitPropertyAccess(
   ) {
     return t.currentAccessorName;
   }
-  // ClassName.staticProp -> self.staticProp (when accessing own class)
-  if (
-    ts.isIdentifier(node.expression) &&
-    node.expression.text === t.currentClassName
-  ) {
-    return `self.${node.name.text}`;
+  // `ClassName.member` on the enclosing class, and `this.member`
+  // inside a `static` member — which spelling is valid depends on the
+  // class and the context, so the decision lives in one place.
+  const ownRef = resolveOwnClassRef(
+    node.expression,
+    node.name.text,
+    t.currentClassName,
+  );
+  if (ownRef.kind === 'unsupported') {
+    t.addDiagnostic(node, 'error', ownRef.reason);
+    return node.name.text;
+  }
+  if (ownRef.kind === 'prefix') {
+    return `${ownRef.text}${node.name.text}`;
   }
   const obj = t.emitExpression(node.expression);
   const prop = node.name.text;
@@ -534,6 +563,21 @@ function checkPromiseUsedAsValue(
   );
 }
 
+/**
+ * True when a callee resolves to a class FIELD rather than a method —
+ * a field holding a Callable, which GDScript invokes with `.call()`.
+ * Shared by the `self.` and own-class paths so the two can't drift.
+ */
+function isCallableFieldCall(
+  t: TransformerDelegate,
+  callee: ts.Expression,
+): boolean {
+  const decl = t.ctx.checker
+    .getSymbolAtLocation(callee)
+    ?.getDeclarations()?.[0];
+  return decl !== undefined && ts.isPropertyDeclaration(decl);
+}
+
 export function emitCallExpression(
   t: TransformerDelegate,
   node: ts.CallExpression,
@@ -598,20 +642,25 @@ export function emitCallExpression(
     if (opsResult !== null) return opsResult;
 
     // Handle self.method() / self.property() calls
-    if (isSelfExpression(obj)) {
-      // Check if it's a method call or function (property) call via type checker
-      const symbol = t.ctx.checker.getSymbolAtLocation(node.expression);
-      if (symbol) {
-        const declarations = symbol.getDeclarations();
-        if (declarations && declarations.length > 0) {
-          const decl = declarations[0]!;
-          if (ts.isPropertyDeclaration(decl)) {
-            return `self.${method}.call(${args})`;
-          }
-        }
+    if (isSelfExpression(obj) && !isStaticContext(obj)) {
+      return isCallableFieldCall(t, node.expression)
+        ? `self.${method}.call(${args})`
+        : `self.${method}(${args})`;
+    }
+
+    // Own-class calls that can't route through `self`: `ClassName.m()`
+    // anywhere, and `this.m()` inside a `static` member. Handled here
+    // rather than through the generic callee path so a field holding a
+    // Callable still gets its `.call()`.
+    const ownRef = resolveOwnClassRef(obj, method, t.currentClassName);
+    if (ownRef.kind !== 'fallthrough') {
+      if (ownRef.kind === 'unsupported') {
+        t.addDiagnostic(node, 'error', ownRef.reason);
       }
-      // Method call or default
-      return `self.${method}(${args})`;
+      const prefix = ownRef.kind === 'prefix' ? ownRef.text : '';
+      return isCallableFieldCall(t, node.expression)
+        ? `${prefix}${method}.call(${args})`
+        : `${prefix}${method}(${args})`;
     }
   }
 

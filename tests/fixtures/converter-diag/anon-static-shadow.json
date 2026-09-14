@@ -1,0 +1,6 @@
+[
+  {
+    "message": "local or parameter in scope here",
+    "severity": "error"
+  }
+]
