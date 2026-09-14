@@ -68,10 +68,6 @@ const SKIP = new Map<string, string>([
   ],
   ['gd-eval', 'BUG: re-declares `c` in a scope that already has it (line 21)'],
   [
-    'match',
-    'BUG: emits `self.X` in a match pattern — Godot requires a constant, identifier, or A.B',
-  ],
-  [
     'variables',
     'BUG: emits `var name` on a Node subclass — Godot: Member "name" redefined (original in native class Node)',
   ],

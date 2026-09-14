@@ -227,6 +227,8 @@ gd.match(this.x, [
 ]);
 ```
 
+Referring to one of your own fields as a pattern (`match: this.TYPE_FLOAT`) emits the bare name — Godot accepts a plain identifier as a pattern but only accepts `self.X` / `MyClass.X` when it resolves to a constant. Enum members and `const`s keep their qualified form.
+
 ## Getters and setters
 
 Simple GDScript setget clauses map to native TypeScript `get`/`set` accessors. If only one of `get` or `set` is defined in GDScript, the converter synthesizes a default for the other.

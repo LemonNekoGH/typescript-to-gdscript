@@ -558,6 +558,25 @@ export function emitMatchPatternExpr(
     return `{${entries.join(', ')}}`;
   }
 
+  // Own-class member in pattern position. Godot accepts a bare
+  // identifier as a pattern unconditionally, but an attribute access
+  // (`self.X`, `MyClass.X`) only when it resolves to a CONSTANT. So a
+  // plain field has to shed its prefix, while enum members and
+  // consts — which are constant — keep theirs and stay shadow-proof.
+  if (ts.isPropertyAccessExpression(node)) {
+    let root: ts.Expression = node;
+    while (ts.isPropertyAccessExpression(root)) root = root.expression;
+    const isOwnClass =
+      root.kind === ts.SyntaxKind.ThisKeyword ||
+      (ts.isIdentifier(root) && root.text === t.currentClassName);
+    if (isOwnClass) {
+      const decl = t.ctx.checker
+        .getSymbolAtLocation(node)
+        ?.getDeclarations()?.[0];
+      if (decl && ts.isPropertyDeclaration(decl)) return node.name.text;
+    }
+  }
+
   // Everything else: regular expression
   return t.emitExpression(node);
 }

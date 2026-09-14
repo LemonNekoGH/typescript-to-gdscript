@@ -8,11 +8,11 @@ var TYPE_ARRAY = "array"
 
 func test_expression_pattern():
 	match self.x:
-		self.TYPE_FLOAT:
+		TYPE_FLOAT:
 			print("float")
-		self.TYPE_STRING:
+		TYPE_STRING:
 			print("text")
-		self.TYPE_ARRAY:
+		TYPE_ARRAY:
 			print("array")
 		var new_var:
 			print("it's ", new_var)
