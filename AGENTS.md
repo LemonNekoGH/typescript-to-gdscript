@@ -67,6 +67,11 @@ This project converts TypeScript code to GDScript for the Godot game engine, wit
 
     The flip side: when silently skipping (or emitting a best-effort guess) would produce an **incorrect or misleading** result rather than a merely less-complete one, **raise an error/diagnostic and fail loudly** — surfacing an unknown/unsupported/ambiguous construct is always better than silently doing nothing and shipping wrong output. Never silently swallow something that changes behavior.
 
+12. **⚠️ General rules over special cases. Do not grow the converter to patch a narrow gap.** The default answer to "the converter could special-case this" is **no**. Before proposing one, weigh three things out loud:
+    - **How general is it?** A rule that covers a whole class of constructs is worth far more than one that covers a single shape. If it fires on one narrow pattern, that alone is strong evidence it doesn't belong in the converter.
+    - **What does it cost?** Extra checker queries, extra state, extra branches in the emitter. Complexity added for one narrow case is paid on every other case, forever.
+    - **What does it drift?** A special case that changes emitted semantics anywhere outside the exact shape it targets is disqualified outright.
+
 ## Development Guidelines
 
 ### Philosophy
