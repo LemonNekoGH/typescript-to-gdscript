@@ -1046,12 +1046,9 @@ export function emitLambdaBody(
 ): void {
   if (!ts.isBlock(node.body)) return;
   t.emitter.indent();
-  if (node.body.statements.length === 0) {
-    const pos = t.getLineAndCol(node.body);
-    t.emitter.writeLine('pass', pos.line, pos.col);
-  } else {
-    t.visitBlock(node.body);
-  }
+  // `visitBlock` falls back to `pass` for a body that emits nothing,
+  // so an empty block needs no separate case here.
+  t.visitBlock(node.body);
   t.emitter.dedent();
 }
 

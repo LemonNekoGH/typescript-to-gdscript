@@ -1,1 +1,10 @@
-[{ "message": "Only one `export class` is allowed per file", "severity": "error" }]
+[
+  {
+    "message": "Only one `export class` is allowed per file",
+    "severity": "error"
+  },
+  {
+    "message": "File-scope class 'Bar' is not supported",
+    "severity": "error"
+  }
+]

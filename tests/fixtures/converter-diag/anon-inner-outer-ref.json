@@ -1,6 +1,12 @@
 [
   {
     "message": "can't be reached from inside an inner class",
-    "severity": "error"
+    "severity": "error",
+    "line": 8
+  },
+  {
+    "message": "can't be reached from inside an inner class",
+    "severity": "error",
+    "line": 12
   }
 ]

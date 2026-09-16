@@ -1,3 +1,10 @@
 [
-  { "message": "string value", "severity": "error" }
+  {
+    "message": "Enum member \"A\" has a string value",
+    "severity": "error"
+  },
+  {
+    "message": "Enum member \"B\" has a string value",
+    "severity": "error"
+  }
 ]

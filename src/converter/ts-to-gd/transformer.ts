@@ -156,7 +156,17 @@ export class TsToGdTransformer implements TransformerDelegate {
     return emitParametersImpl(this, params);
   }
 
-  emitLeadingComments(node: ts.Node): void {
+  /**
+   * `statementsAllowed: false` marks a position where GDScript takes
+   * no statement — the pattern section of a `match`, between one
+   * branch and the next. It only changes the `/* *\/` substitution:
+   * `"""..."""` is a string expression, so there it would not parse.
+   * `#` and `##` are comments wherever they are written.
+   */
+  emitLeadingComments(
+    node: ts.Node,
+    { statementsAllowed = true }: { statementsAllowed?: boolean } = {},
+  ): void {
     const sourceText = this.ctx.sourceFile.getFullText();
     const ranges = ts.getLeadingCommentRanges(sourceText, node.getFullStart());
     if (!ranges) return;
@@ -181,18 +191,57 @@ export class TsToGdTransformer implements TransformerDelegate {
         }
       } else if (range.kind === ts.SyntaxKind.MultiLineCommentTrivia) {
         if (commentText.startsWith('/**')) {
-          // /** comment */ -> ## comment (doc comment)
+          // /** comment */ -> ## comment (doc comment). One `##` line
+          // per source line: GDScript has no multi-line comment, so a
+          // single write with newlines in it puts every line after the
+          // first at column 0 with no `#` — which ends the block it
+          // was written in and, in a body that holds nothing else,
+          // reads as a statement to `hasCodeSince` and suppresses the
+          // `pass` that body needs.
+          // The per-line strip is horizontal-space only: `\s` matches
+          // a newline, so a line holding nothing but `*` would eat the
+          // break after it and pull the next line up — turning a blank
+          // line, which is a paragraph break in a Godot doc comment,
+          // into nothing.
           const content = commentText
             .replace(/^\/\*\*\s*/, '')
             .replace(/\s*\*\/$/, '')
-            .replace(/^\s*\*\s?/gm, '')
+            .replace(/^[ \t]*\*[ \t]?/gm, '')
             .trim();
-          this.emitter.writeLine(`## ${content}`, origLine, origCol);
+          content.split('\n').forEach((raw, i) => {
+            const text = raw.trimEnd();
+            this.emitter.writeLine(
+              text ? `## ${text}` : '##',
+              origLine + i,
+              origCol,
+            );
+          });
         } else {
           // /* comment */ -> """comment""" (block comment)
           const content = commentText
             .replace(/^\/\*\s?/, '')
             .replace(/\s?\*\/$/, '');
+          if (!statementsAllowed) {
+            // One `#` per line, like the doc-comment path: a single
+            // write with newlines in it puts every line after the
+            // first at column 0, which closes the block. The `*`
+            // margin and the outer blank lines go the same way they
+            // do there — this is a comment now, not the verbatim
+            // string the `"""` form carries.
+            const lines = content
+              .replace(/^[ \t]*\*[ \t]?/gm, '')
+              .trim()
+              .split('\n');
+            lines.forEach((raw, i) => {
+              const text = raw.trim();
+              this.emitter.writeLine(
+                text ? `# ${text}` : '#',
+                origLine + i,
+                origCol,
+              );
+            });
+            continue;
+          }
           if (!content.includes('\n')) {
             // Single-line block comment
             this.emitter.writeLine(

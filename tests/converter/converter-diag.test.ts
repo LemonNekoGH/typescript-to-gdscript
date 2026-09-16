@@ -18,6 +18,14 @@ afterEach(() => {
   rmSync(TMP_DIR, { recursive: true, force: true });
 });
 
+/**
+ * One expected diagnostic. The list is exhaustive in BOTH directions:
+ * every entry must match a distinct diagnostic, and no error/warning
+ * may be left unaccounted for. That is what lets a fixture say "this
+ * is reported ONCE" — a rule that fires twice leaves one unconsumed.
+ * (`type-error` and `info` are not required to be listed; they do not
+ * block the `.gd` write.)
+ */
 interface ExpectedDiagnostic {
   message: string;
   severity: 'error' | 'type-error' | 'warning' | 'info';
@@ -66,46 +74,55 @@ describe('Converter Diagnostics: Fixture-based tests', () => {
       const result = convert(tsSource, tsFile);
       const diagnostics = result.diagnostics;
 
-      if (expected.length === 0) {
-        // No diagnostics expected — filter out info-level
-        const significant = diagnostics.filter(
-          (d) => d.severity === 'error' || d.severity === 'warning',
+      // Every expectation must match a DISTINCT diagnostic, and no
+      // error/warning may be left over. Matching one-for-one is what
+      // makes a fixture able to say "reported once": a rule that fires
+      // twice on the same spot leaves a diagnostic unconsumed, and the
+      // leftover check below catches it.
+      const unmatched = [...diagnostics];
+      const significant = (list: typeof diagnostics) =>
+        list.filter((d) => d.severity === 'error' || d.severity === 'warning');
+
+      for (const exp of expected) {
+        const i = unmatched.findIndex(
+          (d) =>
+            d.message.includes(exp.message) &&
+            d.severity === exp.severity &&
+            (exp.line === undefined || d.line === exp.line) &&
+            (exp.column === undefined || d.column === exp.column),
         );
+        // Location hint: when line/column were specified but nothing
+        // matched, callers almost always want to know "did any
+        // diagnostic match message+severity but miss on location?"
+        // — a plain "not found" error hides that distinction.
+        const locationPart =
+          exp.line !== undefined || exp.column !== undefined
+            ? ` at ${exp.line ?? '?'}:${exp.column ?? '?'}`
+            : '';
         expect(
-          significant,
-          `Expected no errors/warnings for ${fixtureName}, got:\n` +
-            significant.map((d) => `  [${d.severity}] ${d.message}`).join('\n'),
-        ).toHaveLength(0);
-      } else {
-        for (const exp of expected) {
-          const match = diagnostics.find(
-            (d) =>
-              d.message.includes(exp.message) &&
-              d.severity === exp.severity &&
-              (exp.line === undefined || d.line === exp.line) &&
-              (exp.column === undefined || d.column === exp.column),
-          );
-          // Location hint: when line/column were specified but nothing
-          // matched, callers almost always want to know "did any
-          // diagnostic match message+severity but miss on location?"
-          // — a plain "not found" error hides that distinction.
-          const locationPart =
-            exp.line !== undefined || exp.column !== undefined
-              ? ` at ${exp.line ?? '?'}:${exp.column ?? '?'}`
-              : '';
-          expect(
-            match,
-            `Expected diagnostic with message containing "${exp.message}" ` +
-              `and severity "${exp.severity}"${locationPart} in ${fixtureName}.\n` +
-              `Actual diagnostics:\n` +
-              diagnostics
-                .map(
-                  (d) => `  [${d.severity}] ${d.line}:${d.column} ${d.message}`,
-                )
-                .join('\n'),
-          ).toBeDefined();
-        }
+          i,
+          `Expected a diagnostic with message containing "${exp.message}" ` +
+            `and severity "${exp.severity}"${locationPart} in ${fixtureName}, ` +
+            `not already matched by an earlier expectation.\n` +
+            `Remaining diagnostics:\n` +
+            unmatched
+              .map(
+                (d) => `  [${d.severity}] ${d.line}:${d.column} ${d.message}`,
+              )
+              .join('\n'),
+        ).toBeGreaterThan(-1);
+        unmatched.splice(i, 1);
       }
+
+      const leftover = significant(unmatched);
+      expect(
+        leftover,
+        `Unexpected extra diagnostics for ${fixtureName} — add them to ` +
+          `${fixtureName}.json if they are intended:\n` +
+          leftover
+            .map((d) => `  [${d.severity}] ${d.line}:${d.column} ${d.message}`)
+            .join('\n'),
+      ).toHaveLength(0);
 
       // When all expected diagnostics are non-conversion-errors (type-error,
       // warning, info), the converter MUST still emit a non-trivial .gd code

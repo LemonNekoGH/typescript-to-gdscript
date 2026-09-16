@@ -162,10 +162,8 @@ export abstract class Player extends CharacterBody2D {
     switch (this.health) {
       case 0:
         this.died.emit();
-        break;
       default:
         print('alive');
-        break;
     }
 
     // Match — advanced patterns (arrays/dicts/bindings/guards) → gd.match
@@ -395,12 +393,42 @@ The guiding principle: GD type hints are **optional**, so the converter only emi
 | `!(x instanceof Type)` | `not (x is Type)`    | Negation parenthesizes the `is` to keep precedence.                                                                                                      |
 | `new Foo(args)`        | `Foo.new(args)`      | GDScript constructs Objects via `.new()`.                                                                                                                |
 
+## `switch` → `match`
+
+A TS `switch` becomes a GDScript `match`. Stacked cases — an empty `case` sitting above another — merge into a single branch, because `match` takes a comma-separated pattern list:
+
+```ts
+switch (dir) {
+  case Dir.Up:
+  case Dir.Left:
+    return 0;
+}
+```
+
+```gdscript
+match dir:
+	Dir.Up, Dir.Left:
+		return 0
+```
+
+Branches never fall through, so cases are written without a trailing `break`. Keep `noFallthroughCasesInSwitch` **off** in your `tsconfig.json` (it's off by default, and not part of `strict`): it assumes a missing `break` is a mistake, which is backwards here — it would flag every case you write. A `break` that would leave the `switch` is an error: GDScript has no such jump, and dropping it would change what the code does. A `break` belonging to a loop **inside** a case is untouched.
+
+`default` becomes the `_` pattern, which matches everything, so it is always emitted **last** — write it wherever you like and the converter moves it. Nothing is lost by the move: TypeScript tests every `case` label before falling back to `default` regardless of where `default` sits, so the position carries no meaning. Comments attached to the branch move with it. An empty `case` body written as a block (`case 1: {}`) is its own branch with `pass`, not a fall-through — only a case with no body at all stacks onto the next. A `switch` with no cases at all is dropped silently — a branchless `match` doesn't parse. The value being switched on goes with it, so a call there (`switch (this.bump(v)) {}`) never runs.
+
+Migrating code written with `break;` in every case? Remove them — the trailing `break` is now an error, and each case already ends where the next begins.
+
+A comment sitting between two cases is kept, above the branch it was written above; one after the last case stays in that branch, and travels with it if the branch moves. A `/* */` written there comes out as `#` lines rather than the usual `"""..."""` — a bare string between two branches would read as a pattern, not a comment.
+
+`case undefined:` is an error, like `undefined` anywhere else — write `case null:`. (`gd.match` spells its wildcard `undefined`; a `switch` label does not, or the branch would quietly become a catch-all.)
+
+For patterns `switch` cannot express — arrays, dictionaries, bindings, guards — use [`gd.match()`](./gd-helpers.md).
+
 ## Comments
 
 | TS            | GD            | Notes                                                                                                                                               |
 | ------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `// line`     | `# line`      |                                                                                                                                                     |
-| `/** doc */`  | `## doc`      | TypeScript JSDoc → GDScript doc comment.                                                                                                            |
+| `/** doc */`  | `## doc`      | TypeScript JSDoc → GDScript doc comment. A multi-line one gets a `##` per line, blank lines included — GDScript has no multi-line comment.          |
 | `/* block */` | `"""block"""` | GDScript has no block-comment syntax — it uses a triple-quoted string as the idiomatic substitute. Multi-line blocks emit a multi-line `"""..."""`. |
 
 ## Constructor
@@ -583,6 +611,8 @@ var state: State = MyClass.State.IDLE
 - `export abstract class Inner { ... }` → nested `@abstract class Inner:`
 
 Functions, type aliases, and interfaces in the namespace are TS-only (erased) — there's no GDScript counterpart.
+
+`type` aliases and `interface` declarations are erased **wherever they appear** — file scope, inside a namespace, or inside a function body. They declare no value and run no code, so there's nothing to emit and nothing is reported. A block left empty by the erasure gets a `pass`.
 
 ## Abstract methods
 
@@ -789,21 +819,22 @@ The converter rejects TS features that have no faithful GDScript equivalent. Eac
 
 ### Syntax-level restrictions (errors)
 
-| TS feature                                                              | Why it's rejected                                                                                                  |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **Destructuring** — `let [a, b] = ...` / `[a, b] = arr` / `({a} = obj)` | GDScript has no destructuring (declaration or assignment form). Assign each binding manually.                      |
-| **`for...in`**                                                          | GDScript `for in` always iterates **values** (TS `for...of` semantics). Use `for...of` to avoid confusion.         |
-| **Nullish coalescing** — `??` / `??=`                                   | GDScript distinguishes `null` from default values differently; no direct equivalent.                               |
-| **Optional chaining** — `?.`                                            | GDScript has no `?.` short-circuit. Use explicit `null` checks or `obj.get("key")` for Dictionary access.          |
-| **Spread** — `f(...args)` / `[...arr]`                                  | Variadic call sites can't be desugared to GDScript. Function declarations may use `...rest` (rest parameters).     |
-| **`var` keyword** — function-scoped `var x`                             | Warning (not error). Use `let` or `const`; both convert to GDScript `var`. GD `var` ≈ TS `let`.                    |
-| **File-scope `const`/`let`/`var`**                                      | GDScript doesn't allow top-level mutable bindings outside a class. Wrap in a class.                                |
-| **Multiple `export class` per file**                                    | Each `.gd` is one class. Split additional classes into separate files, or use inner classes via namespace merging. |
-| **Missing `extends` clause**                                            | GDScript defaults to `RefCounted` — declare the base explicitly (`RefCounted`, `Node`, `Resource`, ...).           |
-| **`import Foo from '...'`** (default import)                            | GDScript has no default-export concept.                                                                            |
-| **`import * as ns from '...'`** (namespace)                             | Same reason.                                                                                                       |
-| **Namespace member without `export`**                                   | The paired class can only see `export`ed members from the namespace.                                               |
-| **Field name conflicts with a file-scope declaration**                  | The emitted `preload` const would shadow the field — name them differently.                                        |
+| TS feature                                                              | Why it's rejected                                                                                                                                            |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Destructuring** — `let [a, b] = ...` / `[a, b] = arr` / `({a} = obj)` | GDScript has no destructuring (declaration or assignment form). Assign each binding manually.                                                                |
+| **`for...in`**                                                          | GDScript `for in` always iterates **values** (TS `for...of` semantics). Use `for...of` to avoid confusion.                                                   |
+| **Labels** — `outer:` and `break`/`continue` naming one                 | GDScript has no labels, and a labelled jump emitted bare would bind to the nearest loop instead. Use an early `return`, or a flag the loop condition checks. |
+| **Nullish coalescing** — `??` / `??=`                                   | GDScript distinguishes `null` from default values differently; no direct equivalent.                                                                         |
+| **Optional chaining** — `?.`                                            | GDScript has no `?.` short-circuit. Use explicit `null` checks or `obj.get("key")` for Dictionary access.                                                    |
+| **Spread** — `f(...args)` / `[...arr]`                                  | Variadic call sites can't be desugared to GDScript. Function declarations may use `...rest` (rest parameters).                                               |
+| **`var` keyword** — function-scoped `var x`                             | Warning (not error). Use `let` or `const`; both convert to GDScript `var`. GD `var` ≈ TS `let`.                                                              |
+| **File-scope `const`/`let`/`var`**                                      | GDScript doesn't allow top-level mutable bindings outside a class. Wrap in a class.                                                                          |
+| **Multiple `export class` per file**                                    | Each `.gd` is one class. Split additional classes into separate files, or use inner classes via namespace merging.                                           |
+| **Missing `extends` clause**                                            | GDScript defaults to `RefCounted` — declare the base explicitly (`RefCounted`, `Node`, `Resource`, ...).                                                     |
+| **`import Foo from '...'`** (default import)                            | GDScript has no default-export concept.                                                                                                                      |
+| **`import * as ns from '...'`** (namespace)                             | Same reason.                                                                                                                                                 |
+| **Namespace member without `export`**                                   | The paired class can only see `export`ed members from the namespace.                                                                                         |
+| **Field name conflicts with a file-scope declaration**                  | The emitted `preload` const would shadow the field — name them differently.                                                                                  |
 
 ### Type-system restrictions
 

@@ -186,7 +186,7 @@ export function visitGdGetsetProperty(
     t.emitter.writeLine('get:', getPos.line, getPos.col);
     t.emitter.indent();
     if (ts.isBlock(getFn.body)) {
-      for (const stmt of getFn.body.statements) t.visitStatement(stmt);
+      t.visitBlock(getFn.body);
     } else {
       t.emitter.writeLine(
         `return ${t.emitExpression(getFn.body)}`,
@@ -207,7 +207,7 @@ export function visitGdGetsetProperty(
     t.emitter.writeLine(`set(${paramName}):`, setPos.line, setPos.col);
     t.emitter.indent();
     if (ts.isBlock(setFn.body)) {
-      for (const stmt of setFn.body.statements) t.visitStatement(stmt);
+      t.visitBlock(setFn.body);
     } else {
       t.emitter.writeLine(
         t.emitExpression(setFn.body),

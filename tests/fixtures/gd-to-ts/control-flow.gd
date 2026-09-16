@@ -24,7 +24,9 @@ func test_match():
 		1:
 			print("one")
 		2:
-			print("two")
+			pass
+		3:
+			print("three")
 		_:
 			print("other")
 

@@ -1,7 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { convertGdToTs } from '../../src/converter/gd-to-ts/index.js';
+import { convertTsToGd } from '../../src/converter/ts-to-gd/index.js';
+import ts from 'typescript';
 import { GodotClassRegistry } from '../../src/typings/godot-registry.js';
-import { readFileSync, readdirSync } from 'fs';
+import {
+  readFileSync,
+  readdirSync,
+  mkdtempSync,
+  writeFileSync,
+  rmSync,
+} from 'fs';
 import { join, basename } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -414,6 +422,321 @@ describe('GD to TS: Extends type helper', () => {
       expect(fixed).toContain('custom_method(arg)');
     } finally {
       cleanup();
+    }
+  });
+});
+
+describe('GD to TS: `break` inside a `match` branch', () => {
+  function convert(source: string) {
+    return convertGdToTs({
+      source,
+      filePath: join(FIXTURES_DIR, 'break-in-match.gd'),
+      registry,
+      projectSources,
+    });
+  }
+
+  it('reports a `break` that exits the loop around the `match`', () => {
+    // GDScript `match` is not a loop, so this `break` leaves the
+    // `while`. TS has no way to say that — inside the emitted
+    // `switch` a bare `break` would exit the switch instead — so the
+    // construct is rejected rather than quietly converted.
+    const result = convert(
+      [
+        'extends Node',
+        '',
+        'func f(x):',
+        '    while true:',
+        '        match x:',
+        '            1:',
+        '                break',
+        '            _:',
+        '                print("other")',
+        '',
+      ].join('\n'),
+    );
+
+    const errors = result.diagnostics.filter((d) => d.severity === 'error');
+    expect(errors.map((d) => d.message).join('\n')).toContain('`break`');
+    expect(result.code).not.toMatch(/^\s*break;\s*$/m);
+  });
+
+  // The rejected `break` leaves only an `/* ERROR: ... */` comment
+  // behind, and a comment is not a statement — so the `case` it sat
+  // under still needs a block, exactly as a comment-only branch does.
+  // Without one the label stacks onto the next `case`, merging two
+  // branches into one on the way back, with nothing reported.
+  it('keeps a branch whose `break` was rejected separate from the next', () => {
+    const source = [
+      'extends Node',
+      '',
+      'func f(x):',
+      '\twhile true:',
+      '\t\tmatch x:',
+      '\t\t\t1:',
+      '\t\t\t\tbreak',
+      '\t\t\t2:',
+      '\t\t\t\tprint("two")',
+      '',
+    ].join('\n');
+    const result = convert(source);
+
+    expect(
+      result.diagnostics.filter((d) => d.severity === 'error'),
+    ).not.toEqual([]);
+
+    // Round trip the emitted TS: the two branches must come back as
+    // two branches, not as a merged `1, 2:`.
+    const dir = mkdtempSync(join(tmpdir(), 'tstogd-breakbranch-'));
+    try {
+      const filePath = join(dir, 'b.ts');
+      writeFileSync(filePath, result.code);
+      const program = ts.createProgram([filePath], {
+        target: ts.ScriptTarget.ES2022,
+        module: ts.ModuleKind.Node16,
+        moduleResolution: ts.ModuleResolutionKind.Node16,
+        strict: true,
+        noEmit: true,
+      });
+      const back = convertTsToGd({ filePath, rootDir: dir, program });
+      expect(back.code).not.toMatch(/^\s*1,\s*2:/m);
+      expect(back.code).toMatch(/^\s*1:/m);
+      expect(back.code).toMatch(/^\s*2:/m);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves a `break` that belongs to a loop inside the branch alone', () => {
+    const result = convert(
+      [
+        'extends Node',
+        '',
+        'func f(x):',
+        '    match x:',
+        '        1:',
+        '            while true:',
+        '                break',
+        '',
+      ].join('\n'),
+    );
+
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual(
+      [],
+    );
+    expect(result.code).toMatch(/^\s*break;\s*$/m);
+  });
+});
+describe('GD → TS → GD round trip: `match`', () => {
+  // The dialect's `switch` carries no `break`, so what separates one
+  // branch from the next is purely whether a `case` has a statement
+  // under it. A branch that loses its statement silently merges into
+  // the one below it — changing what the code does, with no diagnostic
+  // in either direction. The `.gd`/`.ts` fixture pair pins each leg on
+  // its own; this pins the composition, which is where that bug lived.
+  //
+  // Only the branch structure is compared. A full-text round trip is
+  // not achievable by design: the converters normalise indentation,
+  // rewrite `x is not T` to `not (x is T)`, and drop `: Variant`.
+  const source = readFileSync(join(FIXTURES_DIR, 'match.gd'), 'utf-8');
+
+  function section(gd: string, funcName: string): string {
+    const lines = gd.split('\n');
+    const start = lines.findIndex((l) => l.startsWith(`func ${funcName}(`));
+    expect(start).toBeGreaterThan(-1);
+    const rest = lines.slice(start + 1);
+    const end = rest.findIndex((l) => l.startsWith('func '));
+    return (end === -1 ? rest : rest.slice(0, end)).join('\n').trimEnd();
+  }
+
+  it('keeps every bodyless branch separate from the next one', () => {
+    const toTs = convertGdToTs({
+      source,
+      filePath: join(FIXTURES_DIR, 'match.gd'),
+      registry,
+      projectSources,
+    });
+    expect(toTs.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+
+    const dir = mkdtempSync(join(tmpdir(), 'tstogd-roundtrip-'));
+    try {
+      const filePath = join(dir, 'match.ts');
+      writeFileSync(filePath, toTs.code);
+      const program = ts.createProgram([filePath], {
+        target: ts.ScriptTarget.ES2022,
+        module: ts.ModuleKind.Node16,
+        moduleResolution: ts.ModuleResolutionKind.Node16,
+        strict: true,
+        noEmit: true,
+      });
+      const back = convertTsToGd({ filePath, rootDir: dir, program });
+
+      // The return leg has to be clean too: an error here means the
+      // TypeScript this converter emits is not something the other
+      // converter accepts. One such gap predates the `match` work and
+      // is unrelated to branch structure — `match typeof(x):` comes
+      // back as `typeof(this.x)`, which TS parses as the unary
+      // `typeof` operator (a `TypeOfExpression`) rather than a call to
+      // Godot's global, and TS→GD has no case for it. Pinned by
+      // message so the day it is fixed this fails and gets deleted,
+      // and so any OTHER error still fails today.
+      expect(
+        back.diagnostics
+          .filter((d) => d.severity === 'error')
+          .map((d) => d.message),
+      ).toEqual(['Unsupported expression: TypeOfExpression']);
+
+      // Five branches in, five branches out. Before the `{}` emission
+      // was keyed on statements, branches 1–3 came back as `1, 2, 3, 4:`
+      // — one branch that printed "four" for every value. Branch 4 is
+      // the same failure through a comment form that spans lines: a
+      // per-line check sees `a note` and calls the branch filled.
+      expect(section(back.code, 'test_bodyless_branches')).toBe(
+        [
+          '\t# A branch with no statement must not merge into the next one:',
+          '\t# in the TS `switch` a `case` with no body under it falls through.',
+          '\t# A `"""..."""` is a statement in GDScript but a comment in TS, so',
+          '\t# branch 4 needs the `{}` too — and it spans lines, which a',
+          '\t# per-line check reads as code from the second line on.',
+          // `x` is a field, so it comes back through TS as `this.x`.
+          '\tmatch self.x:',
+          '\t\t1:',
+          '\t\t\t# only a comment',
+          '\t\t\tpass',
+          '\t\t2:',
+          '\t\t\tpass',
+          '\t\t3:',
+          '\t\t\t@warning_ignore("unused_variable")',
+          '\t\t\tpass',
+          '\t\t4:',
+          '\t\t\t"""',
+          '\t\t\ta note',
+          '\t\t\tover two lines',
+          '\t\t\t"""',
+          '\t\t5:',
+          '\t\t\tprint("five")',
+        ].join('\n'),
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('GD to TS: `_` before other branches', () => {
+  it('transcribes every branch in source order', () => {
+    const result = convertGdToTs({
+      source: [
+        'extends Node',
+        '',
+        'func f(x):',
+        '\tmatch x:',
+        '\t\t_:',
+        '\t\t\tprint("other")',
+        '\t\t1:',
+        '\t\t\tprint("one")',
+        '',
+      ].join('\n'),
+      filePath: join(FIXTURES_DIR, 'wildcard-first.gd'),
+      registry,
+      projectSources,
+    });
+
+    // A straight transcription: every branch is carried over, in the
+    // order it was written, with nothing dropped and nothing said.
+    // `_` matching first does make `1:` dead in the GDScript, but
+    // deciding that on the user's behalf is not this converter's job —
+    // migration output is meant to be read and edited, so losing code
+    // silently is worse than carrying a branch that never ran. Putting
+    // `default` last is the TS→GD direction's problem, and it does it.
+    expect(result.diagnostics).toEqual([]);
+    expect(result.code).toContain('default:');
+    expect(result.code).toContain('print("other")');
+    expect(result.code).toContain('case 1:');
+    expect(result.code).toContain('print("one")');
+
+    // Source order, not normalised order.
+    expect(result.code.indexOf('default:')).toBeLessThan(
+      result.code.indexOf('case 1:'),
+    );
+  });
+
+  it('keeps every branch when `_` is already last', () => {
+    const result = convertGdToTs({
+      source: [
+        'extends Node',
+        '',
+        'func f(x):',
+        '\tmatch x:',
+        '\t\t1:',
+        '\t\t\tprint("one")',
+        '\t\t_:',
+        '\t\t\tprint("other")',
+        '',
+      ].join('\n'),
+      filePath: join(FIXTURES_DIR, 'wildcard-last.gd'),
+      registry,
+      projectSources,
+    });
+
+    expect(result.diagnostics.filter((d) => d.severity === 'warning')).toEqual(
+      [],
+    );
+    expect(result.code).toContain('case 1:');
+    expect(result.code).toContain('default:');
+  });
+});
+
+// The other direction has `fixtures-godot-validate.test.ts`, which
+// feeds every emitted `.gd` to a real Godot import. Nothing did the
+// same for the TypeScript this converter emits, even though a branch
+// body can now be nothing but a comment or an `ERROR` marker — shapes
+// where a stray brace would go unnoticed by a string comparison.
+describe('GD to TS: emitted TypeScript parses', () => {
+  it('produces syntactically valid TS for every fixture', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'tstogd-parse-'));
+    try {
+      const written: string[] = [];
+      for (const gdFile of allGdFiles) {
+        const gdPath = join(FIXTURES_DIR, gdFile);
+        const result = convertGdToTs({
+          source: readFileSync(gdPath, 'utf-8'),
+          filePath: gdPath,
+          registry,
+          projectSources,
+        });
+        const outPath = join(dir, basename(gdFile, '.gd') + '.ts');
+        writeFileSync(outPath, result.code);
+        written.push(outPath);
+      }
+
+      // One program over every file: parsing is what is under test, so
+      // type resolution (and the cost of it) is beside the point.
+      const program = ts.createProgram(written, {
+        target: ts.ScriptTarget.ES2022,
+        module: ts.ModuleKind.Node16,
+        moduleResolution: ts.ModuleResolutionKind.Node16,
+        noResolve: true,
+        noEmit: true,
+      });
+
+      const failures: string[] = [];
+      for (const file of written) {
+        const sf = program.getSourceFile(file);
+        if (!sf) {
+          failures.push(`${basename(file)}: not in program`);
+          continue;
+        }
+        for (const d of program.getSyntacticDiagnostics(sf)) {
+          const { line } = sf.getLineAndCharacterOfPosition(d.start ?? 0);
+          failures.push(
+            `${basename(file)}:${line + 1} ${ts.flattenDiagnosticMessageText(d.messageText, ' ')}`,
+          );
+        }
+      }
+      expect(failures).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });

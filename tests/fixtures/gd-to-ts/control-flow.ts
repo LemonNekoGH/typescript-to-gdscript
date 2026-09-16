@@ -27,13 +27,13 @@ export class ControlFlow extends Node {
     switch (value) {
       case 1:
         print("one");
-        break;
       case 2:
-        print("two");
-        break;
+        {
+        }
+      case 3:
+        print("three");
       default:
         print("other");
-        break;
     }
   }
 

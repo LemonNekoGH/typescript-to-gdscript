@@ -3,7 +3,11 @@ import { resolve, join } from 'path';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { createTsProgram } from '../../src/parser/typescript/index.ts';
-import { collectTsDiagnostics } from '../../src/checker/ts-diagnostics.ts';
+import {
+  collectTsDiagnostics,
+  NOISE_CODES,
+} from '../../src/checker/ts-diagnostics.ts';
+import { ALWAYS_FILTERED_CODES } from '../../src/ts-plugin/index.ts';
 
 const fixtureDir = resolve(__dirname, '../fixtures/plugin');
 
@@ -64,5 +68,20 @@ describe('collectTsDiagnostics', () => {
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
+  });
+
+  it('keeps the plugin filter in sync with the checker', () => {
+    // The two sets are duplicated on purpose — the plugin may only use
+    // the `typescript` instance tsserver hands it, so it cannot import
+    // this module. A comment cannot enforce that; this can.
+    //
+    // Only codes the generated typings provoke belong in either set. A
+    // diagnostic the user opted into (TS7029 from
+    // `noFallthroughCasesInSwitch`, say) stays visible, however noisy
+    // this dialect makes it.
+    const byCode = (a: number, b: number) => a - b;
+    expect([...ALWAYS_FILTERED_CODES].sort(byCode)).toEqual(
+      [...NOISE_CODES].sort(byCode),
+    );
   });
 });

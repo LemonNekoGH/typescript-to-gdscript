@@ -37,13 +37,40 @@ export class Match extends Node {
     switch (this.x) {
       case 1:
         print("It's one!");
-        break;
       case 2:
         print("It's one times two!");
-        break;
       default:
         print("It's not 1 or 2. I don't care to be honest.");
-        break;
+    }
+  }
+
+  test_bodyless_branches() {
+    // A branch with no statement must not merge into the next one:
+    // in the TS `switch` a `case` with no body under it falls through.
+    // A `"""..."""` is a statement in GDScript but a comment in TS, so
+    // branch 4 needs the `{}` too — and it spans lines, which a
+    // per-line check reads as code from the second line on.
+    switch (this.x) {
+      case 1:
+        {
+        // only a comment
+        }
+      case 2:
+        {
+        }
+      case 3:
+        {
+        // @gd.eval: @warning_ignore("unused_variable")
+        }
+      case 4:
+        {
+        /*
+        a note
+        over two lines
+        */
+        }
+      case 5:
+        print("five");
     }
   }
 

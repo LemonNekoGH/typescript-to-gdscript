@@ -327,7 +327,6 @@ export function isGdMatchCall(node: ts.Expression): boolean {
 export function visitGdMatchStatement(
   t: TransformerDelegate,
   node: ts.CallExpression,
-  visitStatement: (t: TransformerDelegate, node: ts.Statement) => void,
 ): void {
   if (node.arguments.length < 2) return;
   const pos = t.getLineAndCol(node);
@@ -344,14 +343,14 @@ export function visitGdMatchStatement(
   if (ts.isArrayLiteralExpression(casesExpr)) {
     for (const caseElement of casesExpr.elements) {
       if (ts.isObjectLiteralExpression(caseElement)) {
-        emitGdMatchCase(t, caseElement, visitStatement);
+        emitGdMatchCase(t, caseElement);
       } else if (ts.isArrowFunction(caseElement)) {
-        emitGdMatchArrowCase(t, caseElement, visitStatement);
+        emitGdMatchArrowCase(t, caseElement);
       } else if (ts.isParenthesizedExpression(caseElement)) {
         // (x, y) => ({...}) sometimes parenthesized
         const inner = caseElement.expression;
         if (ts.isArrowFunction(inner)) {
-          emitGdMatchArrowCase(t, inner, visitStatement);
+          emitGdMatchArrowCase(t, inner);
         }
       }
     }
@@ -364,7 +363,6 @@ export function visitGdMatchStatement(
 function emitGdMatchCase(
   t: TransformerDelegate,
   obj: ts.ObjectLiteralExpression,
-  visitStatement: (t: TransformerDelegate, node: ts.Statement) => void,
 ): void {
   let matchExpr: ts.Expression | undefined;
   let matchManyExpr: ts.Expression | undefined;
@@ -405,14 +403,9 @@ function emitGdMatchCase(
 
   t.emitter.indent();
   if (doBody) {
-    const stmts = doBody.statements;
-    if (stmts.length === 0) {
-      t.emitter.writeLine('pass', casePos.line, casePos.col);
-    } else {
-      for (const stmt of stmts) {
-        visitStatement(t, stmt);
-      }
-    }
+    // `visitBlock` drops statements that emit nothing and falls back
+    // to `pass`, so the branch always has a body.
+    t.visitBlock(doBody);
   } else {
     t.emitter.writeLine('pass', casePos.line, casePos.col);
   }
@@ -423,7 +416,6 @@ function emitGdMatchCase(
 function emitGdMatchArrowCase(
   t: TransformerDelegate,
   arrow: ts.ArrowFunction,
-  visitStatement: (t: TransformerDelegate, node: ts.Statement) => void,
 ): void {
   // Extract parameter names (bindings)
   const bindings = arrow.parameters.map((p) =>
@@ -482,14 +474,9 @@ function emitGdMatchArrowCase(
 
   t.emitter.indent();
   if (doBody) {
-    const stmts = doBody.statements;
-    if (stmts.length === 0) {
-      t.emitter.writeLine('pass', arrowPos.line, arrowPos.col);
-    } else {
-      for (const stmt of stmts) {
-        visitStatement(t, stmt);
-      }
-    }
+    // `visitBlock` drops statements that emit nothing and falls back
+    // to `pass`, so the branch always has a body.
+    t.visitBlock(doBody);
   } else {
     t.emitter.writeLine('pass', arrowPos.line, arrowPos.col);
   }
@@ -499,14 +486,22 @@ function emitGdMatchArrowCase(
 /**
  * Convert a TS expression to a GDScript match pattern.
  * @param bindings - Set of variable names that should be emitted as `var name` pattern bindings
+ * @param wildcardUndefined - Whether a bare `undefined` spells the `_`
+ *   wildcard. True for `gd.match`, whose TS-side pattern language says
+ *   it that way (it is what the GD→TS direction emits for `_`). False
+ *   for a `switch` case, whose label is an ordinary TS expression:
+ *   there `undefined` is restricted like anywhere else, and reading it
+ *   as `_` would turn one branch into a catch-all and every branch
+ *   below it into dead code, silently.
  */
 export function emitMatchPatternExpr(
   t: TransformerDelegate,
   node: ts.Expression,
   bindings?: Set<string>,
+  wildcardUndefined = true,
 ): string {
   // undefined -> _ (wildcard)
-  if (ts.isIdentifier(node) && node.text === 'undefined') {
+  if (wildcardUndefined && ts.isIdentifier(node) && node.text === 'undefined') {
     return '_';
   }
 
@@ -524,7 +519,7 @@ export function emitMatchPatternExpr(
         elements.push('..');
         continue;
       }
-      elements.push(emitMatchPatternExpr(t, el, bindings));
+      elements.push(emitMatchPatternExpr(t, el, bindings, wildcardUndefined));
     }
     return `[${elements.join(', ')}]`;
   }
@@ -543,7 +538,12 @@ export function emitMatchPatternExpr(
         const key = ts.isStringLiteral(prop.name)
           ? t.emitStringLiteral(prop.name)
           : `"${t.escapeGdString(prop.name.getText(t.ctx.sourceFile))}"`;
-        const val = emitMatchPatternExpr(t, prop.initializer, bindings);
+        const val = emitMatchPatternExpr(
+          t,
+          prop.initializer,
+          bindings,
+          wildcardUndefined,
+        );
         if (val === '_') {
           // { name: undefined } -> just "name" as a key-only check
           entries.push(key);

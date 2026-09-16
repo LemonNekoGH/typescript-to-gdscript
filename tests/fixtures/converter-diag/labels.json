@@ -1,0 +1,14 @@
+[
+  {
+    "message": "Labels are not supported",
+    "severity": "error",
+    "line": 6,
+    "column": 5
+  },
+  {
+    "message": "Labels are not supported",
+    "severity": "error",
+    "line": 17,
+    "column": 5
+  }
+]

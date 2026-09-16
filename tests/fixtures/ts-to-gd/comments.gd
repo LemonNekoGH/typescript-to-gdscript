@@ -15,6 +15,14 @@ func update_speed(new_speed: float):
 func calculate_damage(base: float, multiplier: float) -> float:
 	return base * multiplier
 
+## Doc comment over several lines.
+##
+## Each source line gets its own `##`; a blank one stays blank.
+func documented(value: int):
+	## And the same inside a body.
+	## Second line.
+	print(value)
+
 func test_block_comments():
 	"""Block comment"""
 	var x: int = 1

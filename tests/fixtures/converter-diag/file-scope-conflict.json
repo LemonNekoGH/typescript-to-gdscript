@@ -1,3 +1,10 @@
 [
-  { "message": "conflicts with a file-scope declaration", "severity": "error" }
+  {
+    "message": "conflicts with a file-scope declaration",
+    "severity": "error"
+  },
+  {
+    "message": "File-scope `const`/`let`/`var` (MAX) is not supported",
+    "severity": "error"
+  }
 ]

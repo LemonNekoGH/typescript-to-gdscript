@@ -193,3 +193,25 @@ class Game extends Node {
 For simple identifier/property-access right-hand sides, the helper emits `typeof <expr>`; for other expressions (literals, `new` calls, etc.) it uses the TS type checker's inferred type string.
 
 </details>
+
+## What the converter refuses
+
+A `break` inside a `match` branch is reported as an error instead of being converted. In GDScript it leaves the surrounding loop, but TypeScript has no way to say that — inside the `switch` the branch becomes, `break` would only exit the branch. Restructure the loop by hand: an early `return`, or a flag its condition checks.
+
+## What the generated `switch` looks like
+
+`match` becomes `switch`, and the cases carry **no `break`** — a `match` branch never falls through, so this dialect's `switch` doesn't write one. Don't add them back: a `break` that would leave the `switch` is an error on the way to GDScript. See [transform rules](./transform-rules.md#switch--match).
+
+Keep `noFallthroughCasesInSwitch` **off** in your `tsconfig.json`, or it will flag every case in the generated file.
+
+A branch with nothing executable in it — only a comment, a `pass`, or an annotation — comes back as an empty block:
+
+```ts
+case 1: {
+  // only a comment
+}
+```
+
+The braces are load-bearing. A `case` with no body under it would stack onto the case below it, merging two branches into one.
+
+Branches come across in the order you wrote them, `_` included. If `_` isn't last, note that the branches below it were dead in the GDScript — `_` matches everything — but they're still transcribed rather than dropped, so you can see what was there and decide. Converting back will move `default` to the end, which changes what those branches do; sort them out during the migration.

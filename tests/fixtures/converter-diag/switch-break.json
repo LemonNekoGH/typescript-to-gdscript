@@ -1,0 +1,26 @@
+[
+  {
+    "message": "`break` has no GDScript equivalent inside a `match` branch",
+    "severity": "error",
+    "line": 7,
+    "column": 9
+  },
+  {
+    "message": "`break` has no GDScript equivalent inside a `match` branch",
+    "severity": "error",
+    "line": 20,
+    "column": 11
+  },
+  {
+    "message": "`break` has no GDScript equivalent inside a `match` branch",
+    "severity": "error",
+    "line": 34,
+    "column": 11
+  },
+  {
+    "message": "`break` has no GDScript equivalent inside a `match` branch",
+    "severity": "error",
+    "line": 47,
+    "column": 13
+  }
+]

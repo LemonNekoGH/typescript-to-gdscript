@@ -16,6 +16,19 @@ export class MyClass extends Node {
     return base * multiplier;
   }
 
+  /**
+   * Doc comment over several lines.
+   *
+   * Each source line gets its own `##`; a blank one stays blank.
+   */
+  documented(value: int) {
+    /**
+     * And the same inside a body.
+     * Second line.
+     */
+    print(value);
+  }
+
   test_block_comments() {
     /* Block comment */
     let x: int = 1;

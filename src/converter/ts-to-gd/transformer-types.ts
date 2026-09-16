@@ -24,7 +24,10 @@ export interface TransformerDelegate {
   emitParameters(params: ts.NodeArray<ts.ParameterDeclaration>): string;
 
   // ── Comments ────────────────────────────────────────────────
-  emitLeadingComments(node: ts.Node): void;
+  emitLeadingComments(
+    node: ts.Node,
+    opts?: { statementsAllowed?: boolean },
+  ): void;
 
   // ── String helpers ──────────────────────────────────────────
   emitStringLiteral(node: ts.StringLiteral): string;

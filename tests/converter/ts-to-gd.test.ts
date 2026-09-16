@@ -34,6 +34,13 @@ const fixtureFiles = readdirSync(FIXTURES_DIR)
   })
   .map((f) => f.replace(/\.ts$/, ''));
 
+/**
+ * Fixtures whose whole point is a construct the converter rejects —
+ * they pin what the `--emit-on-error` output looks like. Every other
+ * fixture must convert without an error or a warning.
+ */
+const FIXTURES_EXPECTING_DIAGNOSTICS = new Set(['unsupported-body']);
+
 describe('TS to GD: Fixture-based tests', () => {
   for (const fixtureName of fixtureFiles) {
     it(`should correctly convert: ${fixtureName}`, () => {
@@ -48,13 +55,23 @@ describe('TS to GD: Fixture-based tests', () => {
         rootDir: FIXTURES_DIR,
       });
 
-      // Log diagnostics for debugging
-      if (result.diagnostics.length > 0) {
-        for (const d of result.diagnostics) {
-          console.log(
-            `  [${d.severity}] ${d.message} (${d.file}:${d.line}:${d.column})`,
-          );
-        }
+      // A fixture converts cleanly unless it exists precisely to show
+      // what a rejected construct emits. Logging an error and carrying
+      // on let a fixture start reporting one without anything noticing
+      // — `converter-diag` fixtures are where diagnostics get asserted
+      // in detail, so here it is only the clean/not-clean split.
+      const errors = result.diagnostics.filter(
+        (d) => d.severity === 'error' || d.severity === 'warning',
+      );
+      const rendered = errors
+        .map((d) => `  [${d.severity}] ${d.message} (${d.line}:${d.column})`)
+        .join('\n');
+      if (FIXTURES_EXPECTING_DIAGNOSTICS.has(fixtureName)) {
+        expect(rendered, `${fixtureName} should report a diagnostic`).not.toBe(
+          '',
+        );
+      } else {
+        expect(rendered, `${fixtureName} converted with diagnostics`).toBe('');
       }
 
       const normalizedActual = normalize(result.code);

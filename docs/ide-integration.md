@@ -75,6 +75,8 @@ Verify: the plugin logs `[tstogd-plugin] plugin loaded` on startup. WebStorm →
    - `TS2434` / `TS2435` — "Namespace must precede the class declaration"
    - `TS2449` — "Class used before its declaration"
 
+   Nothing else is filtered. In particular `noFallthroughCasesInSwitch` (TS7029) is left alone: it fires on every case in this dialect, but it's a setting you chose, and the plugin doesn't overrule your compiler options. Turn it off — see [`switch` → `match`](./transform-rules.md#switch--match).
+
 3. **Godot validation in the background.** After conversion, the plugin kicks off `validateGdFiles` asynchronously against the cache-folder `.gd` mirror. When Godot finishes (~300–500ms later), the plugin merges its diagnostics and calls `refreshDiagnostics()` on the project — your IDE updates without you doing anything.
 
 4. **Cancellation.** Typing another character while Godot is still running aborts the stale validation (both the subprocess and the superseded result) — no stale squiggles from a version you've already moved past.

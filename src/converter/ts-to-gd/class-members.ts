@@ -259,7 +259,7 @@ export function visitAccessorPair(
     const getPos = t.getLineAndCol(getNode);
     t.emitter.writeLine('get:', getPos.line, getPos.col);
     t.emitter.indent();
-    for (const stmt of getNode.body.statements) t.visitStatement(stmt);
+    t.visitBlock(getNode.body);
     t.emitter.dedent();
   } else {
     t.emitter.writeLine('get:', pos.line, pos.col);
@@ -276,7 +276,7 @@ export function visitAccessorPair(
         : 'value';
     t.emitter.writeLine(`set(${paramName}):`, setPos.line, setPos.col);
     t.emitter.indent();
-    for (const stmt of setNode.body.statements) t.visitStatement(stmt);
+    t.visitBlock(setNode.body);
     t.emitter.dedent();
   } else {
     t.emitter.writeLine('set(value):', pos.line, pos.col);

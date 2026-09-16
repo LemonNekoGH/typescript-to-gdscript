@@ -165,13 +165,10 @@ Spaces after `@gd.eval:` are ignored, but tab characters are preserved as additi
 switch (this.state) {
   case 1:
     print('one');
-    break;
   case 2:
     print('two');
-    break;
   default:
     print('other');
-    break;
 }
 // ↔ match self.state:
 //       1:
@@ -182,7 +179,7 @@ switch (this.state) {
 //         print("other")
 ```
 
-Fall-through `case` labels map to multi-pattern `1, 2, 3:` on the GDScript side.
+Cases are written without a trailing `break` — `match` branches never fall through, so each case ends on its own. Stacked `case` labels map to multi-pattern `1, 2, 3:` on the GDScript side. See [`switch` → `match`](./transform-rules.md#switch--match).
 
 **Advanced patterns** (arrays, dicts, pattern bindings, guards) use `gd.match()` with arrow-function `do: () => {}` cases to preserve `this` context:
 

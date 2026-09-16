@@ -36,6 +36,18 @@ var g: int:
 	set(value):
 		g = value
 
+var h: int:
+	get:
+		return h
+	set(value):
+		pass
+
+var i: int:
+	get:
+		return i
+	set(value):
+		pass
+
 func get_c() -> int:
 	return 10
 

@@ -4,6 +4,20 @@ import { SourceMapper, type Mapping } from '../../sourcemap/index.ts';
  * GDScript code emitter with source map support.
  * Tracks line/column positions as code is emitted.
  */
+/**
+ * An annotation alone on its line — no statement after it to attach to.
+ * `@onready`, `@warning_ignore("unused_variable")`, `@export_range(0, 1)`.
+ *
+ * The argument list runs to the LAST `)` on the line, not the first:
+ * an argument is free-form text (it can reach the emitter through
+ * `gd.eval`) and may contain `)` inside a string. Matching too eagerly
+ * only costs a redundant `pass`; matching too little suppresses one
+ * and emits a block GDScript refuses to parse. An annotation with a
+ * statement after it (`@export var x = 1`) still fails to match, since
+ * the line then has text left over after the closing `)`.
+ */
+const BARE_ANNOTATION = /^@[A-Za-z_]\w*\s*(\(.*\))?$/;
+
 export class GDScriptEmitter {
   private output: string[] = [];
   private currentLine = 1;
@@ -88,6 +102,37 @@ export class GDScriptEmitter {
   writeIndent(): void {
     const indent = this.indentStr.repeat(this.indentLevel);
     this.write(indent);
+  }
+
+  /**
+   * Opaque marker for the current end of output, for
+   * {@link hasCodeSince}.
+   */
+  mark(): number {
+    return this.output.length;
+  }
+
+  /**
+   * True when a real GDScript statement has been written since `mark`.
+   * Asking the output rather than the AST keeps the rule correct for
+   * every statement kind, including ones that emit only an error
+   * marker. Three things produce a line without filling an indented
+   * block, and GDScript rejects a block none of whose lines is a
+   * statement: a blank line, a comment, and an annotation with nothing
+   * after it (an annotation attaches to the statement that follows,
+   * so `@export var x = 1` counts but a lone `@warning_ignore(...)`
+   * does not).
+   */
+  hasCodeSince(mark: number): boolean {
+    return this.output
+      .slice(mark)
+      .join('')
+      .split('\n')
+      .some((line) => {
+        const text = line.trim();
+        if (text === '' || text.startsWith('#')) return false;
+        return !BARE_ANNOTATION.test(text);
+      });
   }
 
   /** Get the generated code */

@@ -1,1 +1,4 @@
-[{ "message": "undefined", "severity": "error" }]
+[
+  { "message": "undefined", "severity": "error", "line": 3, "column": 13 },
+  { "message": "undefined", "severity": "error", "line": 12, "column": 12 }
+]

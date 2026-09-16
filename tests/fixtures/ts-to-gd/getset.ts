@@ -53,6 +53,21 @@ export class GetsetTest extends Node {
     },
   });
 
+  get h(): int {
+    return this.h;
+  }
+
+  set h(value: int) {
+  }
+
+  i: int = gd.getset({
+    get: () => {
+      return this.i;
+    },
+    set: (value) => {
+    },
+  });
+
   get_c(): int {
     return 10;
   }
