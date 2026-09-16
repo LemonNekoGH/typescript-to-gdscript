@@ -75,7 +75,6 @@ export interface GodotRegistryData {
 export class GodotClassRegistry {
   private data: GodotRegistryData;
   private allMembersCache = new Map<string, Set<string>>();
-  private propertyNamesCache = new Map<string, Set<string>>();
   private globalFunctionsSet: Set<string>;
   private constructorsSet: Set<string>;
   private singletonsSet: Set<string>;
@@ -129,28 +128,6 @@ export class GodotClassRegistry {
 
     this.allMembersCache.set(className, members);
     return members;
-  }
-
-  /**
-   * Property names of a class and everything it inherits from.
-   *
-   * Narrower than `getAllMembers` on purpose: Godot lets a script
-   * OVERRIDE an inherited method (`_ready`, `free`, …) but refuses to
-   * REDEFINE an inherited property — `var name` on a Node subclass is
-   * "Member \"name\" redefined (original in native class 'Node')". So
-   * the shadowing check for fields must see properties alone.
-   */
-  getPropertyNames(className: string): Set<string> {
-    const cached = this.propertyNamesCache.get(className);
-    if (cached) return cached;
-
-    const names = new Set<string>();
-    for (const cn of this.getInheritanceChain(className)) {
-      for (const p of this.data.classes[cn]?.properties ?? []) names.add(p);
-    }
-
-    this.propertyNamesCache.set(className, names);
-    return names;
   }
 
   /** Check if a function name is a global/builtin function */
