@@ -1,6 +1,6 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import { existsSync, readdirSync } from 'fs';
+import { existsSync } from 'fs';
 import { resolve, relative, normalize } from 'path';
 import type { TransformDiagnostic } from '../converter/common/index.ts';
 
@@ -11,6 +11,7 @@ import {
   isDuplicateClassFalsePositive,
   isUnindexedOwnClassFalsePositive,
   collectDeclaredClassNames,
+  collectDeclaredClassNamesUnder,
   isUnderScratchDir,
 } from './error-parser.ts';
 import { remapError, remapErrorSync } from './source-map-remap.ts';
@@ -23,6 +24,7 @@ export {
   isDuplicateClassFalsePositive,
   isUnindexedOwnClassFalsePositive,
   collectDeclaredClassNames,
+  collectDeclaredClassNamesUnder,
   isUnderScratchDir,
 } from './error-parser.ts';
 export type { GodotRawError } from './error-parser.ts';
@@ -346,11 +348,7 @@ export async function validateGdProject(
   // See the note in `validateGdFiles` — `--check-only` never populates
   // Godot's global class cache, so a script naming its own class reads
   // as an unknown identifier until the editor imports.
-  const declaredClassNames = collectDeclaredClassNames(
-    readdirSync(resolvedGdDir, { recursive: true, encoding: 'utf-8' })
-      .filter((f) => f.endsWith('.gd'))
-      .map((f) => resolve(resolvedGdDir, f)),
-  );
+  const declaredClassNames = collectDeclaredClassNamesUnder(resolvedGdDir);
 
   // `--check-only` without `--script` enters the SceneTree main loop with
   // no script to call quit(), so on Windows it hangs forever. `--quit-after 1`

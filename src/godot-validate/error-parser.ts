@@ -2,7 +2,7 @@
  * Godot error output parser and false-positive filtering.
  */
 
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, readdirSync } from 'fs';
 import { resolve, join, relative, isAbsolute } from 'path';
 import { parseAutoloads } from '../typings/scenes.ts';
 
@@ -76,6 +76,26 @@ export function collectDeclaredClassNames(
     }
   }
   return names;
+}
+
+/**
+ * `class_name` declarations under a directory tree, recursively.
+ *
+ * A missing or unreadable directory yields an empty set rather than
+ * throwing: "no output tree yet" is the honest answer for a check that
+ * runs before anything has been converted, and it is the same answer
+ * the per-file read gives for a file it cannot open.
+ */
+export function collectDeclaredClassNamesUnder(gdDir: string): Set<string> {
+  let entries: string[];
+  try {
+    entries = readdirSync(gdDir, { recursive: true, encoding: 'utf-8' });
+  } catch {
+    return new Set();
+  }
+  return collectDeclaredClassNames(
+    entries.filter((f) => f.endsWith('.gd')).map((f) => resolve(gdDir, f)),
+  );
 }
 
 /**
