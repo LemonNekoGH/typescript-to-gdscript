@@ -1,12 +1,7 @@
 import ts from 'typescript';
 import { tsTypeNodeToGdType } from '../common/index.ts';
-import {
-  isGdEvalCall,
-  processGdEval,
-  emitGdEval,
-  isGdMatchCall,
-  visitGdMatchStatement,
-} from './gd-helpers.ts';
+import { isGdEvalCall, processGdEval, emitGdEval } from './gd-helpers.ts';
+import { isGdMatchCall, visitGdMatchStatement } from './gd-match.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
 import { SWITCH_BREAK_ERROR, visitSwitchStatement } from './switch.ts';
 import {

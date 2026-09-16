@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { emitMatchPatternExpr } from './gd-helpers.ts';
+import { emitMatchPatternExpr } from './gd-match.ts';
 import { emitStatements } from './statement-body.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
 
