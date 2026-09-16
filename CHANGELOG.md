@@ -1,3 +1,16 @@
+## [0.1.4](https://github.com/nnn3d/typescript-to-gdscript/compare/v0.1.3...v0.1.4) (2026-09-16)
+
+### Features
+
+* **converter:** convert switch to match in both directions ([fc54090](https://github.com/nnn3d/typescript-to-gdscript/commit/fc5409092f9595460ad092c2442b7b932ef1e77f))
+* **ts-to-gd:** carry lambda bodies into every position ([943d849](https://github.com/nnn3d/typescript-to-gdscript/commit/943d8498345ad2d54b1248c54beb1cac1cc463e7))
+* **ts-to-gd:** report fields that redefine an inherited property ([99d7286](https://github.com/nnn3d/typescript-to-gdscript/commit/99d72868efe057128b88d2540027fb2357ac6855))
+
+### Bug Fixes
+
+* **ts-to-gd:** emit abstract functions without a body ([4b64101](https://github.com/nnn3d/typescript-to-gdscript/commit/4b64101f4cde73254d825090f02a7d266f3a469b))
+* **ts-to-gd:** emit own fields bare in match patterns ([ce408d7](https://github.com/nnn3d/typescript-to-gdscript/commit/ce408d77bf48feb55da0099009efe34b83916bd1))
+* **ts-to-gd:** resolve own-class members through the class name ([322cf36](https://github.com/nnn3d/typescript-to-gdscript/commit/322cf360f4de78e01d360ad9f35c171f4132547e))
 ## [0.1.3](https://github.com/nnn3d/typescript-to-gdscript/compare/v0.1.2...v0.1.3) (2026-06-24)
 
 ### Features
