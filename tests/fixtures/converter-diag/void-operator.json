@@ -1,0 +1,14 @@
+[
+  {
+    "message": "`void` operator is not supported",
+    "severity": "error",
+    "line": 9,
+    "column": 5
+  },
+  {
+    "message": "`void` operator is not supported",
+    "severity": "error",
+    "line": 13,
+    "column": 15
+  }
+]

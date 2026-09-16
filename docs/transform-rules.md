@@ -456,9 +456,36 @@ func void_task():
 
 Using `Promise<T>` anywhere else (a field, a parameter, a `let` annotation) is a converter error — there's no GDScript runtime type to map it to. The runtime "promise" is just an unresolved coroutine, and treating it as a value (passing it around, calling `.then` / `.catch` / `.finally`, returning it without `await`) is rejected.
 
+## Arrow functions → lambdas
+
+An arrow function becomes a GDScript lambda, and carries its body wherever it appears — a call argument, an array element, a dictionary value, a `return`, a default parameter value, another lambda's body. A `{ … }` body keeps its statements on lines of their own, and whatever followed the arrow moves to the line after them:
+
+```typescript
+tween.tween_method(
+  (progress: float) => {
+    this.apply(progress);
+  },
+  0.0,
+  1.0,
+  1.0,
+);
+```
+
+```gdscript
+tween.tween_method(func(progress: float):
+	self.apply(progress)
+	, 0.0, 1.0, 1.0)
+```
+
+An arrow whose body **returns nothing** converts without a `return` — GDScript refuses to take the value of a call to a `void` function, so `(p) => this.apply(p)` emits `func(p): self.apply(p)`. The same rewrite applies to a `return this.apply(p);` statement, which becomes the call followed by a bare `return`. Where there is no such rewrite — a call that returns nothing used as a value, like `const x = this.apply(p)` — the call is emitted as written and GDScript rejects it (`Cannot get return value of call to "apply()" because it returns "void"`). Note TypeScript allows it, so Godot is the check that catches it: call it as a statement, or give the function a return type.
+
+A lambda used as an **operand** of a larger expression is wrapped in parentheses. A GDScript lambda body runs to the end of the expression, so `func(): f() if c else g` would be one lambda whose body is the conditional rather than a conditional choosing between two callables.
+
+An immediately-invoked arrow (`(() => 1)()`) becomes `(func(): return 1).call()` — see [Callables and function references](#callables-and-function-references). A lambda written as a whole statement (`() => {};`) converts as written, and GDScript then rejects it ("Standalone lambdas cannot be accessed") — assign it, pass it, or call it.
+
 ## Callables and function references
 
-GDScript treats functions stored in variables as `Callable` values, which must be invoked through `.call(...)` rather than direct parenthesis. The converter handles this automatically when the value is typed as a `() => ...` arrow:
+GDScript treats a function held in a value as a `Callable`, which must be invoked through `.call(...)` rather than direct parentheses. The converter applies this wherever the callee _holds_ a function instead of _naming_ one — a variable, a parameter, a field, the result of a call, an array element, a lambda invoked on the spot:
 
 ```typescript
 call(fn: () => void) {
@@ -468,6 +495,8 @@ call(fn: () => void) {
   this.say_hello();           // direct method call, preserved as self.say_hello()
   let saved = this.say_hello;
   saved();                    // → saved.call()
+  this.make_cb()();           // → self.make_cb().call()
+  this.handlers[0]();         // → self.handlers[0].call()
 }
 ```
 
@@ -479,9 +508,11 @@ func call(fn: Callable):
     self.say_hello()
     var saved = self.say_hello
     saved.call()
+    self.make_cb().call()
+    self.handlers[0].call()
 ```
 
-Direct method calls (`this.method()`) are not rewritten — only call-via-variable. Property access on a Callable (`fn.bind(...)`, `fn.call_deferred(...)`) is preserved verbatim.
+Direct method calls (`this.method()`) are not rewritten — a method is a name GDScript can call. A Callable held behind a `get` accessor is still a value, so `this.handler()` becomes `self.handler.call()`. Property access on a Callable (`fn.bind(...)`, `fn.call_deferred(...)`) is preserved verbatim. A callee that is not a name at all — `(x as any)()`, `d["fn"]()` — always goes through `.call()`: calling something that isn't a name is calling a value, and there is no other reading.
 
 ## `this` / `self`
 
@@ -620,7 +651,7 @@ Functions, type aliases, and interfaces in the namespace are TS-only (erased) �
 
 ## Members that clash with the Godot base class
 
-A field whose name is already a property of the base class is an error: GDScript cannot redefine an inherited property, so `name: string` on a class extending `Node` is reported rather than emitted. Rename the field. Methods are unaffected — overriding `_ready`, `free` and friends is ordinary GDScript.
+GDScript cannot redefine an inherited property, so `name: string` on a class extending `Node` produces a `.gd` Godot refuses to load (`Member "name" redefined`). The converter emits it as written and lets Godot say so — rename the property. Methods are unaffected: overriding `_ready`, `free` and friends is ordinary GDScript.
 
 ## Decorators and annotations
 
@@ -827,6 +858,7 @@ The converter rejects TS features that have no faithful GDScript equivalent. Eac
 | **Nullish coalescing** — `??` / `??=`                                   | GDScript distinguishes `null` from default values differently; no direct equivalent.                                                                         |
 | **Optional chaining** — `?.`                                            | GDScript has no `?.` short-circuit. Use explicit `null` checks or `obj.get("key")` for Dictionary access.                                                    |
 | **Spread** — `f(...args)` / `[...arr]`                                  | Variadic call sites can't be desugared to GDScript. Function declarations may use `...rest` (rest parameters).                                               |
+| **`void` operator** — `void f()`                                        | Its result is `undefined`, which has no GDScript equivalent. Drop it — an arrow whose body returns nothing already converts without a `return`.              |
 | **`var` keyword** — function-scoped `var x`                             | Warning (not error). Use `let` or `const`; both convert to GDScript `var`. GD `var` ≈ TS `let`.                                                              |
 | **File-scope `const`/`let`/`var`**                                      | GDScript doesn't allow top-level mutable bindings outside a class. Wrap in a class.                                                                          |
 | **Multiple `export class` per file**                                    | Each `.gd` is one class. Split additional classes into separate files, or use inner classes via namespace merging.                                           |

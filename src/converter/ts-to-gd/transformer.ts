@@ -19,8 +19,6 @@ import {
   emitExpression as emitExpressionImpl,
   emitStringLiteral as emitStringLiteralImpl,
   escapeGdString as escapeGdStringImpl,
-  isBlockLambda as isBlockLambdaImpl,
-  emitLambdaBody as emitLambdaBodyImpl,
   emitMultiLineDict as emitMultiLineDictImpl,
   checkExplicitPromiseTypes,
 } from './expressions.ts';
@@ -126,6 +124,10 @@ export class TsToGdTransformer implements TransformerDelegate {
     checkExplicitPromiseTypes(this);
 
     this.visitSourceFile(this.ctx.sourceFile);
+    // Every lambda body reserved during emission must have been
+    // written by now; one left over means an expression string was
+    // built and dropped, taking a function body with it.
+    this.emitter.assertBlocksDrained();
 
     return {
       code: this.emitter.getOutput(),
@@ -283,16 +285,6 @@ export class TsToGdTransformer implements TransformerDelegate {
 
   escapeGdString(text: string): string {
     return escapeGdStringImpl(text);
-  }
-
-  isBlockLambda(
-    node: ts.Expression,
-  ): node is ts.ArrowFunction | ts.FunctionExpression {
-    return isBlockLambdaImpl(node);
-  }
-
-  emitLambdaBody(node: ts.ArrowFunction | ts.FunctionExpression): void {
-    emitLambdaBodyImpl(this, node);
   }
 
   addDiagnostic(

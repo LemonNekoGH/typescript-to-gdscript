@@ -18,14 +18,6 @@ export const SWITCH_BREAK_ERROR =
   'remove the `break`, and restructure the case if it needs to ' +
   'exit early.';
 
-/** Split into [matching, rest], each keeping its relative order. */
-function partition<T>(items: T[], pred: (item: T) => boolean): [T[], T[]] {
-  const yes: T[] = [];
-  const no: T[] = [];
-  for (const item of items) (pred(item) ? yes : no).push(item);
-  return [yes, no];
-}
-
 /**
  * Emit one `match` branch for a run of clauses. Only the last clause of
  * the run carries a body — the ones before it were empty and stack onto
@@ -101,14 +93,19 @@ export function visitSwitchStatement(
   // `default`, wherever `default` sits, so the branch order carries no
   // information to lose. The rest keep their order, and a run's
   // comments travel with it.
-  const [fallback, rest] = partition(runs, (r) => r.some(ts.isDefaultClause));
+  const isFallback = (run: ts.CaseOrDefaultClause[]) =>
+    run.some(ts.isDefaultClause);
+  const ordered = [
+    ...runs.filter((r) => !isFallback(r)),
+    ...runs.filter(isFallback),
+  ];
   // A comment after the last clause's statements is leading trivia of
   // the case block's `}` — no clause below it to carry it — so the run
   // that ENDED the source closes it out, wherever the reordering put
   // that run.
   const lastClause = node.caseBlock.clauses.at(-1);
   const closeBrace = node.caseBlock.getLastToken();
-  for (const run of [...rest, ...fallback]) {
+  for (const run of ordered) {
     emitMatchBranch(t, run, run.at(-1) === lastClause ? closeBrace : undefined);
   }
 

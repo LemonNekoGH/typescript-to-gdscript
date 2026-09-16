@@ -165,10 +165,6 @@ export function visitPropertyDeclaration(
   }
 
   t.emitter.writeLine(decl, pos.line, pos.col);
-
-  if (node.initializer && t.isBlockLambda(node.initializer)) {
-    t.emitLambdaBody(node.initializer);
-  }
 }
 
 // ── Accessor Pair (get/set) ──────────────────────────────────

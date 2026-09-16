@@ -3,6 +3,7 @@ import { tsTypeNodeToGdType } from '../common/index.ts';
 import { isGdEvalCall, processGdEval, emitGdEval } from './gd-helpers.ts';
 import { isGdMatchCall, visitGdMatchStatement } from './gd-match.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
+import { isVoidExpression } from './void-value.ts';
 import { SWITCH_BREAK_ERROR, visitSwitchStatement } from './switch.ts';
 import {
   emitStatements,
@@ -50,8 +51,18 @@ export function visitStatement(
       t.emitter.writeLine(t.emitExpression(node.expression), pos.line, pos.col);
     }
   } else if (ts.isReturnStatement(node)) {
-    const expr = node.expression ? ` ${t.emitExpression(node.expression)}` : '';
-    t.emitter.writeLine(`return${expr}`, pos.line, pos.col);
+    if (node.expression && isVoidExpression(t, node.expression)) {
+      // GDScript refuses to take the value of a call that returns
+      // nothing, so the call stands on its own and the `return` goes
+      // bare — it still has to be there to leave early.
+      t.emitter.writeLine(t.emitExpression(node.expression), pos.line, pos.col);
+      t.emitter.writeLine('return', pos.line, pos.col);
+    } else {
+      const expr = node.expression
+        ? ` ${t.emitExpression(node.expression)}`
+        : '';
+      t.emitter.writeLine(`return${expr}`, pos.line, pos.col);
+    }
   } else if (ts.isIfStatement(node)) {
     visitIfStatement(t, node);
   } else if (ts.isForOfStatement(node)) {
@@ -201,11 +212,6 @@ export function visitVariableStatement(
       pos.line,
       pos.col,
     );
-
-    // If the initializer was a block lambda, emit its body after the declaration line
-    if (decl.initializer && t.isBlockLambda(decl.initializer)) {
-      t.emitLambdaBody(decl.initializer);
-    }
   }
 }
 

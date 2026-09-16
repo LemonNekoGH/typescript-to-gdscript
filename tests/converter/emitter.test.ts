@@ -56,3 +56,105 @@ describe('GDScriptEmitter: hasCodeSince', () => {
     ).toBe(true);
   });
 });
+
+/**
+ * `reserveBlock` / `writeLine` put an indented block in the middle of
+ * an expression — the GDScript lambda body. Everything about it is
+ * decided by `writeLine`: where the body's lines go, where the rest of
+ * the line goes, and that a tail-position block does not gain a blank
+ * line. The fixtures pin the emitted GDScript; these pin the mechanism
+ * underneath it, including the two cases no fixture can reach.
+ */
+describe('GDScriptEmitter: reserved blocks', () => {
+  function emit(write: (e: GDScriptEmitter) => void): string {
+    const e = new GDScriptEmitter('a.ts');
+    write(e);
+    return e.getOutput();
+  }
+
+  it('writes the body one level deeper, with nothing after it', () => {
+    const out = emit((e) => {
+      const block = e.reserveBlock(() => e.writeLine('print("x")', 1, 1));
+      e.writeLine(`var cb = func():${block}`, 1, 1);
+    });
+    expect(out).toBe('var cb = func():\n\tprint("x")\n');
+  });
+
+  // The text after the lambda cannot stay on the header's line, and it
+  // goes at the BODY's indent — GDScript takes a continuation there,
+  // but not at a level it has no block open for.
+  it('moves what follows the block onto its own line at the body indent', () => {
+    const out = emit((e) => {
+      const block = e.reserveBlock(() => e.writeLine('print("x")', 1, 1));
+      e.writeLine(`f(func():${block}, 1)`, 1, 1);
+    });
+    expect(out).toBe('f(func():\n\tprint("x")\n\t, 1)\n');
+  });
+
+  it('expands two blocks on one line at the same indent', () => {
+    const out = emit((e) => {
+      const a = e.reserveBlock(() => e.writeLine('print("a")', 1, 1));
+      const b = e.reserveBlock(() => e.writeLine('print("b")', 1, 1));
+      e.writeLine(`f(func():${a}, func():${b}, 2)`, 1, 1);
+    });
+    expect(out).toBe(
+      'f(func():\n\tprint("a")\n\t, func():\n\tprint("b")\n\t, 2)\n',
+    );
+  });
+
+  // A lambda inside another lambda's body re-enters `writeLine` while
+  // the outer expansion is still running.
+  it('expands a block reserved from inside another block', () => {
+    const out = emit((e) => {
+      const outer = e.reserveBlock(() => {
+        const inner = e.reserveBlock(() => e.writeLine('print("in")', 1, 1));
+        e.writeLine(`g(func():${inner}, 1)`, 1, 1);
+      });
+      e.writeLine(`f(func():${outer}, 2)`, 1, 1);
+    });
+    expect(out).toBe(
+      'f(func():\n\tg(func():\n\t\tprint("in")\n\t\t, 1)\n\t, 2)\n',
+    );
+  });
+
+  it('honours the indent level in force when the line is written', () => {
+    const out = emit((e) => {
+      e.indent();
+      const block = e.reserveBlock(() => e.writeLine('print("x")', 1, 1));
+      e.writeLine(`var cb = func():${block}`, 1, 1);
+    });
+    expect(out).toBe('\tvar cb = func():\n\t\tprint("x")\n');
+  });
+
+  // Emitting the header without its body would be a `func():` GDScript
+  // cannot parse, so this fails loudly instead.
+  it('throws when a marker has no reserved block', () => {
+    const e = new GDScriptEmitter('a.ts');
+    const block = e.reserveBlock(() => e.writeLine('print("x")', 1, 1));
+    e.writeLine(`var a = func():${block}`, 1, 1);
+    expect(() => e.writeLine(`var b = func():${block}`, 1, 1)).toThrow(
+      /never reserved/,
+    );
+  });
+
+  it('leaves a lone NUL that is not a marker alone', () => {
+    const out = emit((e) => e.writeLine('print("a\0b")', 1, 1));
+    expect(out).toBe('print("a\0b")\n');
+  });
+
+  // The mirror of the throw above, and the half that matters more: a
+  // reserved block whose marker never reached `writeLine` is a lambda
+  // body that vanished from the output with nothing to show for it.
+  it('throws when a reserved block was never written', () => {
+    const e = new GDScriptEmitter('a.ts');
+    e.reserveBlock(() => e.writeLine('print(1)', 1, 1));
+    expect(() => e.assertBlocksDrained()).toThrow(/never written/);
+  });
+
+  it('is drained once every marker has been written', () => {
+    const e = new GDScriptEmitter('a.ts');
+    const block = e.reserveBlock(() => e.writeLine('print(1)', 1, 1));
+    e.writeLine('var cb = func():' + block, 1, 1);
+    expect(() => e.assertBlocksDrained()).not.toThrow();
+  });
+});

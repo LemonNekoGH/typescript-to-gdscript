@@ -33,12 +33,6 @@ export interface TransformerDelegate {
   emitStringLiteral(node: ts.StringLiteral): string;
   escapeGdString(text: string): string;
 
-  // ── Lambda helpers ──────────────────────────────────────────
-  isBlockLambda(
-    node: ts.Expression,
-  ): node is ts.ArrowFunction | ts.FunctionExpression;
-  emitLambdaBody(node: ts.ArrowFunction | ts.FunctionExpression): void;
-
   // ── Diagnostics / position helpers ──────────────────────────
   addDiagnostic(
     node: ts.Node,

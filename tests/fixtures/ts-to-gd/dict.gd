@@ -52,9 +52,9 @@ func test_optional_access():
 		var g2 = e.f.get("g")
 	# Call on optional — no .get() (used as callee)
 	var h = {}
-	h.fn()
+	h.fn.call()
 	if h.get("fn"):
-		h.fn()
+		h.fn.call()
 	var i = self.test_dict_value
 	# Class field — no .get() (always defined in GDScript)
 	var node = Node2D.new()

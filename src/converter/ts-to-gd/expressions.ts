@@ -1,5 +1,4 @@
 import ts from 'typescript';
-import { tsTypeNodeToGdType } from '../common/index.ts';
 import { classifyInRhsType } from './diagnostics.ts';
 import {
   tryEmitGdAs,
@@ -15,6 +14,10 @@ import {
   resolveOwnClassRef,
 } from './own-class-ref.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
+import { isCallableMemberCall, isCallableValueCall } from './callable-call.ts';
+import { effectiveParent } from './effective-parent.ts';
+import { emitLambda } from './lambda.ts';
+import { VOID_OPERATOR_ERROR } from './void-value.ts';
 
 // ---- Main Expression Emitter ----
 
@@ -228,6 +231,12 @@ export function emitExpression(
       '`yield` is not supported; use `await` instead',
     );
     return node.getText(t.ctx.sourceFile);
+  }
+
+  // `void expr` -> not supported
+  if (ts.isVoidExpression(node)) {
+    t.addDiagnostic(node, 'error', VOID_OPERATOR_ERROR);
+    return t.emitExpression(node.expression);
   }
 
   // Fallback -- unsupported expression
@@ -500,26 +509,6 @@ export function emitPropertyAccess(
 // ---- Call Expressions ----
 
 /**
- * Return the first non-transparent ancestor of `node` — i.e. walk through
- * parenthesis, non-null assertions, and type assertions which don't change
- * runtime semantics. Used to decide whether a value is actually "consumed"
- * vs merely wrapped.
- */
-function effectiveParent(node: ts.Node): ts.Node | undefined {
-  let parent: ts.Node | undefined = node.parent;
-  while (
-    parent &&
-    (ts.isParenthesizedExpression(parent) ||
-      ts.isNonNullExpression(parent) ||
-      ts.isAsExpression(parent) ||
-      ts.isTypeAssertionExpression(parent))
-  ) {
-    parent = parent.parent;
-  }
-  return parent;
-}
-
-/**
  * True when `type` is a TypeScript `Promise<T>` (or a union/intersection that
  * contains one). In GDScript there is no Promise; an unawaited coroutine
  * yields a `GDScriptFunctionState` at runtime, not the resolved value.
@@ -563,21 +552,6 @@ function checkPromiseUsedAsValue(
   );
 }
 
-/**
- * True when a callee resolves to a class FIELD rather than a method —
- * a field holding a Callable, which GDScript invokes with `.call()`.
- * Shared by the `self.` and own-class paths so the two can't drift.
- */
-function isCallableFieldCall(
-  t: TransformerDelegate,
-  callee: ts.Expression,
-): boolean {
-  const decl = t.ctx.checker
-    .getSymbolAtLocation(callee)
-    ?.getDeclarations()?.[0];
-  return decl !== undefined && ts.isPropertyDeclaration(decl);
-}
-
 export function emitCallExpression(
   t: TransformerDelegate,
   node: ts.CallExpression,
@@ -618,32 +592,36 @@ export function emitCallExpression(
     }
   }
 
+  // The `gd.*` helpers re-emit their operands from the AST and return a
+  // string of their own, so they have to be tried BEFORE the arguments
+  // are emitted here. Emitting an argument twice is not merely wasted
+  // work: a block lambda reserves a body block on the emitter each
+  // time, and the copy that never reaches `writeLine` is a body that
+  // silently goes nowhere.
+  if (ts.isPropertyAccessExpression(node.expression)) {
+    const obj = node.expression.expression;
+    const method = node.expression.name.text;
+    const gdResult =
+      // gd.as(value, Type)
+      tryEmitGdAs(t, node, obj, method) ??
+      // gd.is(value, Type) -> value is Type
+      tryEmitGdIs(t, node, obj, method) ??
+      // gd.dict([[key, value], ...]) -> {key: value, ...}
+      tryEmitGdDict(t, node, obj, method) ??
+      // gd.ops.add/sub/mul/div/eq/ne/gt/gte/lt/lte/plus/minus -> operator
+      tryEmitGdOps(t, node, obj, method);
+    if (gdResult !== null) return gdResult;
+  }
+
   const args = node.arguments.map((a) => t.emitExpression(a)).join(', ');
 
-  // Handle gd.* helper calls
   if (ts.isPropertyAccessExpression(node.expression)) {
     const obj = node.expression.expression;
     const method = node.expression.name.text;
 
-    // gd.as(value, Type)
-    const asResult = tryEmitGdAs(t, node, obj, method);
-    if (asResult !== null) return asResult;
-
-    // gd.is(value, Type) -> value is Type
-    const isResult = tryEmitGdIs(t, node, obj, method);
-    if (isResult !== null) return isResult;
-
-    // gd.dict([[key, value], ...]) -> {key: value, ...}
-    const dictResult = tryEmitGdDict(t, node, obj, method);
-    if (dictResult !== null) return dictResult;
-
-    // gd.ops.add/sub/mul/div/eq/ne/gt/gte/lt/lte/plus/minus -> operator
-    const opsResult = tryEmitGdOps(t, node, obj, method);
-    if (opsResult !== null) return opsResult;
-
     // Handle self.method() / self.property() calls
     if (isSelfExpression(obj) && !isStaticContext(obj)) {
-      return isCallableFieldCall(t, node.expression)
+      return isCallableMemberCall(t, node.expression)
         ? `self.${method}.call(${args})`
         : `self.${method}(${args})`;
     }
@@ -658,7 +636,7 @@ export function emitCallExpression(
         t.addDiagnostic(node, 'error', ownRef.reason);
       }
       const prefix = ownRef.kind === 'prefix' ? ownRef.text : '';
-      return isCallableFieldCall(t, node.expression)
+      return isCallableMemberCall(t, node.expression)
         ? `${prefix}${method}.call(${args})`
         : `${prefix}${method}(${args})`;
     }
@@ -666,26 +644,11 @@ export function emitCallExpression(
 
   const callee = t.emitExpression(node.expression);
 
-  // Check if the callee is a Callable type (function variable, parameter)
-  // In GDScript, Callable values must be invoked via .call()
-  if (ts.isIdentifier(node.expression)) {
-    const symbol = t.ctx.checker.getSymbolAtLocation(node.expression);
-    if (symbol) {
-      const declarations = symbol.getDeclarations();
-      if (declarations && declarations.length > 0) {
-        const decl = declarations[0]!;
-        // Local variables and parameters holding callables need .call()
-        if (ts.isVariableDeclaration(decl) || ts.isParameter(decl)) {
-          const type = t.ctx.checker.getTypeAtLocation(node.expression);
-          if (
-            type.getCallSignatures().length > 0 &&
-            !type.getConstructSignatures().length
-          ) {
-            return `${callee}.call(${args})`;
-          }
-        }
-      }
-    }
+  // A Callable VALUE is invoked through `.call()`, whatever expression
+  // produced it — a local, a parameter, a field on another object, the
+  // result of a call, an array element, a lambda written in place.
+  if (isCallableValueCall(t, node.expression)) {
+    return `${callee}.call(${args})`;
   }
 
   return `${callee}(${args})`;
@@ -995,61 +958,6 @@ export function emitTemplateExpression(
     }
   }
   return result;
-}
-
-// ---- Lambda ----
-
-export function emitLambda(
-  t: TransformerDelegate,
-  node: ts.ArrowFunction | ts.FunctionExpression,
-): string {
-  const params = t.emitParameters(node.parameters);
-
-  // Return type
-  const returnType = tsTypeNodeToGdType(
-    node.type,
-    t.ctx.checker,
-    t.ctx.sourceFile,
-    t.currentClassName,
-    t.ctx.registry,
-  );
-  const returnAnnotation = returnType ? ` -> ${returnType}` : '';
-
-  if (ts.isBlock(node.body)) {
-    // Multi-line lambda: return header only. Body will be emitted by emitLambdaBody().
-    return `func(${params})${returnAnnotation}:`;
-  }
-
-  // Single expression lambda
-  const body = t.emitExpression(node.body);
-  return `func(${params})${returnAnnotation}: return ${body}`;
-}
-
-/**
- * Check if an expression is a block-body lambda (arrow function or function expression with a block body).
- */
-export function isBlockLambda(
-  node: ts.Expression,
-): node is ts.ArrowFunction | ts.FunctionExpression {
-  return (
-    (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) &&
-    ts.isBlock(node.body)
-  );
-}
-
-/**
- * Emit the body of a block lambda. Call this after the line containing the lambda header.
- */
-export function emitLambdaBody(
-  t: TransformerDelegate,
-  node: ts.ArrowFunction | ts.FunctionExpression,
-): void {
-  if (!ts.isBlock(node.body)) return;
-  t.emitter.indent();
-  // `visitBlock` falls back to `pass` for a body that emits nothing,
-  // so an empty block needs no separate case here.
-  t.visitBlock(node.body);
-  t.emitter.dedent();
 }
 
 // ---- Multi-line Dict ----
