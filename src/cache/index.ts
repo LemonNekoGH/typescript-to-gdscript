@@ -16,6 +16,7 @@ import {
   existsSync,
   mkdirSync,
   rmSync,
+  readdirSync,
   renameSync,
   copyFileSync,
   statSync,
@@ -107,6 +108,25 @@ interface CacheManifest {
   typings: Record<string, TypingsEntry>;
 }
 
+/** A manifest with every section empty, stamped with the current version. */
+function emptyManifest(): CacheManifest {
+  return { version: PACKAGE_VERSION, tsToGd: {}, addons: {}, typings: {} };
+}
+
+/**
+ * True when a parsed manifest holds no entries in any section. The section
+ * list is derived from `emptyManifest()` rather than spelled out, so a new
+ * section is covered the moment it is added there. `clear-cache` calls this
+ * on the manifest it reads back to confirm its work landed.
+ */
+export function isEmptyManifest(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const manifest = data as Record<string, unknown>;
+  return Object.keys(emptyManifest())
+    .filter((key) => key !== 'version')
+    .every((key) => Object.keys((manifest[key] as object) ?? {}).length === 0);
+}
+
 // ─── ProjectCache ───────────────────────────────────────────
 
 export class ProjectCache {
@@ -137,12 +157,15 @@ export class ProjectCache {
    * land within the same millisecond (Date.now() granularity).
    */
   private saveCounter = 0;
+  /** Set by `load()` when it rejected the on-disk manifest; see `discardStaleFiles`. */
+  private needsPersist = false;
 
   constructor(cacheDir: string, options?: ProjectCacheOptions) {
     this.cacheDir = cacheDir;
     this.cacheFile = join(cacheDir, 'cache.json');
     this.gdOutputDir = join(cacheDir, 'gd-output');
     this.data = this.load();
+    this.discardStaleFiles(options?.watch === true);
     // NB: do NOT seed `lastSelfWriteMtime` from the existing file's mtime.
     // Only our own `save()` should set that field — otherwise an external
     // writer that happens to land at the same filesystem mtime as the
@@ -187,6 +210,11 @@ export class ProjectCache {
     const reload = (mtimeMs: number): void => {
       try {
         this.data = this.load();
+        // Reloading never repairs the file on disk — that is the
+        // constructor's job (see `discardStaleFiles`). Writing from here
+        // would make two holders on different package versions rewrite
+        // each other's manifest forever, each one's save waking the other.
+        this.needsPersist = false;
         this.lastSelfWriteMtime = mtimeMs;
       } catch {
         // Partial/corrupt read during another writer's tmp→rename;
@@ -271,6 +299,14 @@ export class ProjectCache {
     }
   }
 
+  /**
+   * Read the manifest, or produce an empty one when the file is unusable.
+   *
+   * Touches nothing on disk. This also runs from the watch `reload()`
+   * closure, where a read can catch another process mid-write — acting on
+   * that signal would turn a transient failure into real data loss.
+   * Repair is the constructor's job; see `discardStaleFiles`.
+   */
   private load(): CacheManifest {
     if (existsSync(this.cacheFile)) {
       try {
@@ -283,16 +319,40 @@ export class ProjectCache {
         console.log(
           `[cache] Version changed (${data.version} → ${PACKAGE_VERSION}), clearing cache.`,
         );
-        this.clearFiles();
+        this.needsPersist = true;
       } catch {
-        // Corrupted cache; start fresh
+        // Corrupted cache; start fresh in memory only. A stably-broken
+        // file and a read that caught another writer mid-rename look
+        // identical here, so neither the mirrors nor the file are touched
+        // — a later save replaces it, and nothing healthy is destroyed.
       }
     }
-    return this.empty();
+    return emptyManifest();
   }
 
-  private empty(): CacheManifest {
-    return { version: PACKAGE_VERSION, tsToGd: {}, addons: {}, typings: {} };
+  /**
+   * Finish what `load()` deliberately left undone: when the manifest on
+   * disk came from another package version, drop the mirrors it referenced
+   * and write the empty replacement. `load()` can't do this itself — on
+   * the constructor path `this.data` isn't assigned while it runs.
+   *
+   * Constructor-only, on purpose. `load()` also runs from the watch reload
+   * path, and repairing from there makes two holders on different versions
+   * overwrite each other forever. Leaving it to the next construction
+   * costs nothing: the mismatch is still there when that process starts.
+   *
+   * `preferAsync` keeps the write off the caller's thread for long-lived
+   * hosts — the ts-plugin runs inside tsserver's event loop, which is why
+   * `saveAsync` exists at all.
+   */
+  private discardStaleFiles(preferAsync: boolean): void {
+    if (!this.needsPersist) return;
+    this.needsPersist = false;
+    this.clearFiles();
+    // A failed write leaves the stale file in place; the next process to
+    // construct a cache sees the same mismatch and retries the repair.
+    if (preferAsync) void this.saveAsync();
+    else this.save();
   }
 
   // ── TS→GD ─────────────────────────────────────────────────
@@ -580,15 +640,18 @@ export class ProjectCache {
     // Ensure Godot ignores the cache directory
     const gdignore = join(this.cacheDir, '.gdignore');
     if (!existsSync(gdignore)) writeFileSync(gdignore, '');
+    const json = JSON.stringify(this.data, null, 2);
     const tmpFile = this.nextTmpFile();
-    writeFileSync(tmpFile, JSON.stringify(this.data, null, 2));
+    writeFileSync(tmpFile, json);
     try {
       renameSync(tmpFile, this.cacheFile);
     } catch {
-      // Last resort: direct write (not atomic but preserves previous semantics).
+      // Last resort: direct write (not atomic but preserves previous
+      // semantics). Write from the in-memory `json` — reading `tmpFile`
+      // back here cannot work, it was just removed.
       try {
         rmSync(tmpFile, { force: true });
-        writeFileSync(this.cacheFile, readFileSync(tmpFile));
+        writeFileSync(this.cacheFile, json);
       } catch {
         /* give up */
       }
@@ -667,16 +730,68 @@ export class ProjectCache {
     }
   }
 
-  /** Clear all cache data and files. */
-  clear(): void {
-    this.data = this.empty();
-    this.clearFiles();
+  /**
+   * Clear every cache entry and persist the empty manifest.
+   *
+   * The manifest is REPLACED rather than deleted, and the cache directory
+   * stays. Deleting it defeats both things this method exists for:
+   *   - long-lived holders (`watch`, the ts-plugin) watch `cache.json` for
+   *     `change`/`add` only, so an unlink leaves their in-memory manifest
+   *     intact and their next `save()` writes every entry straight back;
+   *   - Windows can't remove a directory that holds an open file at all,
+   *     which is what made `clear-cache` fail with an IDE running.
+   * Replacing in place also keeps `.gdignore` on disk, so a `cacheDir`
+   * placed inside the Godot project is never briefly visible to the
+   * engine's scanner.
+   */
+  clear(options?: { force?: boolean }): void {
+    this.data = emptyManifest();
+    // Reset before the write, not after: `save()` records its own mtime
+    // only when the file ends up on disk, so a write that fails outright
+    // would otherwise leave a previous save's mtime here and let the
+    // watch filter mistake a later external write for our own.
     this.lastSelfWriteMtime = null;
+    // Nothing on disk to reset — don't create a cache directory as a
+    // side effect of clearing one that was never there.
+    if (!existsSync(this.cacheDir)) return;
+    this.clearFiles(options?.force === true);
+    this.save();
   }
 
-  private clearFiles(): void {
-    if (existsSync(this.cacheDir)) {
-      rmSync(this.cacheDir, { recursive: true, force: true });
+  /**
+   * Empty the cache directory, keeping only what must survive: `.gdignore`
+   * (so a `cacheDir` inside the Godot project is never briefly visible to
+   * the engine's scanner), `cache.json` itself (replaced, not deleted —
+   * see `clear()`), and `cache.json.tmp-*`, which is not a leftover to
+   * sweep but another process's save between its write and its rename.
+   * Deleting one of those makes that rename fail into the non-atomic
+   * fallback, which writes the holder's full manifest back over the file
+   * we just cleared. Everything else goes, so no artifact of an older
+   * layout can outlive a clear.
+   *
+   * `force` drops both exemptions and keeps `cache.json` alone. It is how
+   * a tmp file orphaned by a crashed process finally gets collected — we
+   * cannot tell one apart from a live save, so the caller takes that
+   * judgement. `.gdignore` goes too, but `clear()`'s `save()` recreates it
+   * before returning, so it is never missing outside this call.
+   */
+  private clearFiles(force = false): void {
+    if (!existsSync(this.cacheDir)) return;
+    const manifest = basename(this.cacheFile);
+    const keep = new Set(force ? [manifest] : ['.gdignore', manifest]);
+    const inFlightPrefix = `${manifest}.tmp-`;
+    try {
+      for (const name of readdirSync(this.cacheDir)) {
+        if (keep.has(name)) continue;
+        if (!force && name.startsWith(inFlightPrefix)) continue;
+        try {
+          rmSync(join(this.cacheDir, name), { recursive: true, force: true });
+        } catch {
+          /* best-effort */
+        }
+      }
+    } catch {
+      /* best-effort */
     }
   }
 

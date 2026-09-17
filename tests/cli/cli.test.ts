@@ -9,6 +9,9 @@ import { randomBytes } from 'crypto';
 const execFileAsync = promisify(execFile);
 
 const CLI = resolve(__dirname, '../../src/cli/index.ts');
+const PACKAGE_VERSION: string = JSON.parse(
+  readFileSync(resolve(__dirname, '../../package.json'), 'utf-8'),
+).version;
 const FIXTURES = resolve(__dirname, '../fixtures/cli');
 const TSX = resolve(__dirname, '../../node_modules/.bin/tsx');
 
@@ -381,5 +384,127 @@ describe('CLI: initial-convert-gd-to-ts (GD → TS)', () => {
     // The new file must have been written with valid converted content
     expect(existsSync(newTs)).toBe(true);
     expect(readFileSync(newTs, 'utf-8')).toContain('class NewClass');
+  });
+});
+
+describe('CLI: clear-cache', () => {
+  let tmpDir: string;
+  let cacheDir: string;
+
+  afterEach(() => {
+    if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
+    if (cacheDir) rmSync(cacheDir, { recursive: true, force: true });
+  });
+
+  /**
+   * `clear-cache` takes no path flags — it resolves `cacheDir` from the
+   * config found at the process cwd. So the command runs with cwd set to
+   * a scratch root that has no tstogd.json and no node_modules, which
+   * puts the cache at `<os-tmp>/typescript-to-gdscript/<basename(root)>`.
+   */
+  function setup(): void {
+    tmpDir = makeTmpDir();
+    cacheDir = join(tmpdir(), 'typescript-to-gdscript', basename(tmpDir));
+  }
+
+  function runClearCache(...extra: string[]): Promise<{
+    stdout: string;
+    stderr: string;
+    exitCode: number;
+  }> {
+    return new Promise((res) => {
+      execFile(
+        TSX,
+        [CLI, 'clear-cache', ...extra],
+        { cwd: tmpDir, timeout: 30000, shell: process.platform === 'win32' },
+        (err, stdout, stderr) => {
+          res({
+            stdout: stdout ?? '',
+            stderr: stderr ?? '',
+            exitCode: err ? ((err as any).code ?? 1) : 0,
+          });
+        },
+      );
+    });
+  }
+
+  it('reports a missing cache directory without creating one', async () => {
+    setup();
+
+    const result = await runClearCache();
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Cache directory does not exist');
+    expect(existsSync(cacheDir)).toBe(false);
+  });
+
+  it('empties the manifest and sweeps the mirror, keeping the directory', async () => {
+    setup();
+    mkdirSync(join(cacheDir, 'gd-output'), { recursive: true });
+    writeFileSync(join(cacheDir, 'gd-output', 'abc-a.gd'), 'class_name A');
+    writeFileSync(join(cacheDir, '.gdignore'), '');
+    writeFileSync(
+      join(cacheDir, 'cache.json'),
+      JSON.stringify({
+        // Must be the REAL version: a mismatch would send the constructor
+        // down its own repair path and clear the cache before `clear()`
+        // ever runs, so every assertion below would hold with `clear()`
+        // stubbed out.
+        version: PACKAGE_VERSION,
+        tsToGd: {
+          '/x/a.ts': {
+            tsHash: 'a',
+            gdHash: 'b',
+            diagnostics: [],
+            sourceMap: '{}',
+          },
+        },
+        addons: {},
+        typings: {},
+      }),
+    );
+
+    const result = await runClearCache();
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Cache cleared');
+    expect(existsSync(cacheDir)).toBe(true);
+    expect(existsSync(join(cacheDir, '.gdignore'))).toBe(true);
+    expect(existsSync(join(cacheDir, 'gd-output'))).toBe(false);
+    const manifest = JSON.parse(
+      readFileSync(join(cacheDir, 'cache.json'), 'utf-8'),
+    );
+    expect(Object.keys(manifest.tsToGd)).toHaveLength(0);
+  });
+
+  it('spares a tmp file by default and names it in the output', async () => {
+    setup();
+    mkdirSync(cacheDir, { recursive: true });
+    const orphan = join(cacheDir, 'cache.json.tmp-1-2-3-deadbeef');
+    writeFileSync(orphan, '{}');
+
+    const result = await runClearCache();
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(orphan)).toBe(true);
+    expect(result.stdout).toContain('Left in place');
+    expect(result.stdout).toContain('cache.json.tmp-1-2-3-deadbeef');
+    expect(result.stdout).toContain('--force');
+  });
+
+  it('--force removes the tmp file and still leaves a usable cache dir', async () => {
+    setup();
+    mkdirSync(cacheDir, { recursive: true });
+    const orphan = join(cacheDir, 'cache.json.tmp-1-2-3-deadbeef');
+    writeFileSync(orphan, '{}');
+
+    const result = await runClearCache('--force');
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Cache cleared');
+    expect(result.stdout).not.toContain('Left in place');
+    expect(existsSync(orphan)).toBe(false);
+    expect(existsSync(join(cacheDir, '.gdignore'))).toBe(true);
+    expect(existsSync(join(cacheDir, 'cache.json'))).toBe(true);
   });
 });

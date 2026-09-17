@@ -144,7 +144,11 @@ Clear the conversion cache. Useful when cache becomes stale or after upgrading t
 tstogd clear-cache
 ```
 
-No options.
+The cache directory itself is kept — only its contents are reset, so a running IDE or `tstogd watch` picks up the clear instead of writing its own copy back.
+
+Options:
+
+- `--force` — also remove `cache.json.tmp-*` files. These are normally left alone because a temp file is usually another process saving right now, and deleting one can make that save write the old cache back. Use `--force` with no `tstogd` running to collect temp files a crashed process left behind — a plain run names them when it finds any.
 
 ## `tstogd initial-convert-gd-to-ts`
 

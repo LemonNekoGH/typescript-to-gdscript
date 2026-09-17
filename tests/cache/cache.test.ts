@@ -429,6 +429,28 @@ describe('version mismatch', () => {
     const cache2 = new ProjectCache(cacheDir);
     expect(cache2.isTsToGdFresh(ts, gd)).toBe(true);
   });
+
+  it('rewrites the stale-version file immediately', () => {
+    tmpDir = makeTmpDir();
+    const cacheDir = join(tmpDir, 'cache');
+    const ts = writeFile(tmpDir, 'a.ts', 'ts');
+    const gd = writeFile(tmpDir, 'a.gd', 'gd');
+
+    const cache1 = new ProjectCache(cacheDir);
+    cache1.updateTsToGd(ts, gd, EMPTY_MAP, DIAGS);
+    cache1.save();
+
+    const cacheFile = join(cacheDir, 'cache.json');
+    const data = JSON.parse(readFileSync(cacheFile, 'utf-8'));
+    data.version = '99.99.99';
+    writeFileSync(cacheFile, JSON.stringify(data));
+
+    new ProjectCache(cacheDir); // constructing alone must fix the file
+
+    const after = JSON.parse(readFileSync(cacheFile, 'utf-8'));
+    expect(after.version).not.toBe('99.99.99');
+    expect(Object.keys(after.tsToGd)).toHaveLength(0);
+  });
 });
 
 describe('corrupted cache.json', () => {
@@ -447,6 +469,29 @@ describe('corrupted cache.json', () => {
     const ts = writeFile(tmpDir, 'a.ts', 'ts');
     const gd = writeFile(tmpDir, 'a.gd', 'gd');
     expect(cache.isTsToGdFresh(ts, gd)).toBe(false);
+  });
+
+  it('leaves the file and the mirrors alone (a torn read looks the same)', () => {
+    tmpDir = makeTmpDir();
+    const cacheDir = join(tmpDir, 'cache');
+    const ts = writeFile(tmpDir, 'a.ts', 'ts');
+    const gd = writeFile(tmpDir, 'a.gd', 'gd');
+
+    const writer = new ProjectCache(cacheDir);
+    writer.updateTsToGd(ts, gd, EMPTY_MAP, DIAGS, { gdContent: 'pass\n' });
+    writer.save();
+    const mirror = writer.getCachedGdPath(ts)!;
+
+    // Stand in for a read that caught another process mid-write. An
+    // unparseable manifest must never be treated as licence to destroy:
+    // the bytes may be a healthy cache one fsync away from complete.
+    const cacheFile = join(cacheDir, 'cache.json');
+    writeFileSync(cacheFile, '{"version":"0.1.4","tsTo');
+
+    new ProjectCache(cacheDir);
+
+    expect(existsSync(mirror)).toBe(true);
+    expect(readFileSync(cacheFile, 'utf-8')).toBe('{"version":"0.1.4","tsTo');
   });
 
   it('handles missing cache.json (first run)', () => {
@@ -545,14 +590,96 @@ describe('clear', () => {
     expect(cache.isTypingsFresh(src, dts)).toBe(false);
   });
 
-  it('removes cacheDir from disk', () => {
+  it('keeps the cacheDir and leaves an empty manifest', () => {
+    tmpDir = makeTmpDir();
+    const cacheDir = join(tmpDir, 'cache');
+    const ts = writeFile(tmpDir, 'a.ts', 'ts');
+    const gd = writeFile(tmpDir, 'a.gd', 'gd');
+    const cache = new ProjectCache(cacheDir);
+    cache.updateTsToGd(ts, gd, EMPTY_MAP, DIAGS);
+    cache.save();
+
+    cache.clear();
+
+    expect(existsSync(cacheDir)).toBe(true);
+    expect(existsSync(join(cacheDir, '.gdignore'))).toBe(true);
+    const data = JSON.parse(
+      readFileSync(join(cacheDir, 'cache.json'), 'utf-8'),
+    );
+    expect(Object.keys(data.tsToGd)).toHaveLength(0);
+    expect(Object.keys(data.addons)).toHaveLength(0);
+    expect(Object.keys(data.typings)).toHaveLength(0);
+  });
+
+  it('wipes the gd-output mirror', () => {
+    tmpDir = makeTmpDir();
+    const cacheDir = join(tmpDir, 'cache');
+    const ts = writeFile(tmpDir, 'a.ts', 'ts');
+    const gd = writeFile(tmpDir, 'a.gd', 'gd');
+    const cache = new ProjectCache(cacheDir);
+    cache.updateTsToGd(ts, gd, EMPTY_MAP, DIAGS, {
+      gdContent: 'func f():\n\tpass\n',
+    });
+    const mirror = cache.getCachedGdPath(ts)!;
+    expect(existsSync(mirror)).toBe(true);
+
+    cache.clear();
+
+    expect(existsSync(mirror)).toBe(false);
+    expect(existsSync(join(cacheDir, 'gd-output'))).toBe(false);
+  });
+
+  it('sweeps unknown artifacts but never an in-flight tmp file', () => {
     tmpDir = makeTmpDir();
     const cacheDir = join(tmpDir, 'cache');
     const cache = new ProjectCache(cacheDir);
     cache.save();
-    expect(existsSync(cacheDir)).toBe(true);
+
+    // An artifact of some older cache layout — on no allowlist, must go.
+    const legacyDir = join(cacheDir, 'gd-output-v1');
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(join(legacyDir, 'stale.gd'), 'pass');
+    // A tmp file is indistinguishable from another process's save caught
+    // between its write and its rename. Deleting it would make that rename
+    // fail into the non-atomic fallback, which writes the holder's whole
+    // manifest back over the file we just cleared — defeating the clear.
+    // The cost of sparing it is a leaked file after a hard crash.
+    const inFlight = join(cacheDir, 'cache.json.tmp-1-2-3-deadbeef');
+    writeFileSync(inFlight, '{}');
 
     cache.clear();
+
+    expect(existsSync(legacyDir)).toBe(false);
+    expect(existsSync(inFlight)).toBe(true);
+    expect(existsSync(join(cacheDir, '.gdignore'))).toBe(true);
+    expect(existsSync(join(cacheDir, 'cache.json'))).toBe(true);
+  });
+
+  it('force removes tmp files, and .gdignore comes back with the save', () => {
+    tmpDir = makeTmpDir();
+    const cacheDir = join(tmpDir, 'cache');
+    const cache = new ProjectCache(cacheDir);
+    cache.save();
+
+    const orphan = join(cacheDir, 'cache.json.tmp-1-2-3-deadbeef');
+    writeFileSync(orphan, '{}');
+
+    cache.clear({ force: true });
+
+    expect(existsSync(orphan)).toBe(false);
+    // Swept along with everything else, then rewritten by `clear()`'s
+    // `save()` — so it is never absent once the call returns.
+    expect(existsSync(join(cacheDir, '.gdignore'))).toBe(true);
+    expect(existsSync(join(cacheDir, 'cache.json'))).toBe(true);
+  });
+
+  it('does not create a cacheDir that never existed', () => {
+    tmpDir = makeTmpDir();
+    const cacheDir = join(tmpDir, 'never-created');
+    const cache = new ProjectCache(cacheDir);
+
+    cache.clear();
+
     expect(existsSync(cacheDir)).toBe(false);
   });
 });
@@ -938,6 +1065,17 @@ describe('ProjectCache watch mode', () => {
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+  /**
+   * Poll until `cond` holds. Positive assertions about a reload should use
+   * this rather than a fixed sleep — the propagation budget is whatever the
+   * machine is willing to give under load, not a number picked in advance.
+   */
+  async function waitFor(cond: () => boolean, timeoutMs = 4000): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (!cond() && Date.now() < deadline) await sleep(25);
+    expect(cond()).toBe(true);
+  }
+
   it('picks up external writes after the poll interval', async () => {
     tmpDir = makeTmpDir();
     const cacheDir = join(tmpDir, 'cache');
@@ -1026,6 +1164,80 @@ describe('ProjectCache watch mode', () => {
       expect(cache.getDiagnostics(ts)![0].message).toBe('in-memory-only');
     } finally {
       await cache.close();
+    }
+  });
+
+  it('propagates clear() to a watching instance', async () => {
+    tmpDir = makeTmpDir();
+    const cacheDir = join(tmpDir, 'cache');
+    const ts = writeFile(tmpDir, 'a.ts', 'ts');
+    const gd = writeFile(tmpDir, 'a.gd', 'gd');
+
+    const writer = new ProjectCache(cacheDir);
+    writer.updateTsToGd(ts, gd, EMPTY_MAP, DIAGS);
+    writer.save();
+
+    const holder = new ProjectCache(cacheDir, {
+      watch: true,
+      watchInterval: WATCH_INTERVAL,
+    });
+    try {
+      expect(holder.isTsToGdFresh(ts, gd)).toBe(true);
+
+      new ProjectCache(cacheDir).clear();
+      await waitFor(() => !holder.isTsToGdFresh(ts, gd));
+
+      // The point of the whole change: the holder's next save must not
+      // resurrect the entry it was holding.
+      holder.save();
+      const data = JSON.parse(
+        readFileSync(join(cacheDir, 'cache.json'), 'utf-8'),
+      );
+      expect(Object.keys(data.tsToGd)).toHaveLength(0);
+    } finally {
+      await holder.close();
+    }
+  });
+
+  it('never writes back through the watch, whatever it observes', async () => {
+    tmpDir = makeTmpDir();
+    const cacheDir = join(tmpDir, 'cache');
+    const ts = writeFile(tmpDir, 'a.ts', 'ts');
+    const gd = writeFile(tmpDir, 'a.gd', 'gd');
+
+    const writer = new ProjectCache(cacheDir);
+    writer.updateTsToGd(ts, gd, EMPTY_MAP, DIAGS, { gdContent: 'pass\n' });
+    writer.save();
+    const mirror = writer.getCachedGdPath(ts)!;
+
+    const holder = new ProjectCache(cacheDir, {
+      watch: true,
+      watchInterval: WATCH_INTERVAL,
+    });
+    try {
+      // A peer on another version, then a read caught mid-write. Neither
+      // may provoke a write: repairing from the watch makes two holders on
+      // different versions overwrite each other forever, and treating a
+      // torn read as corruption destroys a cache that is merely in flight.
+      const cacheFile = join(cacheDir, 'cache.json');
+      const peer = JSON.stringify({
+        version: '99.99.99',
+        tsToGd: {},
+        addons: {},
+        typings: {},
+      });
+      writeFileSync(cacheFile, peer);
+      await sleep(POLL_WAIT);
+      expect(readFileSync(cacheFile, 'utf-8')).toBe(peer);
+
+      writeFileSync(cacheFile, '{"version":"99.99.99","tsTo');
+      await sleep(POLL_WAIT);
+      expect(readFileSync(cacheFile, 'utf-8')).toBe(
+        '{"version":"99.99.99","tsTo',
+      );
+      expect(existsSync(mirror)).toBe(true);
+    } finally {
+      await holder.close();
     }
   });
 
