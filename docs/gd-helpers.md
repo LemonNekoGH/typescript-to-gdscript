@@ -292,10 +292,12 @@ f: typeof this.e = gd.getset({
   get: () => { return this.f; },
   set: null,
 });
-// ↔ var f = self.e:
+// ↔ var f: float = self.e:
 //       get:
 //           return f
 ```
+
+When the type comes from the value expression rather than from a written annotation, only a primitive or an engine type survives — so an `int` member yields `float`, because TypeScript spells `int` and `float` alike and only the written annotation tells them apart. Anything else is dropped, leaving a plain `var`: your own types, and arrays of any kind (Godot's `Array[T]` is invariant, so a guessed element type would be rejected outright rather than converted). Annotate the property (or pass `gd.getset<T>`) when you want a specific type.
 
 When the value expression is not typeof-able (a literal like `10`, a call, an operator expression, etc.) and there's no GDScript type annotation, the fallback is `unknown` by default, or `any` when `--unsafe-use-any` is passed to `initial-convert-gd-to-ts`.
 
