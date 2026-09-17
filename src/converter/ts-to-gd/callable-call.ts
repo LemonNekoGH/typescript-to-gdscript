@@ -1,4 +1,5 @@
 import ts from 'typescript';
+import { isAmbient } from '../common/gd-names.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
 
 /**
@@ -40,12 +41,28 @@ function declarationsOf(
   return symbol?.getDeclarations() ?? [];
 }
 
-/** True when a declaration NAMES a function rather than holding one. */
+/**
+ * True when a declaration NAMES a function rather than holding one.
+ *
+ * A method or a function declaration names one outright. An ambient
+ * `declare const` names one too: it becomes no variable in the emitted
+ * script, so there is nothing there for a `Callable` to live in — it
+ * can only be a name Godot already answers to. That second shape is how
+ * the typings spell every value-type constructor (`declare const
+ * Vector2: Vector2Constructor`), whose type carries call signatures and
+ * no construct signature and is therefore indistinguishable by shape
+ * from a local holding a lambda. Engine *classes* never get here; a
+ * construct signature settles them earlier.
+ *
+ * A member declared in a `.d.ts` is deliberately not covered — a field
+ * holds a value whichever file declares it.
+ */
 function isNamedFunction(d: ts.Declaration): boolean {
   return (
     ts.isMethodDeclaration(d) ||
     ts.isMethodSignature(d) ||
-    ts.isFunctionDeclaration(d)
+    ts.isFunctionDeclaration(d) ||
+    (ts.isVariableDeclaration(d) && isAmbient(d))
   );
 }
 
