@@ -28,6 +28,7 @@
 
 import ts from 'typescript';
 import { tsTypeNodeToGdType } from '../common/index.ts';
+import { isGdTypeName, isUserDeclared } from '../common/gd-names.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
 
 export function visitGdGetsetProperty(
@@ -258,20 +259,11 @@ function resolveGetsetType(
       const param = sigs[0]!.parameters[0]!;
       const paramDecl = param.valueDeclaration;
       if (paramDecl) {
-        const paramType = t.ctx.checker.getTypeOfSymbolAtLocation(
-          param,
-          paramDecl,
+        gdType = provableGdType(
+          t.ctx.checker.getTypeOfSymbolAtLocation(param, paramDecl),
+          node,
+          t,
         );
-        let cleaned = t.ctx.checker
-          .typeToString(paramType, node, ts.TypeFormatFlags.NoTruncation)
-          .replace(/\s*\|\s*null$/, '')
-          .replace(/\s*\|\s*undefined$/, '')
-          .trim();
-        if (cleaned === 'number') cleaned = 'float';
-        else if (cleaned === 'string') cleaned = 'String';
-        else if (cleaned === 'boolean') cleaned = 'bool';
-        if (cleaned && !['any', 'unknown', 'error', '{}'].includes(cleaned))
-          gdType = cleaned;
       }
     }
   }
@@ -281,20 +273,61 @@ function resolveGetsetType(
       gdType = raw.includes('.') ? 'float' : 'int';
     } else {
       const inferred = t.ctx.checker.getTypeAtLocation(valueExpr);
-      const widened = t.ctx.checker.getBaseTypeOfLiteralType(inferred);
-      let cleaned = t.ctx.checker
-        .typeToString(widened, node, ts.TypeFormatFlags.NoTruncation)
-        .replace(/\s*\|\s*null$/, '')
-        .replace(/\s*\|\s*undefined$/, '')
-        .trim();
-      if (cleaned === 'number') cleaned = 'float';
-      else if (cleaned === 'string') cleaned = 'String';
-      else if (cleaned === 'boolean') cleaned = 'bool';
-      if (cleaned && !['any', 'unknown', 'error', '{}'].includes(cleaned))
-        gdType = cleaned;
+      gdType = provableGdType(
+        t.ctx.checker.getBaseTypeOfLiteralType(inferred),
+        node,
+        t,
+      );
     }
   }
   return gdType;
+}
+
+/**
+ * The GDScript type a resolved `ts.Type` PROVES, or null.
+ *
+ * The earlier steps read a type NODE and hand it to
+ * `tsTypeNodeToGdType`, which classifies what was WRITTEN. These last
+ * two have only a resolved type, so all they can read is its
+ * TypeScript spelling — which has to be translated, not trusted: it
+ * used to be emitted almost verbatim, which is how `number[]` reached
+ * the `.gd`. A spelling proves a GD type only when it is a primitive,
+ * or an engine name the user has not redeclared. Anything else is
+ * dropped, which is always safe — a GD type hint is optional.
+ *
+ * Two things deliberately do not survive the trip:
+ *
+ * - `int`. The dialect's `int` and `float` are both `type … = number`,
+ *   which the checker erases to a type carrying no symbol and no
+ *   `aliasSymbol`, so both arrive spelled `number`. Answering `float`
+ *   is still safe: Godot converts an int to a float on assignment.
+ * - Arrays. That same widening stops being safe inside one, because
+ *   `Array[T]` is INVARIANT in Godot — `Array[float]` refuses an
+ *   `Array[int]` value, and `Array[String]` refuses `Array[StringName]`
+ *   (`type StringName = String` erases the same way). A resolved type
+ *   cannot tell those apart, so no array is answered here at all. A
+ *   WRITTEN `int[]` still becomes `Array[int]` through the node path.
+ */
+function provableGdType(
+  type: ts.Type,
+  node: ts.PropertyDeclaration,
+  t: TransformerDelegate,
+): string | null {
+  const name = t.ctx.checker
+    .typeToString(type, node, ts.TypeFormatFlags.NoTruncation)
+    .replace(/\s*\|\s*(null|undefined)$/, '')
+    .trim();
+
+  if (name === 'number') return 'float';
+  if (name === 'boolean') return 'bool';
+  if (name === 'string') return 'String';
+
+  // A name the user declared is theirs, whatever Godot calls it — the
+  // same gate `classifyTypeReferenceName` applies to written types.
+  const symbol = type.aliasSymbol ?? type.getSymbol();
+  if (isUserDeclared(symbol?.getDeclarations() ?? [])) return null;
+
+  return isGdTypeName(name, t.ctx.registry) ? name : null;
 }
 
 function extractFunctionRefName(expr: ts.Expression): string | null {
