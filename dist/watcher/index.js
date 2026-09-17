@@ -4,7 +4,6 @@ import { tmpdir } from 'os';
 import { createHash } from 'crypto';
 import ts from 'typescript';
 import { convertTsToGd } from "../converter/ts-to-gd/index.js";
-import { collectRuntimeModules, gdOutputPath, } from "../converter/ts-to-gd/modules.js";
 import { createTsProgram } from "../parser/typescript/index.js";
 import { validateGdFiles } from "../godot-validate/index.js";
 import { generateTypings, generateAddonTypings, generateFileTypings, } from "../typings/scenes.js";
@@ -14,25 +13,8 @@ import { isConversionErrorSeverity } from "../converter/common/index.js";
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'fs';
 import { dirname } from 'path';
 import { CheckRunner } from "./check.js";
-/** File extensions that trigger typings regeneration (scenes, resources, assets). */
-const RESOURCE_EXTENSIONS = new Set([
-    '.tscn',
-    '.tres',
-    '.res',
-    '.png',
-    '.jpg',
-    '.ogg',
-    '.wav',
-    '.mp3',
-    '.gdshader',
-    '.theme',
-]);
-/** All extensions the watcher cares about (TS + resources). */
-const WATCHED_EXTENSIONS = new Set(['.ts', ...RESOURCE_EXTENSIONS]);
-/** Debounce delay (ms) — wait for rapid file changes to settle before converting. */
-const DEBOUNCE_MS = 50;
-/** Debounce delay (ms) for the full-project diagnostic check after conversion. */
-const CHECK_DEBOUNCE_MS = 1000;
+import { TSTOGD_MODULES_DIR } from "../external-packages/index.js";
+import { CHECK_DEBOUNCE_MS, DEBOUNCE_MS, RESOURCE_EXTENSIONS, WATCHED_EXTENSIONS, } from "./constants.js";
 export class Watcher {
     options;
     fsWatcher = null;
@@ -42,7 +24,6 @@ export class Watcher {
     gdDir;
     initialTypingsGenerated = false;
     initialScanDone = false;
-    collectingInitialScan = true;
     // ── Program reuse ─────────────────────────────────────────
     cachedProgram = null;
     // ── Debounced conversion queue ────────────────────────────
@@ -73,6 +54,8 @@ export class Watcher {
             tsDir: this.tsDir,
             gdDir: this.gdDir,
             projectRoot: options.projectRoot ?? options.rootDir,
+            lib: options.lib,
+            externalPackages: options.externalPackages,
             cacheDir: this.cacheDir,
             tsConfigPath: options.tsConfigPath,
             godotPath: options.godotPath,
@@ -100,6 +83,7 @@ export class Watcher {
                 if (base.startsWith('.') ||
                     base === 'node_modules' ||
                     base === 'addons' ||
+                    base === TSTOGD_MODULES_DIR ||
                     base === 'dist')
                     return true;
                 if (!stats?.isFile())
@@ -120,12 +104,10 @@ export class Watcher {
             .on('change', (path) => this.handleFile(resolve(path)))
             .on('unlink', (path) => this.handleRemove(resolve(path)))
             .on('ready', () => {
-            // Enable debouncing before the flush. A file change can occur while the
-            // initial batch is converting; it must schedule a follow-up batch rather
-            // than being left in the newly refilled pending queue.
-            this.initialScanDone = true;
+            // Flush pending conversions from the initial scan (before marking scan as done,
+            // so counters are tracked correctly)
             this.flushPending();
-            this.collectingInitialScan = false;
+            this.initialScanDone = true;
             // Clean stale cache entries now that all files have been scanned
             const currentTsFiles = new Set([...this.tsFiles].map((f) => f.replace(/\\/g, '/')));
             this.cache.cleanStale(currentTsFiles);
@@ -213,33 +195,13 @@ export class Watcher {
     }
     // ── Batch conversion with Program reuse ───────────────────
     convertBatch(filePaths) {
-        // Create or reuse the ts.Program before resolving the runtime graph.
-        // TypeScript owns package/workspace module resolution, including paths
-        // aliases and package exports.
-        const oldProgram = this.cachedProgram ?? undefined;
-        const program = createTsProgram({
-            rootDir: this.tsDir,
-            files: [...this.tsFiles],
-            tsConfigPath: this.options.tsConfigPath,
-            oldProgram,
-        });
-        this.cachedProgram = program;
-        const runtimeFiles = collectRuntimeModules(filePaths, program);
         // Separate cached vs. stale files
         const toConvert = [];
-        for (const filePath of runtimeFiles) {
-            const outputOptions = {
-                tsDir: this.tsDir,
-                gdDir: this.gdDir,
-                projectRoot: this.options.projectRoot ?? this.options.rootDir,
-            };
-            const outputPath = gdOutputPath(filePath, outputOptions);
-            if (!outputPath) {
-                this.log(filePath, 'Runtime module is outside tsDir and has no package.json for staging', 'error');
-                continue;
-            }
+        for (const filePath of filePaths) {
+            const relPath = relative(this.tsDir, filePath);
+            const outputPath = resolve(this.gdDir, relPath.replace(/\.ts$/, '.gd'));
             if (this.cache.isTsToGdFresh(filePath, outputPath)) {
-                if (this.collectingInitialScan)
+                if (!this.initialScanDone)
                     this.initialSkipped++;
                 this.log(filePath, 'Unchanged (cached)', 'debug');
                 continue;
@@ -250,7 +212,7 @@ export class Watcher {
             if (this.cache.hasFreshCachedGd(filePath)) {
                 const promoted = this.cache.promoteCachedGd(filePath, outputPath);
                 if (promoted && this.cache.isTsToGdFresh(filePath, outputPath)) {
-                    if (this.collectingInitialScan)
+                    if (!this.initialScanDone)
                         this.initialSkipped++;
                     this.log(filePath, 'Promoted (cache-folder)', 'debug');
                     continue;
@@ -260,6 +222,16 @@ export class Watcher {
         }
         if (toConvert.length === 0)
             return;
+        // Create or reuse the ts.Program for all conversions in this batch.
+        // Pass oldProgram so TypeScript reuses SourceFiles for unchanged files.
+        const oldProgram = this.cachedProgram ?? undefined;
+        const program = createTsProgram({
+            rootDir: this.tsDir,
+            files: [...this.tsFiles],
+            tsConfigPath: this.options.tsConfigPath,
+            oldProgram,
+        });
+        this.cachedProgram = program;
         this.debugLog(`Converting ${toConvert.length} file(s) with ${oldProgram ? 'reused' : 'new'} program`);
         for (const { filePath, outputPath } of toConvert) {
             this.convertSingleFile(filePath, outputPath, program);
@@ -287,6 +259,8 @@ export class Watcher {
             tsDir: this.tsDir,
             gdDir: this.gdDir,
             projectRoot: this.options.projectRoot ?? this.options.rootDir,
+            lib: this.options.lib,
+            externalPackages: this.options.externalPackages,
             sourceMap: true,
             program,
         });
@@ -296,7 +270,7 @@ export class Watcher {
             this.log(d.file, `[${d.severity}] ${d.message} (${d.line}:${d.column})`, logSeverity);
         }
         if (result.diagnostics.some((d) => isConversionErrorSeverity(d.severity))) {
-            if (this.collectingInitialScan)
+            if (!this.initialScanDone)
                 this.initialErrors++;
             if (!this.options.emitOnError)
                 return;
@@ -323,7 +297,7 @@ export class Watcher {
             });
         }
         this.cache.save();
-        if (this.collectingInitialScan) {
+        if (!this.initialScanDone) {
             this.initialConverted++;
         }
         this.log(filePath, `Converted -> ${relative(this.options.rootDir, outputPath) || outputPath}`, 'info');

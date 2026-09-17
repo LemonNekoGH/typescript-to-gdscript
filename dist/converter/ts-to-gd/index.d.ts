@@ -1,5 +1,6 @@
 import ts from 'typescript';
 import type { TransformResult } from '../common/index.ts';
+import type { ResolvedExternalPackage } from '../../external-packages/index.ts';
 export interface ConvertOptions {
     /** Path to the TypeScript file */
     filePath: string;
@@ -23,6 +24,10 @@ export interface ConvertOptions {
      * to `rootDir`.
      */
     projectRoot?: string;
+    /** Emit imports within this project as relative GDScript paths. */
+    lib?: boolean;
+    /** Shared packages mounted below projectRoot/tstogd_modules. */
+    externalPackages?: ResolvedExternalPackage[];
     /** Path to tsconfig.json */
     tsConfigPath?: string;
     /** Whether to generate source maps */

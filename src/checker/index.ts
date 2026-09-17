@@ -1,18 +1,20 @@
-import { resolve, normalize } from 'path';
+import { resolve, relative, normalize } from 'path';
 import { readFileSync, existsSync } from 'fs';
 import type ts from 'typescript';
 import { createTsProgram } from '../parser/typescript/index.ts';
 import { convertTsToGd } from '../converter/ts-to-gd/index.ts';
-import { gdOutputPath } from '../converter/ts-to-gd/modules.ts';
 import { collectTsDiagnostics } from './ts-diagnostics.ts';
 import { runGodotProjectCheck } from './godot-project.ts';
 import type { TransformDiagnostic } from '../converter/common/index.ts';
 import type { ProjectCache } from '../cache/index.ts';
+import type { ResolvedExternalPackage } from '../external-packages/index.ts';
 
 export interface CheckOptions {
   tsDir: string;
   gdDir: string;
   projectRoot: string;
+  lib?: boolean;
+  externalPackages?: ResolvedExternalPackage[];
   tsFiles: string[];
   tsConfigPath?: string;
   cache: ProjectCache | null;
@@ -51,6 +53,7 @@ export async function collectProjectDiagnostics(
     onDebug,
   } = opts;
   const debug = (msg: string): void => onDebug?.(`[checker] ${msg}`);
+
   debug(`Starting (${tsFiles.length} file(s), noEmit=${noEmit})`);
 
   // Reuse the caller's program when provided (e.g. watcher's cachedProgram
@@ -80,19 +83,8 @@ export async function collectProjectDiagnostics(
   for (const tsFile of tsFiles) {
     if (tsFile.endsWith('.d.ts')) continue;
 
-    const outputOptions = { tsDir, gdDir, projectRoot };
-    const gdPath = gdOutputPath(tsFile, outputOptions);
-    if (!gdPath) {
-      converterDiagnostics.push({
-        message:
-          'Runtime module is outside tsDir and has no package.json for staging.',
-        severity: 'error',
-        file: tsFile,
-        line: 1,
-        column: 1,
-      });
-      continue;
-    }
+    const relPath = relative(tsDir, tsFile);
+    const gdPath = resolve(gdDir, relPath.replace(/\.ts$/, '.gd'));
     const resolvedGd = normalize(resolve(gdPath));
 
     // In normal (emit) mode: if cache is fresh, use cached source map + diagnostics
@@ -112,6 +104,8 @@ export async function collectProjectDiagnostics(
       tsDir,
       gdDir,
       projectRoot,
+      lib: opts.lib,
+      externalPackages: opts.externalPackages,
       tsConfigPath: opts.tsConfigPath,
       sourceMap: true,
       program,

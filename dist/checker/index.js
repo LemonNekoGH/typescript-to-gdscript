@@ -1,8 +1,7 @@
-import { resolve, normalize } from 'path';
+import { resolve, relative, normalize } from 'path';
 import { readFileSync, existsSync } from 'fs';
 import { createTsProgram } from "../parser/typescript/index.js";
 import { convertTsToGd } from "../converter/ts-to-gd/index.js";
-import { gdOutputPath } from "../converter/ts-to-gd/modules.js";
 import { collectTsDiagnostics } from "./ts-diagnostics.js";
 import { runGodotProjectCheck } from "./godot-project.js";
 export async function collectProjectDiagnostics(opts) {
@@ -32,18 +31,8 @@ export async function collectProjectDiagnostics(opts) {
     for (const tsFile of tsFiles) {
         if (tsFile.endsWith('.d.ts'))
             continue;
-        const outputOptions = { tsDir, gdDir, projectRoot };
-        const gdPath = gdOutputPath(tsFile, outputOptions);
-        if (!gdPath) {
-            converterDiagnostics.push({
-                message: 'Runtime module is outside tsDir and has no package.json for staging.',
-                severity: 'error',
-                file: tsFile,
-                line: 1,
-                column: 1,
-            });
-            continue;
-        }
+        const relPath = relative(tsDir, tsFile);
+        const gdPath = resolve(gdDir, relPath.replace(/\.ts$/, '.gd'));
         const resolvedGd = normalize(resolve(gdPath));
         // In normal (emit) mode: if cache is fresh, use cached source map + diagnostics
         if (!noEmit && cache?.isTsToGdFresh(tsFile, gdPath)) {
@@ -62,6 +51,8 @@ export async function collectProjectDiagnostics(opts) {
             tsDir,
             gdDir,
             projectRoot,
+            lib: opts.lib,
+            externalPackages: opts.externalPackages,
             tsConfigPath: opts.tsConfigPath,
             sourceMap: true,
             program,

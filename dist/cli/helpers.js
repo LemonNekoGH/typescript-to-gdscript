@@ -6,6 +6,7 @@ import { join, resolve } from 'path';
 import { shouldIgnore } from "../config/index.js";
 import { generateTypings, generateAddonTypings } from "../typings/scenes.js";
 import { ProjectCache } from "../cache/index.js";
+import { TSTOGD_MODULES_DIR } from "../external-packages/index.js";
 /**
  * CLI-scoped debug flag. Set once at CLI startup by the `preAction` hook in
  * `src/cli/index.ts` and read by `debugLog()` and `isDebugEnabled()`.
@@ -35,7 +36,8 @@ export function findTsFiles(dir, rootDir, ignore) {
         for (const entry of readdirSync(dir)) {
             if (entry.startsWith('.') ||
                 entry === 'node_modules' ||
-                entry === 'addons')
+                entry === 'addons' ||
+                entry === TSTOGD_MODULES_DIR)
                 continue;
             const fullPath = join(dir, entry);
             if (shouldIgnore(fullPath, rootDir, ignore))
@@ -60,7 +62,8 @@ export function findGdFiles(dir, rootDir, ignore) {
         for (const entry of readdirSync(dir)) {
             if (entry.startsWith('.') ||
                 entry === 'node_modules' ||
-                entry === 'addons')
+                entry === 'addons' ||
+                entry === TSTOGD_MODULES_DIR)
                 continue;
             const fullPath = join(dir, entry);
             if (shouldIgnore(fullPath, rootDir, ignore))
@@ -89,7 +92,9 @@ function findGdFilesRecursive(dir, rootDir, ignore) {
     const results = [];
     try {
         for (const entry of readdirSync(dir)) {
-            if (entry.startsWith('.') || entry === 'node_modules')
+            if (entry.startsWith('.') ||
+                entry === 'node_modules' ||
+                entry === TSTOGD_MODULES_DIR)
                 continue;
             const fullPath = join(dir, entry);
             if (shouldIgnore(fullPath, rootDir, ignore))

@@ -1,7 +1,14 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'fs';
+import {
+  mkdirSync,
+  rmSync,
+  existsSync,
+  writeFileSync,
+  readFileSync,
+  lstatSync,
+} from 'fs';
 import { join, resolve, basename } from 'path';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
@@ -136,86 +143,68 @@ describe('CLI: convert (TS → GD)', () => {
     expect(result.stdout).not.toContain('Written:');
   });
 
-  it('should compile a reachable TypeScript package into the Godot project', async () => {
+  it('links declared tstogd libraries before conversion', async () => {
     tmpDir = makeTmpDir();
-    const sourceRoot = join(tmpDir, 'typescript');
-    const projectRoot = join(tmpDir, 'godot');
-    const tsDir = join(sourceRoot, 'src');
-    const gdDir = join(projectRoot, 'scripts');
-    const packageDir = join(sourceRoot, 'node_modules/@scope/shared');
-    const input = join(tsDir, 'main.ts');
-    const tsConfig = join(sourceRoot, 'tsconfig.json');
-
-    mkdirSync(join(packageDir, 'src'), { recursive: true });
-    mkdirSync(tsDir, { recursive: true });
+    const sourceDir = join(tmpDir, 'src');
+    const outputDir = join(tmpDir, 'scripts');
+    const packageRoot = join(tmpDir, 'node_modules/@scope/shared');
+    mkdirSync(sourceDir, { recursive: true });
+    mkdirSync(join(packageRoot, 'src'), { recursive: true });
+    mkdirSync(join(packageRoot, 'scripts'), { recursive: true });
     writeFileSync(
-      join(packageDir, 'package.json'),
-      JSON.stringify({
-        name: '@scope/shared',
-        version: '1.2.3',
-        exports: './src/index.ts',
-      }),
+      join(tmpDir, 'package.json'),
+      JSON.stringify({ dependencies: { '@scope/shared': '1.0.0' } }),
     );
     writeFileSync(
-      join(packageDir, 'src/index.ts'),
-      [
-        "import { _Base } from './base';",
-        'export class _Shared extends _Base {}',
-        '',
-      ].join('\n'),
+      join(tmpDir, 'tstogd.json'),
+      JSON.stringify({ tsDir: 'src', gdDir: 'scripts' }),
     );
     writeFileSync(
-      join(packageDir, 'src/base.ts'),
-      'export class _Base extends Object {}\n',
-    );
-    writeFileSync(
-      input,
-      [
-        "import { _Shared as Shared } from '@scope/shared';",
-        'export class Main extends Shared {}',
-        '',
-      ].join('\n'),
-    );
-    writeFileSync(
-      tsConfig,
+      join(tmpDir, 'tsconfig.json'),
       JSON.stringify({
         compilerOptions: {
-          module: 'esnext',
-          moduleResolution: 'bundler',
+          target: 'es2022',
+          module: 'node16',
+          moduleResolution: 'node16',
           noEmit: true,
         },
-        include: ['src/main.ts'],
+        include: ['src/**/*.ts', 'globals.d.ts'],
       }),
     );
+    writeFileSync(join(tmpDir, 'globals.d.ts'), 'declare class Node {}\n');
+    writeFileSync(
+      join(sourceDir, 'main.ts'),
+      "import { _Foo } from '@scope/shared/src/foo';\nexport class Main extends Node { foo: _Foo | null = null; }\n",
+    );
+    writeFileSync(
+      join(packageRoot, 'package.json'),
+      JSON.stringify({ name: '@scope/shared', version: '1.0.0' }),
+    );
+    writeFileSync(
+      join(packageRoot, 'tstogd.json'),
+      JSON.stringify({ lib: true, tsDir: 'src', gdDir: 'scripts' }),
+    );
+    writeFileSync(
+      join(packageRoot, 'src/foo.ts'),
+      'export class _Foo extends Node {}\n',
+    );
+    writeFileSync(join(packageRoot, 'scripts/foo.gd'), 'extends Node\n');
 
-    await runCli([
+    const result = await runCliRaw([
       'convert',
-      input,
-      '--ts-dir',
-      tsDir,
-      '--gd-dir',
-      gdDir,
       '--root-dir',
-      sourceRoot,
-      '--project-root',
-      projectRoot,
+      tmpDir,
       '--tsconfig',
-      tsConfig,
+      join(tmpDir, 'tsconfig.json'),
       '--no-check',
     ]);
 
-    const packageOutput = join(
-      projectRoot,
-      '.tstogd_modules/@scope/shared/1.2.3/src/index.gd',
-    );
-    expect(existsSync(packageOutput)).toBe(true);
+    expect(result.exitCode, result.stderr).toBe(0);
     expect(
-      existsSync(
-        join(projectRoot, '.tstogd_modules/@scope/shared/1.2.3/src/base.gd'),
-      ),
+      lstatSync(join(tmpDir, 'tstogd_modules/@scope/shared')).isSymbolicLink(),
     ).toBe(true);
-    expect(readFileSync(join(gdDir, 'main.gd'), 'utf-8')).toContain(
-      'preload("res://.tstogd_modules/@scope/shared/1.2.3/src/index.gd")',
+    expect(readFileSync(join(outputDir, 'main.gd'), 'utf-8')).toContain(
+      'preload("res://tstogd_modules/@scope/shared/scripts/foo.gd")',
     );
   });
 });

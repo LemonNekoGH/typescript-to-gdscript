@@ -27,7 +27,6 @@ The output is clean, idiomatic `.gd` you can read and ship — TypeScript is the
 - **Scene and path typings** — `get_node()`, `get_parent()`, `get_child()`, `load()`, `preload()` and group queries typed from your project files
 - **`gd` namespace** — strongly-typed helpers for GDScript-only constructs (signals, decorators, match, operator overloading)
 - **Addons supported** — typings for third-party GDScript addons, consumable from TypeScript
-- **TypeScript package sources** — reachable workspace and npm package sources compile into the Godot project without copying their `.ts` files
 - **GD → TS migration** — one-shot bulk converter for existing projects
 
 ### Showcase
@@ -98,6 +97,14 @@ For day-to-day work, run **`tstogd watch`**: it auto-converts on save, watches y
 ### Manual setup (without `tstogd init`)
 
 Setup `tstogd.json` and `tsconfig.json` in your project - for full template and field reference see [docs/configuration.md](docs/configuration.md).
+
+### Shared packages
+
+Set `lib: true` when a package builds reusable Godot content. tstogd then emits relative paths for imports inside that package.
+
+Consumers add the package as a normal npm dependency. `convert` and `watch` link it into `tstogd_modules`, where Godot scans the complete package.
+
+Use `externalPackages` for plain folders or custom mount names. See [Shared packages](docs/configuration.md#shared-packages) for the package layout and UID requirements.
 
 ### Migration from existing GDScript
 
@@ -399,7 +406,6 @@ Destructuring, `for...in`, `??`, `?.`, spread in calls, top-level `let`/`const`,
 ## Documentation
 
 - [Configuration](docs/configuration.md) — full `tstogd.json` and `tsconfig.json` reference, advanced anonymous-class details
-- [Library API](docs/library-api.md) — embed single-file or runtime-module conversion in another TypeScript tool
 - [Transform rules](docs/transform-rules.md) — primitive types, operators, comments, async / Promise, Callables, constants & statics, enums, inner classes, decorators / `@exports`, abstract classes, signals, GD-side shorthand literals (`$`, `%`, `&`, `^`), `super`, member ordering, logical operators, anonymous classes, imports, **restrictions / unsupported TS features**
 - [CLI reference](docs/cli.md) — every command and every flag
 - [`gd` namespace](docs/gd-helpers.md) — full helper API and rules

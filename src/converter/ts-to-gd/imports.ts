@@ -32,16 +32,14 @@
  */
 
 import ts from 'typescript';
+import { realpathSync } from 'fs';
+import { dirname, isAbsolute, relative, resolve } from 'path';
+import { TSTOGD_MODULES_DIR } from '../../external-packages/index.ts';
 import {
   isAnonymousClassName,
   type TransformContext,
   type TransformDiagnostic,
 } from '../common/index.ts';
-import {
-  gdResourcePath,
-  hasRuntimeImport,
-  resolveImportSource,
-} from './modules.ts';
 
 /**
  * One entry per LOCAL name in the importing file's scope. Keyed by the
@@ -124,55 +122,53 @@ export function processImports(
       continue;
     }
 
+    const pathImports = clause.namedBindings.elements.filter((element) => {
+      if (element.isTypeOnly) return false;
+      const importedName = element.propertyName?.text ?? element.name.text;
+      return (
+        isAnonymousClassName(importedName) || element.propertyName !== undefined
+      );
+    });
+    if (pathImports.length === 0) continue;
+
     // Resolve the import specifier to an absolute `.ts` path.
     const specifier = stmt.moduleSpecifier;
     if (!ts.isStringLiteral(specifier)) continue;
-    const targetTsPath = resolveImportSource(
+    const targetTsPath = resolveImportToTsPath(
       specifier.text,
       sourceFile,
       ctx.program,
     );
     if (!targetTsPath) {
-      if (hasRuntimeImport(stmt)) {
-        errors.push(
-          diagOf(
-            ctx,
-            specifier,
-            `Runtime import ${JSON.stringify(specifier.text)} must resolve to a TypeScript source file.`,
-          ),
-        );
-      }
-      continue;
-    }
-
-    const resPath = gdResourcePath(targetTsPath, ctx);
-    if (!resPath) {
       errors.push(
         diagOf(
           ctx,
           specifier,
-          `Runtime import ${JSON.stringify(specifier.text)} is outside tsDir and has no package.json for staging.`,
+          `Runtime import ${JSON.stringify(specifier.text)} must resolve to a TypeScript source file.`,
         ),
       );
       continue;
     }
 
-    for (const element of clause.namedBindings.elements) {
-      // Per-binding `import { type Foo, Bar }` — skip the type-only one.
-      if (element.isTypeOnly) continue;
+    // Compute the corresponding `.gd` path and `res://` form.
+    const resPath = computeImportPath(targetTsPath, ctx);
+    if (!resPath) {
+      errors.push(
+        diagOf(
+          ctx,
+          specifier,
+          `Runtime import ${JSON.stringify(specifier.text)} is outside tsDir and is not a linked tstogd library.`,
+        ),
+      );
+      continue;
+    }
 
+    for (const element of pathImports) {
       // `localName` is what the rest of the TS source uses; `importedName`
       // is what the target module exports (== localName when no `as`).
       const localName = element.name.text;
       const importedName = element.propertyName?.text ?? localName;
       const isAnonymous = isAnonymousClassName(importedName);
-      const renamed = element.propertyName !== undefined;
-
-      if (!isAnonymous && !renamed) {
-        // Regular global GD class — no `const` needed; the user's TS
-        // refers to it by the same name GD knows it as.
-        continue;
-      }
 
       consts.push(`const ${localName} = preload("${resPath}")`);
       importMap.set(localName, {
@@ -185,6 +181,93 @@ export function processImports(
   }
 
   return { consts, importMap, errors };
+}
+
+// ─── Path helpers ───────────────────────────────────────────────
+
+/**
+ * Resolve an import with the active TypeScript program and compiler options.
+ */
+function resolveImportToTsPath(
+  specifier: string,
+  sourceFile: ts.SourceFile,
+  program: ts.Program,
+): string | undefined {
+  const resolved = ts.resolveModuleName(
+    specifier,
+    sourceFile.fileName,
+    program.getCompilerOptions(),
+    ts.sys,
+  ).resolvedModule;
+  if (!resolved) return undefined;
+  const path = resolve(resolved.resolvedFileName);
+  if (!path.endsWith('.ts') || path.endsWith('.d.ts')) return undefined;
+  return path;
+}
+
+/**
+ * Convert an absolute `.ts` path into a `res://`-prefixed forward-slash
+ * path pointing at the corresponding `.gd` file. Path mirrors the
+ * relative tree from {@link TransformContext.tsDir} to
+ * {@link TransformContext.gdDir} and is then taken relative to
+ * {@link TransformContext.projectRoot}.
+ *
+ * When `tsDir`/`gdDir` are the same directory, this collapses to a
+ * trivial `.ts` → `.gd` extension swap.
+ */
+function computeImportPath(
+  targetTsPath: string,
+  ctx: TransformContext,
+): string | undefined {
+  const projectRelative = relative(ctx.tsDir, targetTsPath);
+  if (!isOutside(projectRelative)) {
+    const targetGdPath = resolve(ctx.gdDir, toGdPath(projectRelative));
+    if (ctx.lib) {
+      const sourceRelative = relative(ctx.tsDir, ctx.filePath);
+      const sourceGdPath = resolve(ctx.gdDir, toGdPath(sourceRelative));
+      return toRelativeGdPath(dirname(sourceGdPath), targetGdPath);
+    }
+    return toResPath(ctx.projectRoot, targetGdPath);
+  }
+
+  const realTargetTsPath = realpathSync(targetTsPath);
+  for (const pkg of ctx.externalPackages) {
+    const packageRelative = relative(pkg.tsDir, realTargetTsPath);
+    if (isOutside(packageRelative)) continue;
+
+    const targetGdPath = resolve(pkg.gdDir, toGdPath(packageRelative));
+    const pathInPackage = relative(pkg.rootDir, targetGdPath);
+    if (isOutside(pathInPackage)) return undefined;
+    return `res://${[TSTOGD_MODULES_DIR, pkg.mountName, pathInPackage]
+      .join('/')
+      .replace(/\\/g, '/')}`;
+  }
+
+  return undefined;
+}
+
+function toGdPath(path: string): string {
+  return path.replace(/\.ts$/, '.gd');
+}
+
+function toResPath(projectRoot: string, gdPath: string): string | undefined {
+  const pathFromProject = relative(projectRoot, gdPath);
+  if (isOutside(pathFromProject)) return undefined;
+  return `res://${pathFromProject.replace(/\\/g, '/')}`;
+}
+
+function toRelativeGdPath(fromDir: string, gdPath: string): string {
+  const path = relative(fromDir, gdPath).replace(/\\/g, '/');
+  return path.startsWith('.') ? path : `./${path}`;
+}
+
+function isOutside(pathFromRoot: string): boolean {
+  return (
+    isAbsolute(pathFromRoot) ||
+    pathFromRoot === '..' ||
+    pathFromRoot.startsWith('../') ||
+    pathFromRoot.startsWith('..\\')
+  );
 }
 
 // ─── Diagnostic helper ──────────────────────────────────────────

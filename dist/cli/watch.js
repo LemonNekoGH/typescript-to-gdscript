@@ -2,6 +2,7 @@ import { resolve } from 'path';
 import { Watcher } from "../watcher/index.js";
 import { resolveConfig, resolveGodotPath } from "../config/index.js";
 import { isDebugEnabled } from "./helpers.js";
+import { linkExternalPackages } from "../external-packages/index.js";
 export function registerWatchCommand(program) {
     program
         .command('watch')
@@ -12,7 +13,7 @@ export function registerWatchCommand(program) {
         .option('--tsconfig <path>', 'Path to tsconfig.json')
         .option('--typings-dir <path>', 'Directory for all generated typings (relative to rootDir)')
         .option('--godot-path <path>', 'Path to Godot executable (enables GD validation after conversion)')
-        .option('--project-root <dir>', 'Godot project root for external module staging and validation')
+        .option('--project-root <dir>', 'Godot project root for validation')
         .option('--emit-on-error', 'Emit output files even when conversion errors occur', false)
         .option('--no-check', 'Disable the debounced full-project diagnostic check')
         .action((opts) => {
@@ -21,7 +22,6 @@ export function registerWatchCommand(program) {
                 rootDir: opts.rootDir,
                 tsDir: opts.tsDir,
                 gdDir: opts.gdDir,
-                projectRoot: opts.projectRoot,
                 typingsDir: opts.typingsDir,
                 tsconfig: opts.tsconfig,
                 godotPath: opts.godotPath,
@@ -30,6 +30,14 @@ export function registerWatchCommand(program) {
         const godotPath = cfg.godotPath
             ? resolveGodotPath({ godotPath: cfg.godotPath })
             : undefined;
+        const projectRoot = opts.projectRoot
+            ? resolve(opts.projectRoot)
+            : cfg.rootDir;
+        const externalPackages = linkExternalPackages({
+            rootDir: cfg.rootDir,
+            projectRoot,
+            externalPackages: cfg.externalPackages,
+        });
         const watcher = new Watcher({
             rootDir: cfg.rootDir,
             tsDir: cfg.tsDir,
@@ -43,7 +51,9 @@ export function registerWatchCommand(program) {
             ignore: cfg.ignore,
             projectFile: cfg.projectFile,
             godotPath,
-            projectRoot: cfg.projectRoot,
+            projectRoot,
+            lib: cfg.lib,
+            externalPackages,
             emitOnError: opts.emitOnError,
             noCheck: opts.check === false,
             debug: isDebugEnabled(),
