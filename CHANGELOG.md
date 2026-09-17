@@ -1,3 +1,16 @@
+## [0.1.5](https://github.com/nnn3d/typescript-to-gdscript/compare/v0.1.4...v0.1.5) (2026-09-17)
+
+### Features
+
+* **cache:** reset the manifest in place instead of deleting the cache dir ([ecccf51](https://github.com/nnn3d/typescript-to-gdscript/commit/ecccf515628ecc00d2e84692c46b6b172bcdc068))
+
+### Bug Fixes
+
+* add gd.typeof and keep dotted global enum names ([9a42183](https://github.com/nnn3d/typescript-to-gdscript/commit/9a421830ba0e86867c5181ef997af866008fbf1a))
+* **cli:** report the package.json version instead of a hardcoded one ([28b335b](https://github.com/nnn3d/typescript-to-gdscript/commit/28b335be1ae84ae0d06d66fd3d75d456ba2a6fb6))
+* **ts-to-gd:** call value-type constructors by name ([12a9a6d](https://github.com/nnn3d/typescript-to-gdscript/commit/12a9a6d8391918e4169499daf11a81e0947d0775))
+* **ts-to-gd:** emit only getset types the checker can prove ([ecf821d](https://github.com/nnn3d/typescript-to-gdscript/commit/ecf821d1926a800e755df5f1e8926cfa76cde61d))
+* **ts-to-gd:** keep annotations for godot types spelled as ts aliases ([15f3a75](https://github.com/nnn3d/typescript-to-gdscript/commit/15f3a75b035a19f5b40448452dd9c236551ed6ba))
 ## [0.1.4](https://github.com/nnn3d/typescript-to-gdscript/compare/v0.1.3...v0.1.4) (2026-09-16)
 
 ### Features
