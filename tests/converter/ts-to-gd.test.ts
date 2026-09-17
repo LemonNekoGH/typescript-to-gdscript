@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { convertTsToGd } from '../../src/converter/ts-to-gd/index.js';
+import { createTsProgram } from '../../src/parser/typescript/index.js';
 import { readFileSync, readdirSync } from 'fs';
 import { join, basename } from 'path';
 import { fileURLToPath } from 'url';
@@ -8,6 +9,38 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const FIXTURES_DIR = join(__dirname, '..', 'fixtures', 'ts-to-gd');
+
+/**
+ * One program over every fixture AND the real Godot typings — the same
+ * shape the CLI builds for a project, and built once because parsing
+ * the typings per fixture would dominate the run.
+ *
+ * It has to be the typings-aware program. A fixture converted in
+ * isolation resolves no engine name at all, so every checker-driven
+ * branch takes its "unresolved, leave it alone" side and the branch a
+ * real project runs goes untested — that is how `Vector2(x, y)` could
+ * ship as `Vector2.call(x, y)` with the whole suite green.
+ */
+const program = createTsProgram({
+  rootDir: FIXTURES_DIR,
+  files: [], // ignored when tsConfigPath is set; the config's `include` wins
+  tsConfigPath: join(FIXTURES_DIR, 'tsconfig.json'),
+});
+
+// `include` matching nothing is not an error, so a moved `typings/` or a
+// broken relative path would silently put the suite back in the
+// half-tested state this harness exists to end — with every fixture
+// still green. Fail loudly instead.
+if (
+  !program.getSourceFiles().some((f) => f.fileName.endsWith('/Vector2.d.ts'))
+) {
+  throw new Error(
+    'Godot typings did not load into the fixture program — check the ' +
+      '`include` path in tests/fixtures/ts-to-gd/tsconfig.json. Without ' +
+      'them every engine name resolves to nothing and the fixtures only ' +
+      'test half of each checker-driven branch.',
+  );
+}
 
 /**
  * Normalize generated GDScript for comparison:
@@ -53,6 +86,7 @@ describe('TS to GD: Fixture-based tests', () => {
       const result = convertTsToGd({
         filePath: tsFilePath,
         rootDir: FIXTURES_DIR,
+        program,
       });
 
       // A fixture converts cleanly unless it exists precisely to show

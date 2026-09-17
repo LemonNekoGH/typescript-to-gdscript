@@ -28,7 +28,7 @@ var e: int:
 	set(value):
 		e = value
 
-var f: int = self.e:
+var f: float = self.e:
 	get:
 		return f
 
@@ -47,6 +47,26 @@ var i: int:
 		return i
 	set(value):
 		pass
+
+var points: Array[int] = []
+
+var j = self.points:
+	get:
+		return j
+
+var names: Array[String] = []
+
+var k = self.names:
+	get:
+		return k
+
+var tint = {
+	"r": 1.0,
+}
+
+var l = self.tint:
+	get:
+		return l
 
 func get_c() -> int:
 	return 10

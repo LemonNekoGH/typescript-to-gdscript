@@ -1,3 +1,8 @@
+// `Color` here is the USER's, not Godot's. Both the written
+// annotation and the `value:`-inferred one must drop it rather than
+// claim Godot's Color for a Dictionary.
+type Color = { r: float };
+
 export class GetsetTest extends Node {
   get a(): int {
     return this.a;
@@ -66,6 +71,36 @@ export class GetsetTest extends Node {
     },
     set: (value) => {
     },
+  });
+
+  points: int[] = [];
+
+  j: any = gd.getset({
+    value: this.points,
+    get: () => {
+      return this.j;
+    },
+    set: null,
+  });
+
+  names: string[] = [];
+
+  k: any = gd.getset({
+    value: this.names,
+    get: () => {
+      return this.k;
+    },
+    set: null,
+  });
+
+  tint: Color = { r: 1.0 };
+
+  l: any = gd.getset({
+    value: this.tint,
+    get: () => {
+      return this.l;
+    },
+    set: null,
   });
 
   get_c(): int {
