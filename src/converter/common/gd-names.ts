@@ -1,4 +1,5 @@
 import ts from 'typescript';
+import type { GodotClassRegistry } from '../../typings/godot-registry.ts';
 
 /**
  * True when nothing in the converted program declares the binding — it
@@ -17,5 +18,29 @@ export function isAmbient(d: ts.Declaration): boolean {
   return (
     d.getSourceFile().isDeclarationFile ||
     (ts.getCombinedModifierFlags(d) & ts.ModifierFlags.Ambient) !== 0
+  );
+}
+
+/**
+ * True when the user's own code declares this name, so Godot's meaning
+ * for it does not apply. A name that resolves nowhere is not the
+ * user's — it just means the typings are not loaded.
+ */
+export function isUserDeclared(
+  declarations: readonly ts.Declaration[],
+): boolean {
+  return declarations.length > 0 && !declarations.some(isAmbient);
+}
+
+/** True when the registry knows this name as a GDScript type. */
+export function isGdTypeName(
+  name: string,
+  registry?: GodotClassRegistry,
+): boolean {
+  return (
+    !!registry &&
+    (registry.hasClass(name) ||
+      registry.isConstructor(name) ||
+      registry.isGlobalEnum(name))
   );
 }

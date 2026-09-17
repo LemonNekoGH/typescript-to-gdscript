@@ -1,6 +1,7 @@
 import ts from 'typescript';
 
 import type { GodotClassRegistry } from '../../typings/godot-registry.ts';
+import { isGdTypeName, isUserDeclared } from './gd-names.ts';
 
 /**
  * Pre-derived lookup sets for `in`-operator diagnostics and variant/class type
@@ -407,6 +408,14 @@ function classifyTypeReferenceName(
   }
   const declarations = symbol?.getDeclarations() ?? [];
 
+  // Godot built-ins are recognised by name, BEFORE the alias rule below:
+  // the dialect spells several of them as aliases (`type bool = boolean`,
+  // `type Callable = Function`) that rule would otherwise drop. Skipped
+  // when the name is the user's own, so their `type Color` still drops.
+  if (!isUserDeclared(declarations) && isGdTypeName(name, registry)) {
+    return name;
+  }
+
   // Type aliases have no GDScript equivalent → omit.
   if (declarations.some(ts.isTypeAliasDeclaration)) return null;
 
@@ -415,16 +424,6 @@ function classifyTypeReferenceName(
     declarations.some(
       (d) => ts.isClassDeclaration(d) || ts.isEnumDeclaration(d),
     )
-  ) {
-    return name;
-  }
-
-  // Godot built-in types are recognised by name (works without typings).
-  if (
-    registry &&
-    (registry.hasClass(name) ||
-      registry.isConstructor(name) ||
-      registry.isGlobalEnum(name))
   ) {
     return name;
   }
