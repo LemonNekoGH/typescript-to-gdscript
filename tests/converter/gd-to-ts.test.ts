@@ -573,18 +573,12 @@ describe('GD → TS → GD round trip: `match`', () => {
 
       // The return leg has to be clean too: an error here means the
       // TypeScript this converter emits is not something the other
-      // converter accepts. One such gap predates the `match` work and
-      // is unrelated to branch structure — `match typeof(x):` comes
-      // back as `typeof(this.x)`, which TS parses as the unary
-      // `typeof` operator (a `TypeOfExpression`) rather than a call to
-      // Godot's global, and TS→GD has no case for it. Pinned by
-      // message so the day it is fixed this fails and gets deleted,
-      // and so any OTHER error still fails today.
+      // converter accepts.
       expect(
         back.diagnostics
           .filter((d) => d.severity === 'error')
           .map((d) => d.message),
-      ).toEqual(['Unsupported expression: TypeOfExpression']);
+      ).toEqual([]);
 
       // Five branches in, five branches out. Before the `{}` emission
       // was keyed on statements, branches 1–3 came back as `1, 2, 3, 4:`
@@ -738,5 +732,80 @@ describe('GD to TS: emitted TypeScript parses', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('GD to TS: globals TypeScript cannot spell', () => {
+  function convert(source: string) {
+    return convertGdToTs({
+      source,
+      filePath: join(FIXTURES_DIR, 'unspellable-global.gd'),
+      registry,
+    });
+  }
+
+  it('routes a call through the `gd` namespace', () => {
+    const result = convert(
+      ['extends Node', '', 'func f(v):', '    return typeof(v)', ''].join('\n'),
+    );
+    expect(result.code).toContain('gd.typeof(v)');
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual(
+      [],
+    );
+  });
+
+  it('lets a local of the same name shadow the global', () => {
+    const result = convert(
+      [
+        'extends Node',
+        '',
+        'func f():',
+        '    var typeof = func(x): return x',
+        '    return typeof.call(1)',
+        '',
+      ].join('\n'),
+    );
+    // A local binding is escaped, not rewritten to `gd.` — it is the
+    // user's variable, not Godot's global.
+    expect(result.code).toContain('typeof_');
+    expect(result.code).not.toContain('gd.typeof');
+  });
+
+  it('lets a class member of the same name shadow the global', () => {
+    const result = convert(
+      [
+        'extends Node',
+        '',
+        'func typeof(v):',
+        '    return 1',
+        '',
+        'func g(v):',
+        '    return typeof(v)',
+        '',
+      ].join('\n'),
+    );
+    expect(result.code).toContain('this.typeof(v)');
+    expect(result.code).not.toContain('gd.typeof');
+  });
+
+  it('reports the global used as a value instead of emitting a broken name', () => {
+    // GDScript accepts `typeof` as a Callable value, but TypeScript has
+    // no name for it: the bare word is a syntax error and `gd.typeof`
+    // converts back to a property read, not the callable. Neither is
+    // emittable, so the construct is reported.
+    const result = convert(
+      [
+        'extends Node',
+        '',
+        'func f():',
+        '    var c: Callable = typeof',
+        '    return c.call(1)',
+        '',
+      ].join('\n'),
+    );
+    const errors = result.diagnostics.filter((d) => d.severity === 'error');
+    expect(errors.map((d) => d.message).join('\n')).toContain(
+      'used as a value here',
+    );
   });
 });

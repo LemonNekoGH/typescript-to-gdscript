@@ -194,6 +194,17 @@ declare const gd: {
   is(value: unknown, type: typeof String): value is string;
 
   /**
+   * GDScript `typeof()`. Transforms to `typeof(value)` in GDScript.
+   *
+   * Lives here because `typeof` is a TypeScript operator, so the global
+   * function cannot be declared under its own name.
+   *
+   * @example
+   * if (gd.typeof(value) === Variant.Type.TYPE_INT) { print("int"); }
+   */
+  readonly typeof: (value: unknown) => Variant.Type;
+
+  /**
    * Emit raw GDScript code. The string is inserted as-is into the output.
    * Single-line strings are emitted at the current indentation level.
    * Multiline strings (starting with \n) have their common indentation stripped

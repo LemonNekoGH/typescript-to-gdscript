@@ -555,11 +555,6 @@ declare function type_convert(variant: unknown, type_: int): unknown;
  */
 declare function type_string(type_: int): string;
 /**
- * Returns the internal type of the given `variable`, using the {@link Variant.Type} values.
- * See also {@link type_string}.
- */
-declare function typeof_(variable: unknown): int;
-/**
  * Encodes a {@link Variant} value to a byte array, without encoding objects. Deserialization can be done with {@link bytes_to_var}.
  * **Note:** If you need object serialization, see {@link var_to_bytes_with_objects}.
  * **Note:** Encoding {@link Callable} is not supported and will result in an empty value, regardless of the data.
@@ -1785,142 +1780,143 @@ declare const enum MethodFlags {
   METHOD_FLAGS_DEFAULT = 1,
 }
 
-declare const enum Variant_Type {
-  /** Variable is `null`. */
-  TYPE_NIL = 0,
-  /** Variable is of type [bool]. */
-  TYPE_BOOL = 1,
-  /** Variable is of type [int]. */
-  TYPE_INT = 2,
-  /** Variable is of type [float]. */
-  TYPE_FLOAT = 3,
-  /** Variable is of type {@link String}. */
-  TYPE_STRING = 4,
-  /** Variable is of type {@link Vector2}. */
-  TYPE_VECTOR2 = 5,
-  /** Variable is of type {@link Vector2i}. */
-  TYPE_VECTOR2I = 6,
-  /** Variable is of type {@link Rect2}. */
-  TYPE_RECT2 = 7,
-  /** Variable is of type {@link Rect2i}. */
-  TYPE_RECT2I = 8,
-  /** Variable is of type {@link Vector3}. */
-  TYPE_VECTOR3 = 9,
-  /** Variable is of type {@link Vector3i}. */
-  TYPE_VECTOR3I = 10,
-  /** Variable is of type {@link Transform2D}. */
-  TYPE_TRANSFORM2D = 11,
-  /** Variable is of type {@link Vector4}. */
-  TYPE_VECTOR4 = 12,
-  /** Variable is of type {@link Vector4i}. */
-  TYPE_VECTOR4I = 13,
-  /** Variable is of type {@link Plane}. */
-  TYPE_PLANE = 14,
-  /** Variable is of type {@link Quaternion}. */
-  TYPE_QUATERNION = 15,
-  /** Variable is of type {@link AABB}. */
-  TYPE_AABB = 16,
-  /** Variable is of type {@link Basis}. */
-  TYPE_BASIS = 17,
-  /** Variable is of type {@link Transform3D}. */
-  TYPE_TRANSFORM3D = 18,
-  /** Variable is of type {@link Projection}. */
-  TYPE_PROJECTION = 19,
-  /** Variable is of type {@link Color}. */
-  TYPE_COLOR = 20,
-  /** Variable is of type {@link StringName}. */
-  TYPE_STRING_NAME = 21,
-  /** Variable is of type {@link NodePath}. */
-  TYPE_NODE_PATH = 22,
-  /** Variable is of type {@link RID}. */
-  TYPE_RID = 23,
-  /** Variable is of type {@link Object}. */
-  TYPE_OBJECT = 24,
-  /** Variable is of type {@link Callable}. */
-  TYPE_CALLABLE = 25,
-  /** Variable is of type {@link Signal}. */
-  TYPE_SIGNAL = 26,
-  /** Variable is of type {@link Dictionary}. */
-  TYPE_DICTIONARY = 27,
-  /** Variable is of type {@link Array}. */
-  TYPE_ARRAY = 28,
-  /** Variable is of type {@link PackedByteArray}. */
-  TYPE_PACKED_BYTE_ARRAY = 29,
-  /** Variable is of type {@link PackedInt32Array}. */
-  TYPE_PACKED_INT32_ARRAY = 30,
-  /** Variable is of type {@link PackedInt64Array}. */
-  TYPE_PACKED_INT64_ARRAY = 31,
-  /** Variable is of type {@link PackedFloat32Array}. */
-  TYPE_PACKED_FLOAT32_ARRAY = 32,
-  /** Variable is of type {@link PackedFloat64Array}. */
-  TYPE_PACKED_FLOAT64_ARRAY = 33,
-  /** Variable is of type {@link PackedStringArray}. */
-  TYPE_PACKED_STRING_ARRAY = 34,
-  /** Variable is of type {@link PackedVector2Array}. */
-  TYPE_PACKED_VECTOR2_ARRAY = 35,
-  /** Variable is of type {@link PackedVector3Array}. */
-  TYPE_PACKED_VECTOR3_ARRAY = 36,
-  /** Variable is of type {@link PackedColorArray}. */
-  TYPE_PACKED_COLOR_ARRAY = 37,
-  /** Variable is of type {@link PackedVector4Array}. */
-  TYPE_PACKED_VECTOR4_ARRAY = 38,
-  /** Represents the size of the {@link Variant.Type} enum. */
-  TYPE_MAX = 39,
-}
-
-declare const enum Variant_Operator {
-  /** Equality operator (`==`). */
-  OP_EQUAL = 0,
-  /** Inequality operator (`!=`). */
-  OP_NOT_EQUAL = 1,
-  /** Less than operator (`<`). */
-  OP_LESS = 2,
-  /** Less than or equal operator (`<=`). */
-  OP_LESS_EQUAL = 3,
-  /** Greater than operator (`>`). */
-  OP_GREATER = 4,
-  /** Greater than or equal operator (`>=`). */
-  OP_GREATER_EQUAL = 5,
-  /** Addition operator (`+`). */
-  OP_ADD = 6,
-  /** Subtraction operator (`-`). */
-  OP_SUBTRACT = 7,
-  /** Multiplication operator (`*`). */
-  OP_MULTIPLY = 8,
-  /** Division operator (`/`). */
-  OP_DIVIDE = 9,
-  /** Unary negation operator (`-`). */
-  OP_NEGATE = 10,
-  /** Unary plus operator (`+`). */
-  OP_POSITIVE = 11,
-  /** Remainder/modulo operator (`%`). */
-  OP_MODULE = 12,
-  /** Power operator (`**`). */
-  OP_POWER = 13,
-  /** Left shift operator (`<<`). */
-  OP_SHIFT_LEFT = 14,
-  /** Right shift operator (`>>`). */
-  OP_SHIFT_RIGHT = 15,
-  /** Bitwise AND operator (`&`). */
-  OP_BIT_AND = 16,
-  /** Bitwise OR operator (`|`). */
-  OP_BIT_OR = 17,
-  /** Bitwise XOR operator (`^`). */
-  OP_BIT_XOR = 18,
-  /** Bitwise NOT operator (`~`). */
-  OP_BIT_NEGATE = 19,
-  /** Logical AND operator (`and` or `&&`). */
-  OP_AND = 20,
-  /** Logical OR operator (`or` or `||`). */
-  OP_OR = 21,
-  /** Logical XOR operator (not implemented in GDScript). */
-  OP_XOR = 22,
-  /** Logical NOT operator (`not` or `!`). */
-  OP_NOT = 23,
-  /** Logical IN operator (`in`). */
-  OP_IN = 24,
-  /** Represents the size of the {@link Variant.Operator} enum. */
-  OP_MAX = 25,
+declare namespace Variant {
+  const enum Type {
+    /** Variable is `null`. */
+    TYPE_NIL = 0,
+    /** Variable is of type [bool]. */
+    TYPE_BOOL = 1,
+    /** Variable is of type [int]. */
+    TYPE_INT = 2,
+    /** Variable is of type [float]. */
+    TYPE_FLOAT = 3,
+    /** Variable is of type {@link String}. */
+    TYPE_STRING = 4,
+    /** Variable is of type {@link Vector2}. */
+    TYPE_VECTOR2 = 5,
+    /** Variable is of type {@link Vector2i}. */
+    TYPE_VECTOR2I = 6,
+    /** Variable is of type {@link Rect2}. */
+    TYPE_RECT2 = 7,
+    /** Variable is of type {@link Rect2i}. */
+    TYPE_RECT2I = 8,
+    /** Variable is of type {@link Vector3}. */
+    TYPE_VECTOR3 = 9,
+    /** Variable is of type {@link Vector3i}. */
+    TYPE_VECTOR3I = 10,
+    /** Variable is of type {@link Transform2D}. */
+    TYPE_TRANSFORM2D = 11,
+    /** Variable is of type {@link Vector4}. */
+    TYPE_VECTOR4 = 12,
+    /** Variable is of type {@link Vector4i}. */
+    TYPE_VECTOR4I = 13,
+    /** Variable is of type {@link Plane}. */
+    TYPE_PLANE = 14,
+    /** Variable is of type {@link Quaternion}. */
+    TYPE_QUATERNION = 15,
+    /** Variable is of type {@link AABB}. */
+    TYPE_AABB = 16,
+    /** Variable is of type {@link Basis}. */
+    TYPE_BASIS = 17,
+    /** Variable is of type {@link Transform3D}. */
+    TYPE_TRANSFORM3D = 18,
+    /** Variable is of type {@link Projection}. */
+    TYPE_PROJECTION = 19,
+    /** Variable is of type {@link Color}. */
+    TYPE_COLOR = 20,
+    /** Variable is of type {@link StringName}. */
+    TYPE_STRING_NAME = 21,
+    /** Variable is of type {@link NodePath}. */
+    TYPE_NODE_PATH = 22,
+    /** Variable is of type {@link RID}. */
+    TYPE_RID = 23,
+    /** Variable is of type {@link Object}. */
+    TYPE_OBJECT = 24,
+    /** Variable is of type {@link Callable}. */
+    TYPE_CALLABLE = 25,
+    /** Variable is of type {@link Signal}. */
+    TYPE_SIGNAL = 26,
+    /** Variable is of type {@link Dictionary}. */
+    TYPE_DICTIONARY = 27,
+    /** Variable is of type {@link Array}. */
+    TYPE_ARRAY = 28,
+    /** Variable is of type {@link PackedByteArray}. */
+    TYPE_PACKED_BYTE_ARRAY = 29,
+    /** Variable is of type {@link PackedInt32Array}. */
+    TYPE_PACKED_INT32_ARRAY = 30,
+    /** Variable is of type {@link PackedInt64Array}. */
+    TYPE_PACKED_INT64_ARRAY = 31,
+    /** Variable is of type {@link PackedFloat32Array}. */
+    TYPE_PACKED_FLOAT32_ARRAY = 32,
+    /** Variable is of type {@link PackedFloat64Array}. */
+    TYPE_PACKED_FLOAT64_ARRAY = 33,
+    /** Variable is of type {@link PackedStringArray}. */
+    TYPE_PACKED_STRING_ARRAY = 34,
+    /** Variable is of type {@link PackedVector2Array}. */
+    TYPE_PACKED_VECTOR2_ARRAY = 35,
+    /** Variable is of type {@link PackedVector3Array}. */
+    TYPE_PACKED_VECTOR3_ARRAY = 36,
+    /** Variable is of type {@link PackedColorArray}. */
+    TYPE_PACKED_COLOR_ARRAY = 37,
+    /** Variable is of type {@link PackedVector4Array}. */
+    TYPE_PACKED_VECTOR4_ARRAY = 38,
+    /** Represents the size of the {@link Variant.Type} enum. */
+    TYPE_MAX = 39,
+  }
+  const enum Operator {
+    /** Equality operator (`==`). */
+    OP_EQUAL = 0,
+    /** Inequality operator (`!=`). */
+    OP_NOT_EQUAL = 1,
+    /** Less than operator (`<`). */
+    OP_LESS = 2,
+    /** Less than or equal operator (`<=`). */
+    OP_LESS_EQUAL = 3,
+    /** Greater than operator (`>`). */
+    OP_GREATER = 4,
+    /** Greater than or equal operator (`>=`). */
+    OP_GREATER_EQUAL = 5,
+    /** Addition operator (`+`). */
+    OP_ADD = 6,
+    /** Subtraction operator (`-`). */
+    OP_SUBTRACT = 7,
+    /** Multiplication operator (`*`). */
+    OP_MULTIPLY = 8,
+    /** Division operator (`/`). */
+    OP_DIVIDE = 9,
+    /** Unary negation operator (`-`). */
+    OP_NEGATE = 10,
+    /** Unary plus operator (`+`). */
+    OP_POSITIVE = 11,
+    /** Remainder/modulo operator (`%`). */
+    OP_MODULE = 12,
+    /** Power operator (`**`). */
+    OP_POWER = 13,
+    /** Left shift operator (`<<`). */
+    OP_SHIFT_LEFT = 14,
+    /** Right shift operator (`>>`). */
+    OP_SHIFT_RIGHT = 15,
+    /** Bitwise AND operator (`&`). */
+    OP_BIT_AND = 16,
+    /** Bitwise OR operator (`|`). */
+    OP_BIT_OR = 17,
+    /** Bitwise XOR operator (`^`). */
+    OP_BIT_XOR = 18,
+    /** Bitwise NOT operator (`~`). */
+    OP_BIT_NEGATE = 19,
+    /** Logical AND operator (`and` or `&&`). */
+    OP_AND = 20,
+    /** Logical OR operator (`or` or `||`). */
+    OP_OR = 21,
+    /** Logical XOR operator (not implemented in GDScript). */
+    OP_XOR = 22,
+    /** Logical NOT operator (`not` or `!`). */
+    OP_NOT = 23,
+    /** Logical IN operator (`in`). */
+    OP_IN = 24,
+    /** Represents the size of the {@link Variant.Operator} enum. */
+    OP_MAX = 25,
+  }
 }
 
 

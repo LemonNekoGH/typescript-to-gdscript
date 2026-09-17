@@ -13,7 +13,7 @@ typings/
   index.d.ts                # Entry point (references globals/, classes/)
   globals/                  # Static stubs that ship with the package (NOT regenerated from Godot docs)
     globals.d.ts            # noLib stubs (Boolean, Number, RegExp, …) used when consumers set "noLib": true
-    gd-helpers.d.ts         # gd namespace types (signal, getset, dict, as, is, eval, match, ops) + int/float/bool/String casts + StringName/NodePath constructors + Promise deprecation overlay
+    gd-helpers.d.ts         # gd namespace types (signal, getset, dict, as, is, typeof, eval, match, ops) + int/float/bool/String casts + StringName/NodePath constructors + Promise deprecation overlay
   godot-class-registry.json # Class hierarchy JSON
   classes/                  # Per-class .d.ts files
 ```
@@ -21,6 +21,17 @@ typings/
 The `generate-gdscript-global-typings` command outputs the generated `classes/`, `godot-class-registry.json` to `--output-dir`. It also copies the bundled static `globals/` folder and `index.d.ts` from the installed package's `typings/` into `--output-dir` (skipped when `--output-dir` _is_ the package's own bundled folder, e.g. when re-running `yarn generate:godot-typings` in the source tree).
 
 Value types (Vector2, Color, etc.), `Dictionary`, and `Callable` use call syntax constructors (no `new`). `Dictionary` and `Callable` constructors and static methods are generated from Godot XML docs via a shared `generateConstructorInterface()` utility.
+
+### Global enums
+
+Godot's global enums keep their GDScript spelling. Undotted ones are plain `const enum`s (`Key.KEY_A`); a dotted one becomes a namespace, so `Variant.Type` reads the same in TypeScript as it does in GDScript:
+
+```typescript
+let kind: Variant.Type = gd.typeof(value);
+if (kind === Variant.Type.TYPE_INT) { ... }
+```
+
+A global function whose Godot name is a TypeScript keyword gets no declaration of its own — `typeof` is the only one, and it lives on the `gd` namespace as [`gd.typeof`](./gd-helpers.md#variant-type-gdtypeof).
 
 ## Nullable reference types
 

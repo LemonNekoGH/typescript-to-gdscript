@@ -5,7 +5,7 @@ export class Match extends Node {
   TYPE_ARRAY = "array";
 
   test_expression_pattern() {
-    gd.match(typeof(this.x), [
+    gd.match(gd.typeof(this.x), [
       {
         match: this.TYPE_FLOAT,
         do: () => {

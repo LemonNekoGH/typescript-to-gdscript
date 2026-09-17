@@ -222,3 +222,20 @@ class GetSetTest extends Node {
     set: null,
   });
 }
+
+// ─── typeof ──────────────────────────────────────────
+
+class TypeofTest extends Node {
+  describe(value: unknown): string {
+    const kind: Variant.Type = gd.typeof(value);
+    if (kind === Variant.Type.TYPE_INT) {
+      return "int";
+    }
+    // Variant.Type is a numeric enum, so it still satisfies `int` params.
+    return type_string(gd.typeof(value));
+  }
+
+  compare(op: Variant.Operator): boolean {
+    return op === Variant.Operator.OP_EQUAL;
+  }
+}

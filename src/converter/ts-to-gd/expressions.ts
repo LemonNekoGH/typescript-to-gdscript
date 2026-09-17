@@ -3,6 +3,7 @@ import { classifyInRhsType } from './diagnostics.ts';
 import {
   tryEmitGdAs,
   tryEmitGdIs,
+  tryEmitGdUnspellableGlobal,
   tryEmitGdDict,
   tryEmitGdOps,
 } from './gd-helpers.ts';
@@ -606,6 +607,8 @@ export function emitCallExpression(
       tryEmitGdAs(t, node, obj, method) ??
       // gd.is(value, Type) -> value is Type
       tryEmitGdIs(t, node, obj, method) ??
+      // gd.typeof(value) -> typeof(value)
+      tryEmitGdUnspellableGlobal(t, node, obj, method) ??
       // gd.dict([[key, value], ...]) -> {key: value, ...}
       tryEmitGdDict(t, node, obj, method) ??
       // gd.ops.add/sub/mul/div/eq/ne/gt/gte/lt/lte/plus/minus -> operator

@@ -13,6 +13,12 @@ export interface TypeContext {
   /** Set of known Godot class names (excludes `@`-prefixed pseudo-classes). */
   knownClasses: Set<string>;
   /**
+   * Names of `@GlobalScope`'s enums, exactly as Godot spells them
+   * (`Key`, `Variant.Type`, ...). A dotted one is declared as a
+   * namespaced `const enum` and so is nameable from TypeScript.
+   */
+  globalEnumNames: Set<string>;
+  /**
    * Fundamental value types constructed as function calls in GDScript (not `new`).
    * Derived set — classes with a copy constructor (single parameter of own type).
    */
@@ -34,6 +40,7 @@ export interface TypeContext {
 export function emptyTypeContext(): TypeContext {
   return {
     knownClasses: new Set(),
+    globalEnumNames: new Set(),
     valueTypes: new Set(),
     nonNullableMembers: new Map(),
     variantParamConverts: new Map(),
@@ -137,9 +144,20 @@ export function godotTypeToTs(type: string, ctx: TypeContext): string {
       if (cleaned.startsWith('Dictionary[')) {
         return 'Dictionary';
       }
-      // Enum references like Node.ProcessMode
+      // Dotted references are enums, and which kind decides the mapping.
+      // A GLOBAL enum (`Variant.Type`) is declared as a namespaced
+      // `const enum` and keeps its spelling — matched on the whole name,
+      // because the prefix alone does not distinguish the two kinds
+      // (`Variant` is itself a documented class). A CLASS enum
+      // (`Node.ProcessMode`) has no TS declaration of its own — its
+      // members are emitted as `static readonly ...: int` — so `int` is
+      // what it is. Anything else is a name nothing declares, and a
+      // dangling reference is worse than `unknown`.
       if (cleaned.includes('.')) {
-        return cleaned.replace('.', '_');
+        if (ctx.globalEnumNames.has(cleaned)) return cleaned;
+        const prefix = cleaned.slice(0, cleaned.indexOf('.'));
+        if (ctx.knownClasses.has(prefix)) return 'int';
+        return ctx.knownClasses.size > 0 ? 'unknown' : cleaned;
       }
       // Apply class name sanitization
       const sanitized = CLASS_NAME_CONFLICTS.get(cleaned);

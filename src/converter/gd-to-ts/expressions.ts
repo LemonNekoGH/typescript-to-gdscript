@@ -11,6 +11,7 @@ import {
 } from './type-inference.ts';
 import { emitLambda } from './functions.ts';
 import { escapeTsBindingName } from './identifiers.ts';
+import { sanitizeFunctionName } from '../../typings/class-generator.ts';
 
 // ─── Expressions ──────────────────────────────────────────────
 
@@ -33,8 +34,31 @@ export function emitExpr(node: SyntaxNode, ctx: GdToTsContext): string {
     if (enumQualified) return enumQualified;
     // Bare reference. Only a LOCAL binding (var / param / loop var) gets
     // reserved-word escaping (GD `function` → TS `function_`); global names
-    // like the `typeof()` builtin must stay verbatim — they're not bindings.
+    // stay verbatim — they're not bindings.
     if (ctx.localVars.has(node.text)) return escapeTsBindingName(node.text);
+    // … except a global whose name TypeScript cannot spell. As a CALL it
+    // routes through `gd.` (see `emitCall`); as a VALUE — `var c: Callable
+    // = typeof`, which GDScript accepts — there is nothing to emit. The
+    // bare name is a TS syntax error, and `gd.typeof` is a TS value that
+    // converts back to `gd.get("typeof")` rather than to the callable, so
+    // both spellings are wrong in different ways. Say so instead.
+    if (
+      !ctx.classMembers.has(node.text) &&
+      ctx.registry.isGlobalFunction(node.text) &&
+      sanitizeFunctionName(node.text) !== node.text
+    ) {
+      ctx.diagnostics.push({
+        message:
+          `\`${node.text}\` is used as a value here, and TypeScript has no ` +
+          `name for it — \`${node.text}\` is a TypeScript operator, so the ` +
+          `global is only reachable as a call, \`gd.${node.text}(...)\`. ` +
+          `Wrap it: \`func(v): return ${node.text}(v)\`.`,
+        severity: 'error',
+        file: ctx.filePath,
+        line: node.startPosition.row + 1,
+        column: node.startPosition.column + 1,
+      });
+    }
     return node.text;
   }
 
@@ -276,6 +300,19 @@ export function emitCall(node: SyntaxNode, ctx: GdToTsContext): string {
     !ctx.localVars.has('new')
   ) {
     return `new ${ctx.className}(${args})`;
+  }
+
+  // A global whose GDScript name TypeScript cannot spell (`typeof`) has
+  // no declaration of its own — it lives in the `gd` namespace, so the
+  // call routes there. A local of the same name shadows the global.
+  if (
+    callee.type === SyntaxType.Identifier &&
+    !ctx.localVars.has(callee.text) &&
+    !ctx.classMembers.has(callee.text) &&
+    ctx.registry.isGlobalFunction(callee.text) &&
+    sanitizeFunctionName(callee.text) !== callee.text
+  ) {
+    return `gd.${callee.text}(${args})`;
   }
 
   // For bare identifier calls: prefix known class members. Static members

@@ -126,6 +126,10 @@ export abstract class Player extends CharacterBody2D {
     if (gd.is(this.health, int)) {
       /* primitive check → `is int` */
     }
+    // `typeof` is a TS operator, so Godot's global lives on `gd`
+    if (gd.typeof(body) === Variant.Type.TYPE_OBJECT) {
+      /* → `typeof(body) == Variant.Type.TYPE_OBJECT` */
+    }
 
     // Object construction
     let bullet = new Player.Bullet(); // → Player.Bullet.new()
@@ -279,6 +283,9 @@ func _process(delta: float):
 	if body is CharacterBody2D:
 		pass
 	if self.health is int:
+		pass
+	# `typeof` is a TS operator, so Godot's global lives on `gd`
+	if typeof(body) == Variant.Type.TYPE_OBJECT:
 		pass
 	# Object construction
 	var bullet = Player.Bullet.new()
@@ -592,6 +599,17 @@ The enum lifts into the class as a nested enum, accessible from outside as `MyCl
 - String enums and computed initializers are rejected.
 - The legacy `static X = gd.enum('A', 'B')` form is no longer supported — use native `enum`.
 
+### Godot's own enums
+
+Engine enums keep their GDScript spelling on both sides, including the dot in `Variant.Type`:
+
+```typescript
+let kind: Variant.Type = gd.typeof(value);
+// ↔ var kind: Variant.Type = typeof(value)
+```
+
+Going the other way, a bare global enum constant is qualified: GDScript `TYPE_INT` comes back as `Variant.Type.TYPE_INT`, and `KEY_A` as `Key.KEY_A`.
+
 ## Inner classes (via namespace merging)
 
 GDScript nested classes are modelled using TypeScript's [declaration merging](https://www.typescriptlang.org/docs/handbook/declaration-merging.html). A `namespace ClassName { ... }` block paired with `class ClassName { ... }` adds the namespace's `export`ed members as static / nested members on the class side:
@@ -676,6 +694,8 @@ export class Player extends Node {
 `export` is a TypeScript reserved word — `@export` is a parse error. The converter accepts **`@exports`** (plural) as an alias and emits GDScript `@export`. All other annotations use their normal Godot names (no plural).
 
 > **No `@gd.*` decorator form.** The `gd` namespace holds helpers like `gd.signal`, `gd.getset`, `gd.match`, but **never decorators**. Use the bare names above.
+
+The same collision shows up among Godot's global _functions_, and is resolved the other way: `typeof` is a TypeScript operator, so it has no global declaration at all and is called as [`gd.typeof(value)`](./gd-helpers.md#variant-type-gdtypeof). GD → TS converts `typeof(x)` to `gd.typeof(x)` for you.
 
 ### Class-level annotations
 

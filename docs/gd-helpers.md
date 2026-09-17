@@ -322,6 +322,15 @@ if (!gd.is(x, int)) { ... }
 
 Negation of `not x is Y` in GDScript converts to `!(gd.is(x, Y))` or `!(x instanceof Y)` with correct parenthesization.
 
+## Variant type (`gd.typeof`)
+
+```typescript
+if (gd.typeof(value) === Variant.Type.TYPE_INT) { ... }
+// ↔ if typeof(value) == Variant.Type.TYPE_INT:
+```
+
+`typeof` is a TypeScript operator, so Godot's global of that name can only be reached through `gd`. Everything else about it is unchanged — the result is a `Variant.Type`, which is a numeric enum and so still fits `int` parameters like `type_string()`.
+
 ## StringName / NodePath
 
 `StringName` is a type alias for `String` (identical API in GDScript). `NodePath` is its own variant type with a dedicated interface and constructor.

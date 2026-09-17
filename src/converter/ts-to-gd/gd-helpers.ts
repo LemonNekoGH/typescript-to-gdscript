@@ -1,5 +1,6 @@
 import ts from 'typescript';
 import type { TransformerDelegate } from './transformer-types.ts';
+import { sanitizeFunctionName } from '../../typings/class-generator.ts';
 
 // ---- gd.as / gd.is ----
 
@@ -41,6 +42,33 @@ export function tryEmitGdIs(
     return `${value} is ${type}`;
   }
   return null;
+}
+
+/**
+ * Handle a global whose GDScript name TypeScript cannot spell:
+ * `gd.typeof(value)` -> `typeof(value)`.
+ *
+ * Keyed on the same predicate the typings generator uses to decide a
+ * global gets no declaration of its own (`sanitizeFunctionName` changes
+ * it), so the two cannot drift: every global `gd` has to carry is one
+ * this rewrites back, under any Godot version. `typeof` is the only
+ * one today. Returns null if this is not such a call.
+ */
+export function tryEmitGdUnspellableGlobal(
+  t: TransformerDelegate,
+  node: ts.CallExpression,
+  obj: ts.Expression,
+  method: string,
+): string | null {
+  if (!ts.isIdentifier(obj) || obj.text !== 'gd') return null;
+  if (
+    !t.ctx.registry?.isGlobalFunction(method) ||
+    sanitizeFunctionName(method) === method
+  ) {
+    return null;
+  }
+  const args = node.arguments.map((a) => t.emitExpression(a)).join(', ');
+  return `${method}(${args})`;
 }
 
 // ---- gd.dict() ----
