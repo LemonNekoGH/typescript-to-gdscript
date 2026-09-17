@@ -55,6 +55,18 @@ function runCliRaw(
   });
 }
 
+describe('CLI: version', () => {
+  it('reports the package.json version via -V', async () => {
+    const { stdout } = await runCli(['-V']);
+    expect(stdout.trim()).toBe(PACKAGE_VERSION);
+  });
+
+  it('reports the package.json version via --version', async () => {
+    const { stdout } = await runCli(['--version']);
+    expect(stdout.trim()).toBe(PACKAGE_VERSION);
+  });
+});
+
 describe('CLI: convert (TS → GD)', () => {
   let tmpDir: string;
 

@@ -24,9 +24,9 @@ import {
 import * as fsp from 'fs/promises';
 import { createHash, randomUUID } from 'crypto';
 import { join, dirname, basename } from 'path';
-import { fileURLToPath } from 'url';
 import { watch as chokidarWatch, type FSWatcher } from 'chokidar';
 import type { DiagnosticSeverity } from '../converter/common/index.ts';
+import { getPackageVersion } from '../utils/package-version.ts';
 
 export interface ProjectCacheOptions {
   /**
@@ -51,20 +51,7 @@ export interface ProjectCacheOptions {
 
 // ─── Package version (for cache invalidation) ──────────────
 
-// Read version from package.json at module scope (relative to compiled dist/ or src/)
-let PACKAGE_VERSION = '0.0.0';
-try {
-  const pkgPath = join(
-    dirname(fileURLToPath(import.meta.url)),
-    '../../package.json',
-  );
-  if (existsSync(pkgPath)) {
-    PACKAGE_VERSION =
-      JSON.parse(readFileSync(pkgPath, 'utf-8')).version ?? '0.0.0';
-  }
-} catch {
-  /* fallback to 0.0.0 */
-}
+const PACKAGE_VERSION = getPackageVersion();
 
 // ─── Types ──────────────────────────────────────────────────
 

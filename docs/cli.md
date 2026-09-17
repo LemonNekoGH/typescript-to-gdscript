@@ -4,7 +4,7 @@
 
 # CLI Reference
 
-The CLI binary is `tstogd`. A global `--debug` flag (placed before the subcommand) enables verbose info/debug messages on any command.
+The CLI binary is `tstogd`. A global `--debug` flag (placed before the subcommand) enables verbose info/debug messages on any command, and `-V` / `--version` prints the installed `tstogd` version.
 
 > **You usually only need `convert` and `watch`.** Both convert your TypeScript _and_ regenerate every typing (scene, script, resource, addon) _and_ run the diagnostic check in a single pass — there is no separate "generate typings" step to remember. The remaining commands (`generate-typings`, `generate-addon-typings`, `validate-gd`, `clear-cache`, …) cover one-off setup, migration, or custom Godot builds; a typical project never runs them directly.
 
