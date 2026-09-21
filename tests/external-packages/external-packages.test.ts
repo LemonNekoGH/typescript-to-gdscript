@@ -145,6 +145,43 @@ describe('external package linking', () => {
     ).toThrow('must set "lib": true');
   });
 
+  it('reports the path of an invalid shared package config', () => {
+    const projectRoot = join(tempDir, 'project');
+    const sharedRoot = join(tempDir, 'invalid-config');
+    mkdirSync(projectRoot, { recursive: true });
+    writeJson(join(sharedRoot, 'package.json'), {
+      name: 'invalid-config',
+      version: '1.0.0',
+    });
+    writeFileSync(join(sharedRoot, 'tstogd.json'), '{ invalid');
+
+    expect(() =>
+      resolveExternalPackages({
+        rootDir: projectRoot,
+        projectRoot,
+        externalPackages: [{ from: '../invalid-config' }],
+      }),
+    ).toThrow(
+      `Failed to read shared package config: ${join(sharedRoot, 'tstogd.json')}`,
+    );
+  });
+
+  it('reports the path of an invalid package manifest', () => {
+    const projectRoot = join(tempDir, 'project');
+    mkdirSync(projectRoot, { recursive: true });
+    writeFileSync(join(projectRoot, 'package.json'), '{ invalid');
+
+    expect(() =>
+      resolveExternalPackages({
+        rootDir: projectRoot,
+        projectRoot,
+        externalPackages: [],
+      }),
+    ).toThrow(
+      `Failed to read package manifest: ${join(projectRoot, 'package.json')}`,
+    );
+  });
+
   it('rejects package mounts that contain another package mount', () => {
     const projectRoot = join(tempDir, 'project');
     const firstRoot = join(tempDir, 'first');

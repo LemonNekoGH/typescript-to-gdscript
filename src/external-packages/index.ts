@@ -207,13 +207,21 @@ function addCandidate(
 function readPackageConfig(rootDir: string): TsToGdConfig | undefined {
   const path = join(rootDir, 'tstogd.json');
   if (!existsSync(path)) return undefined;
-  return JSON.parse(readFileSync(path, 'utf-8')) as TsToGdConfig;
+  return readJsonFile<TsToGdConfig>(path, 'shared package config');
 }
 
 function readManifest(rootDir: string): PackageManifest | undefined {
   const path = join(rootDir, 'package.json');
   if (!existsSync(path)) return undefined;
-  return JSON.parse(readFileSync(path, 'utf-8')) as PackageManifest;
+  return readJsonFile<PackageManifest>(path, 'package manifest');
+}
+
+function readJsonFile<T>(path: string, description: string): T {
+  try {
+    return JSON.parse(readFileSync(path, 'utf-8')) as T;
+  } catch (cause) {
+    throw new Error(`Failed to read ${description}: ${path}`, { cause });
+  }
 }
 
 function declaredDependencies(
