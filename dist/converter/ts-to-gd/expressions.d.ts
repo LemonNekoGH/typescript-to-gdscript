@@ -32,15 +32,6 @@ export declare function unaryOperator(op: ts.PrefixUnaryOperator): string;
 export declare function emitStringLiteral(t: TransformerDelegate, node: ts.StringLiteral): string;
 export declare function escapeGdString(text: string): string;
 export declare function emitTemplateExpression(t: TransformerDelegate, node: ts.TemplateExpression): string;
-export declare function emitLambda(t: TransformerDelegate, node: ts.ArrowFunction | ts.FunctionExpression): string;
-/**
- * Check if an expression is a block-body lambda (arrow function or function expression with a block body).
- */
-export declare function isBlockLambda(node: ts.Expression): node is ts.ArrowFunction | ts.FunctionExpression;
-/**
- * Emit the body of a block lambda. Call this after the line containing the lambda header.
- */
-export declare function emitLambdaBody(t: TransformerDelegate, node: ts.ArrowFunction | ts.FunctionExpression): void;
 /** Emit a multi-line GDScript dict with proper indentation */
 export declare function emitMultiLineDict(t: TransformerDelegate, entries: string[]): string;
 //# sourceMappingURL=expressions.d.ts.map

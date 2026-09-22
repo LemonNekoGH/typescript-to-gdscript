@@ -2,6 +2,38 @@ import { SyntaxType } from "../../parser/gdscript/types.js";
 import { emitExpr } from "./expressions.js";
 import { emitBlockComment, emitCommentInline, emitLocalVariable, } from "./members.js";
 import { escapeTsBindingName } from "./identifiers.js";
+import { emitMatchStatement } from "./match.js";
+// ─── Break Resolution ────────────────────────────────────────────
+/**
+ * True for a `break` whose nearest enclosing loop is reached through a
+ * `match`. GDScript `match` is not breakable, so such a `break` exits
+ * the loop around it — but the `switch` it converts into *is*
+ * breakable, so the same word would exit the branch instead. TypeScript
+ * has no way to name the outer loop (GDScript has no labels either, so
+ * the dialect does not carry them), which leaves the construct
+ * unconvertible rather than merely unsupported.
+ */
+function breaksThroughMatch(node) {
+    let parent = node.parent;
+    while (parent) {
+        // A `break` cannot cross a function boundary. The grammar also has
+        // `ConstructorDefinition`, `GetBody` and `SetBody`, but none of
+        // those can nest inside a `match` or a loop, so the walk can never
+        // reach one before it stops.
+        if (parent.type === SyntaxType.FunctionDefinition ||
+            parent.type === SyntaxType.Lambda) {
+            return false;
+        }
+        if (parent.type === SyntaxType.WhileStatement ||
+            parent.type === SyntaxType.ForStatement) {
+            return false;
+        }
+        if (parent.type === SyntaxType.MatchStatement)
+            return true;
+        parent = parent.parent;
+    }
+    return false;
+}
 // ─── Body / Statements ────────────────────────────────────────
 export function emitBody(node, ctx, depth) {
     const indent = '  '.repeat(depth);
@@ -62,6 +94,22 @@ export function emitBody(node, ctx, depth) {
             continue;
         }
         if (child.type === SyntaxType.BreakStatement) {
+            if (breaksThroughMatch(child)) {
+                ctx.diagnostics.push({
+                    message: '`break` inside a `match` branch has no TypeScript ' +
+                        'equivalent. In GDScript it exits the loop around the ' +
+                        '`match`; in the `switch` this becomes, `break` would leave ' +
+                        'the branch instead. Restructure the loop (an early ' +
+                        '`return`, or a flag checked by its condition).',
+                    severity: 'error',
+                    file: ctx.filePath,
+                    line: child.startPosition.row + 1,
+                    column: child.startPosition.column + 1,
+                });
+                lines.push(`${indent}/* ERROR: \`break\` inside a \`match\` branch has no ` +
+                    `TypeScript equivalent */`);
+                continue;
+            }
             lines.push(`${indent}break;`);
             continue;
         }
@@ -156,223 +204,6 @@ function emitWhileStatement(node, ctx, depth) {
     const condStr = condition ? emitExpr(condition, ctx) : 'true';
     const bodyStr = body ? emitBody(body, ctx, depth + 1) : '';
     return `${indent}while (${condStr}) {\n${bodyStr}\n${indent}}`;
-}
-/**
- * Check whether a match statement can be expressed as a plain TS `switch`:
- *  - Every PatternSection uses only "simple" patterns (literals/expressions/
- *    wildcard), never Arrays, Dictionaries, pattern bindings, or guards.
- *  - Multi-pattern sections (`1, 2, 3:`) are allowed — they become
- *    fall-through `case` labels.
- */
-function isSimpleMatchStatement(bodyNode) {
-    for (const section of bodyNode.namedChildren) {
-        if (section.type !== SyntaxType.PatternSection)
-            continue;
-        const patterns = section.namedChildren.filter((c) => c.type !== SyntaxType.Body && c.type !== SyntaxType.PatternGuard);
-        const hasGuard = section.namedChildren.some((c) => c.type === SyntaxType.PatternGuard);
-        if (hasGuard)
-            return false;
-        for (const p of patterns) {
-            if (p.type === SyntaxType.Array ||
-                p.type === SyntaxType.Dictionary ||
-                p.type === SyntaxType.PatternBinding) {
-                return false;
-            }
-            // Any nested pattern bindings also disqualify
-            const bindings = [];
-            collectBindings(p, bindings);
-            if (bindings.length > 0)
-                return false;
-        }
-    }
-    return true;
-}
-function emitSimpleMatchAsSwitch(node, ctx, depth) {
-    const indent = '  '.repeat(depth);
-    const iCase = indent + '  ';
-    const iBody = indent + '    ';
-    const value = node.childForFieldName('value');
-    const bodyNode = node.childForFieldName('body');
-    const valueStr = value ? emitExpr(value, ctx) : '';
-    let result = `${indent}switch (${valueStr}) {\n`;
-    if (bodyNode) {
-        for (const section of bodyNode.namedChildren) {
-            if (section.type !== SyntaxType.PatternSection)
-                continue;
-            const body = section.childForFieldName('body');
-            const patterns = section.namedChildren.filter((c) => c.type !== SyntaxType.Body && c.type !== SyntaxType.PatternGuard);
-            // Emit case/default labels (one per pattern for fall-through)
-            for (const p of patterns) {
-                if (p.type === SyntaxType.Identifier && p.text === '_') {
-                    result += `${iCase}default:\n`;
-                }
-                else {
-                    result += `${iCase}case ${emitExpr(p, ctx)}:\n`;
-                }
-            }
-            // Emit body statements, then `break;`
-            const bodyStr = body ? emitBody(body, ctx, depth + 2) : '';
-            if (bodyStr)
-                result += `${bodyStr}\n`;
-            result += `${iBody}break;\n`;
-        }
-    }
-    result += `${indent}}`;
-    return result;
-}
-function emitMatchStatement(node, ctx, depth) {
-    const indent = '  '.repeat(depth);
-    const i1 = indent + '  '; // cases array indent
-    const i2 = indent + '    '; // case object indent
-    const i3 = indent + '      '; // do() body indent
-    const value = node.childForFieldName('value');
-    const bodyNode = node.childForFieldName('body');
-    // If all sections use only simple patterns, emit a plain TS `switch`.
-    // The TS→GD converter already handles `switch` → `match` in reverse.
-    if (bodyNode && isSimpleMatchStatement(bodyNode)) {
-        return emitSimpleMatchAsSwitch(node, ctx, depth);
-    }
-    const valueStr = value ? emitExpr(value, ctx) : '';
-    let result = `${indent}gd.match(${valueStr}, [\n`;
-    if (bodyNode) {
-        for (const section of bodyNode.namedChildren) {
-            if (section.type !== SyntaxType.PatternSection)
-                continue;
-            const body = section.childForFieldName('body');
-            // Patterns are all named children except body and pattern_guard
-            const patterns = section.namedChildren.filter((c) => c.type !== SyntaxType.Body && c.type !== SyntaxType.PatternGuard);
-            const guard = section.namedChildren.find((c) => c.type === SyntaxType.PatternGuard);
-            // Collect all pattern_binding names from all patterns
-            const bindings = [];
-            for (const p of patterns) {
-                collectBindings(p, bindings);
-            }
-            const hasBindings = bindings.length > 0;
-            const hasGuard = !!guard;
-            const isMultiPattern = patterns.length > 1 && !hasBindings && !hasGuard;
-            // Add pattern bindings to local scope so they don't get this. prefix
-            const savedLocals = new Set(ctx.localVars);
-            for (const b of bindings)
-                ctx.localVars.add(b);
-            // Emit do: () => {} body (arrow function preserves outer `this`)
-            const bodyStr = body ? emitBody(body, ctx, depth + 3) : '';
-            const doBlock = `do: () => {\n${bodyStr}\n${i2}}`;
-            if (isMultiPattern) {
-                // Multiple patterns: { matchMany: [...], do() { ... } }
-                const patternStrs = patterns.map((p) => emitMatchPattern(p, ctx));
-                result += `${i1}{\n`;
-                result += `${i2}matchMany: [${patternStrs.join(', ')}],\n`;
-                result += `${i2}${doBlock},\n`;
-                result += `${i1}},\n`;
-            }
-            else if (hasBindings || hasGuard) {
-                // Arrow function: (bindings...) => ({ match: ..., when?: ..., do() { ... } })
-                const patternStr = emitMatchPattern(patterns[0], ctx);
-                result += `${i1}(${bindings.join(', ')}) => ({\n`;
-                result += `${i2}match: ${patternStr},\n`;
-                if (hasGuard) {
-                    const guardExpr = guard.namedChildren[0];
-                    const guardStr = guardExpr ? emitExpr(guardExpr, ctx) : 'true';
-                    result += `${i2}when: ${guardStr},\n`;
-                }
-                result += `${i2}${doBlock},\n`;
-                result += `${i1}}),\n`;
-            }
-            else {
-                // Simple object: { match: ..., do() { ... } }
-                const pattern = patterns[0];
-                const patternStr = pattern
-                    ? emitMatchPattern(pattern, ctx)
-                    : 'undefined';
-                result += `${i1}{\n`;
-                result += `${i2}match: ${patternStr},\n`;
-                result += `${i2}${doBlock},\n`;
-                result += `${i1}},\n`;
-            }
-            // Restore local scope
-            ctx.localVars = savedLocals;
-        }
-    }
-    result += `${indent}]);`;
-    return result;
-}
-/** Collect all pattern_binding identifier names from a pattern tree */
-function collectBindings(node, bindings) {
-    if (node.type === SyntaxType.PatternBinding) {
-        const ident = node.namedChildren[0];
-        if (ident)
-            bindings.push(ident.text);
-        return;
-    }
-    for (const child of node.namedChildren) {
-        collectBindings(child, bindings);
-    }
-}
-/** Emit a match pattern as a TypeScript expression for use inside gd.match() */
-function emitMatchPattern(node, ctx) {
-    // Wildcard: _ → undefined
-    if (node.type === SyntaxType.Identifier && node.text === '_') {
-        return 'undefined';
-    }
-    // Binding: var name → just the name (it becomes an arrow param)
-    if (node.type === SyntaxType.PatternBinding) {
-        const ident = node.namedChildren[0];
-        return ident ? ident.text : 'undefined';
-    }
-    // Array pattern: [elem1, elem2, ..]
-    if (node.type === SyntaxType.Array) {
-        const elements = [];
-        let hasOpenEnding = false;
-        for (const child of node.namedChildren) {
-            if (child.type === SyntaxType.PatternOpenEnding) {
-                hasOpenEnding = true;
-                continue;
-            }
-            elements.push(emitMatchPattern(child, ctx));
-        }
-        if (hasOpenEnding) {
-            return `[${elements.join(', ')}, ...[]]`;
-        }
-        return `[${elements.join(', ')}]`;
-    }
-    // Dictionary pattern: {key: value, ..} or {key1, key2}
-    if (node.type === SyntaxType.Dictionary) {
-        const entries = [];
-        let hasOpenEnding = false;
-        for (const child of node.namedChildren) {
-            if (child.type === SyntaxType.PatternOpenEnding) {
-                hasOpenEnding = true;
-                continue;
-            }
-            if (child.type === SyntaxType.Pair) {
-                const left = child.childForFieldName('left');
-                const value = child.childForFieldName('value');
-                // Key: strip quotes for object key
-                let key;
-                if (left && left.type === SyntaxType.String) {
-                    key = left.text.slice(1, -1); // remove quotes
-                }
-                else {
-                    key = left ? emitExpr(left, ctx) : '';
-                }
-                // Value: may be a pattern_binding or regular value
-                const valStr = value ? emitMatchPattern(value, ctx) : 'undefined';
-                entries.push(`${key}: ${valStr}`);
-            }
-            else if (child.type === SyntaxType.String) {
-                // Bare string in dict like {"name", "age"} → name: undefined
-                const key = child.text.slice(1, -1);
-                entries.push(`${key}: undefined`);
-            }
-        }
-        const inner = entries.join(', ');
-        if (hasOpenEnding) {
-            return `{ ${inner}, ...{} }`;
-        }
-        return `{ ${inner} }`;
-    }
-    // Everything else: use regular expression emitter
-    return emitExpr(node, ctx);
 }
 // ─── Assignment ───────────────────────────────────────────────
 export function emitAssignment(node, ctx) {

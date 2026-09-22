@@ -37,6 +37,13 @@ export interface CachedDiagnostic {
     line: number;
     column: number;
 }
+/**
+ * True when a parsed manifest holds no entries in any section. The section
+ * list is derived from `emptyManifest()` rather than spelled out, so a new
+ * section is covered the moment it is added there. `clear-cache` calls this
+ * on the manifest it reads back to confirm its work landed.
+ */
+export declare function isEmptyManifest(data: unknown): boolean;
 export declare class ProjectCache {
     private cacheDir;
     private cacheFile;
@@ -64,6 +71,8 @@ export declare class ProjectCache {
      * land within the same millisecond (Date.now() granularity).
      */
     private saveCounter;
+    /** Set by `load()` when it rejected the on-disk manifest; see `discardStaleFiles`. */
+    private needsPersist;
     constructor(cacheDir: string, options?: ProjectCacheOptions);
     /**
      * Start watching `cache.json` for external writes via chokidar.
@@ -91,8 +100,31 @@ export declare class ProjectCache {
      */
     close(): Promise<void>;
     private captureCurrentMtime;
+    /**
+     * Read the manifest, or produce an empty one when the file is unusable.
+     *
+     * Touches nothing on disk. This also runs from the watch `reload()`
+     * closure, where a read can catch another process mid-write — acting on
+     * that signal would turn a transient failure into real data loss.
+     * Repair is the constructor's job; see `discardStaleFiles`.
+     */
     private load;
-    private empty;
+    /**
+     * Finish what `load()` deliberately left undone: when the manifest on
+     * disk came from another package version, drop the mirrors it referenced
+     * and write the empty replacement. `load()` can't do this itself — on
+     * the constructor path `this.data` isn't assigned while it runs.
+     *
+     * Constructor-only, on purpose. `load()` also runs from the watch reload
+     * path, and repairing from there makes two holders on different versions
+     * overwrite each other forever. Leaving it to the next construction
+     * costs nothing: the mismatch is still there when that process starts.
+     *
+     * `preferAsync` keeps the write off the caller's thread for long-lived
+     * hosts — the ts-plugin runs inside tsserver's event loop, which is why
+     * `saveAsync` exists at all.
+     */
+    private discardStaleFiles;
     /** Check if a TS→GD conversion is still fresh (ts hash and gd hash match). */
     isTsToGdFresh(tsPath: string, gdPath: string): boolean;
     /**
@@ -183,8 +215,40 @@ export declare class ProjectCache {
     saveAsync(): Promise<void>;
     private nextTmpFile;
     private doSaveAsync;
-    /** Clear all cache data and files. */
-    clear(): void;
+    /**
+     * Clear every cache entry and persist the empty manifest.
+     *
+     * The manifest is REPLACED rather than deleted, and the cache directory
+     * stays. Deleting it defeats both things this method exists for:
+     *   - long-lived holders (`watch`, the ts-plugin) watch `cache.json` for
+     *     `change`/`add` only, so an unlink leaves their in-memory manifest
+     *     intact and their next `save()` writes every entry straight back;
+     *   - Windows can't remove a directory that holds an open file at all,
+     *     which is what made `clear-cache` fail with an IDE running.
+     * Replacing in place also keeps `.gdignore` on disk, so a `cacheDir`
+     * placed inside the Godot project is never briefly visible to the
+     * engine's scanner.
+     */
+    clear(options?: {
+        force?: boolean;
+    }): void;
+    /**
+     * Empty the cache directory, keeping only what must survive: `.gdignore`
+     * (so a `cacheDir` inside the Godot project is never briefly visible to
+     * the engine's scanner), `cache.json` itself (replaced, not deleted —
+     * see `clear()`), and `cache.json.tmp-*`, which is not a leftover to
+     * sweep but another process's save between its write and its rename.
+     * Deleting one of those makes that rename fail into the non-atomic
+     * fallback, which writes the holder's full manifest back over the file
+     * we just cleared. Everything else goes, so no artifact of an older
+     * layout can outlive a clear.
+     *
+     * `force` drops both exemptions and keeps `cache.json` alone. It is how
+     * a tmp file orphaned by a crashed process finally gets collected — we
+     * cannot tell one apart from a live save, so the caller takes that
+     * judgement. `.gdignore` goes too, but `clear()`'s `save()` recreates it
+     * before returning, so it is never missing outside this call.
+     */
     private clearFiles;
     private normKey;
     /**

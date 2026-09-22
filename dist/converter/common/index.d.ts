@@ -1,5 +1,6 @@
 import ts from 'typescript';
 import type { GodotClassRegistry } from '../../typings/godot-registry.ts';
+import type { ResolvedExternalPackage } from '../../external-packages/index.ts';
 /**
  * Pre-derived lookup sets for `in`-operator diagnostics and variant/class type
  * checks. Built once per converter run from the Godot class registry.
@@ -40,6 +41,10 @@ export interface TransformContext {
      * `extends "res://..."` are taken relative to this directory.
      */
     projectRoot: string;
+    /** Emit package-internal imports as relative paths. */
+    lib: boolean;
+    /** Shared packages mounted below projectRoot/tstogd_modules. */
+    externalPackages: ResolvedExternalPackage[];
     /**
      * Godot class registry. Used to recognise Godot built-in types (classes,
      * value-type constructors, global enums) by name when classifying TS type

@@ -1,9 +1,13 @@
 import ts from 'typescript';
-import { tsTypeNodeToGdType } from "../common/index.js";
 import { classifyInRhsType } from "./diagnostics.js";
-import { tryEmitGdAs, tryEmitGdIs, tryEmitGdDict, tryEmitGdOps, } from "./gd-helpers.js";
+import { tryEmitGdAs, tryEmitGdIs, tryEmitGdUnspellableGlobal, tryEmitGdDict, tryEmitGdOps, } from "./gd-helpers.js";
 import { typeContainsUndefined } from "./parameters.js";
 import { isPlainObjectType, isAssignmentTarget } from "./access-rewrite.js";
+import { getOwnClassName, isStaticContext, resolveOwnClassRef, } from "./own-class-ref.js";
+import { isCallableMemberCall, isCallableValueCall } from "./callable-call.js";
+import { effectiveParent } from "./effective-parent.js";
+import { emitLambda } from "./lambda.js";
+import { VOID_OPERATOR_ERROR } from "./void-value.js";
 // ---- Main Expression Emitter ----
 export function emitExpression(t, node) {
     // Identifiers
@@ -21,9 +25,22 @@ export function emitExpression(t, node) {
             return 'false';
         return text;
     }
-    // this -> self
+    // this -> self. Inside a `static` member there is no `self` in
+    // GDScript, and TS `this` means the class itself there, so it
+    // resolves through the class name instead.
     if (node.kind === ts.SyntaxKind.ThisKeyword) {
-        return 'self';
+        if (!isStaticContext(node))
+            return 'self';
+        const ownName = getOwnClassName(node, t.currentClassName);
+        if (ownName === null) {
+            t.addDiagnostic(node, 'error', '`this` as a value inside a `static` member of an anonymous ' +
+                'class has no GDScript equivalent — `self` does not exist in a ' +
+                '`static func`, and the `_Name` convention emits no ' +
+                '`class_name` to name the class instead. Rename the class so it ' +
+                'emits a `class_name`.');
+            return 'self';
+        }
+        return ownName;
     }
     // null keyword
     if (node.kind === ts.SyntaxKind.NullKeyword)
@@ -170,6 +187,11 @@ export function emitExpression(t, node) {
     if (ts.isYieldExpression(node)) {
         t.addDiagnostic(node, 'error', '`yield` is not supported; use `await` instead');
         return node.getText(t.ctx.sourceFile);
+    }
+    // `void expr` -> not supported
+    if (ts.isVoidExpression(node)) {
+        t.addDiagnostic(node, 'error', VOID_OPERATOR_ERROR);
+        return t.emitExpression(node.expression);
     }
     // Fallback -- unsupported expression
     t.addDiagnostic(node, 'error', `Unsupported expression: ${ts.SyntaxKind[node.kind]}`);
@@ -336,10 +358,16 @@ export function emitPropertyAccess(t, node) {
         node.name.text === t.currentAccessorName) {
         return t.currentAccessorName;
     }
-    // ClassName.staticProp -> self.staticProp (when accessing own class)
-    if (ts.isIdentifier(node.expression) &&
-        node.expression.text === t.currentClassName) {
-        return `self.${node.name.text}`;
+    // `ClassName.member` on the enclosing class, and `this.member`
+    // inside a `static` member — which spelling is valid depends on the
+    // class and the context, so the decision lives in one place.
+    const ownRef = resolveOwnClassRef(node.expression, node.name.text, t.currentClassName);
+    if (ownRef.kind === 'unsupported') {
+        t.addDiagnostic(node, 'error', ownRef.reason);
+        return node.name.text;
+    }
+    if (ownRef.kind === 'prefix') {
+        return `${ownRef.text}${node.name.text}`;
     }
     const obj = t.emitExpression(node.expression);
     const prop = node.name.text;
@@ -386,23 +414,6 @@ export function emitPropertyAccess(t, node) {
     return `${obj}.${prop}`;
 }
 // ---- Call Expressions ----
-/**
- * Return the first non-transparent ancestor of `node` — i.e. walk through
- * parenthesis, non-null assertions, and type assertions which don't change
- * runtime semantics. Used to decide whether a value is actually "consumed"
- * vs merely wrapped.
- */
-function effectiveParent(node) {
-    let parent = node.parent;
-    while (parent &&
-        (ts.isParenthesizedExpression(parent) ||
-            ts.isNonNullExpression(parent) ||
-            ts.isAsExpression(parent) ||
-            ts.isTypeAssertionExpression(parent))) {
-        parent = parent.parent;
-    }
-    return parent;
-}
 /**
  * True when `type` is a TypeScript `Promise<T>` (or a union/intersection that
  * contains one). In GDScript there is no Promise; an unawaited coroutine
@@ -469,63 +480,60 @@ export function emitCallExpression(t, node) {
                 `which is not supported in GDScript. Use 'null' instead.`);
         }
     }
-    const args = node.arguments.map((a) => t.emitExpression(a)).join(', ');
-    // Handle gd.* helper calls
+    // The `gd.*` helpers re-emit their operands from the AST and return a
+    // string of their own, so they have to be tried BEFORE the arguments
+    // are emitted here. Emitting an argument twice is not merely wasted
+    // work: a block lambda reserves a body block on the emitter each
+    // time, and the copy that never reaches `writeLine` is a body that
+    // silently goes nowhere.
     if (ts.isPropertyAccessExpression(node.expression)) {
         const obj = node.expression.expression;
         const method = node.expression.name.text;
+        const gdResult = 
         // gd.as(value, Type)
-        const asResult = tryEmitGdAs(t, node, obj, method);
-        if (asResult !== null)
-            return asResult;
-        // gd.is(value, Type) -> value is Type
-        const isResult = tryEmitGdIs(t, node, obj, method);
-        if (isResult !== null)
-            return isResult;
-        // gd.dict([[key, value], ...]) -> {key: value, ...}
-        const dictResult = tryEmitGdDict(t, node, obj, method);
-        if (dictResult !== null)
-            return dictResult;
-        // gd.ops.add/sub/mul/div/eq/ne/gt/gte/lt/lte/plus/minus -> operator
-        const opsResult = tryEmitGdOps(t, node, obj, method);
-        if (opsResult !== null)
-            return opsResult;
+        tryEmitGdAs(t, node, obj, method) ??
+            // gd.is(value, Type) -> value is Type
+            tryEmitGdIs(t, node, obj, method) ??
+            // gd.typeof(value) -> typeof(value)
+            tryEmitGdUnspellableGlobal(t, node, obj, method) ??
+            // gd.dict([[key, value], ...]) -> {key: value, ...}
+            tryEmitGdDict(t, node, obj, method) ??
+            // gd.ops.add/sub/mul/div/eq/ne/gt/gte/lt/lte/plus/minus -> operator
+            tryEmitGdOps(t, node, obj, method);
+        if (gdResult !== null)
+            return gdResult;
+    }
+    const args = node.arguments.map((a) => t.emitExpression(a)).join(', ');
+    if (ts.isPropertyAccessExpression(node.expression)) {
+        const obj = node.expression.expression;
+        const method = node.expression.name.text;
         // Handle self.method() / self.property() calls
-        if (isSelfExpression(obj)) {
-            // Check if it's a method call or function (property) call via type checker
-            const symbol = t.ctx.checker.getSymbolAtLocation(node.expression);
-            if (symbol) {
-                const declarations = symbol.getDeclarations();
-                if (declarations && declarations.length > 0) {
-                    const decl = declarations[0];
-                    if (ts.isPropertyDeclaration(decl)) {
-                        return `self.${method}.call(${args})`;
-                    }
-                }
+        if (isSelfExpression(obj) && !isStaticContext(obj)) {
+            return isCallableMemberCall(t, node.expression)
+                ? `self.${method}.call(${args})`
+                : `self.${method}(${args})`;
+        }
+        // Own-class calls that can't route through `self`: `ClassName.m()`
+        // anywhere, and `this.m()` inside a `static` member. Handled here
+        // rather than through the generic callee path so a field holding a
+        // Callable still gets its `.call()`.
+        const ownRef = resolveOwnClassRef(obj, method, t.currentClassName);
+        if (ownRef.kind !== 'fallthrough') {
+            if (ownRef.kind === 'unsupported') {
+                t.addDiagnostic(node, 'error', ownRef.reason);
             }
-            // Method call or default
-            return `self.${method}(${args})`;
+            const prefix = ownRef.kind === 'prefix' ? ownRef.text : '';
+            return isCallableMemberCall(t, node.expression)
+                ? `${prefix}${method}.call(${args})`
+                : `${prefix}${method}(${args})`;
         }
     }
     const callee = t.emitExpression(node.expression);
-    // Check if the callee is a Callable type (function variable, parameter)
-    // In GDScript, Callable values must be invoked via .call()
-    if (ts.isIdentifier(node.expression)) {
-        const symbol = t.ctx.checker.getSymbolAtLocation(node.expression);
-        if (symbol) {
-            const declarations = symbol.getDeclarations();
-            if (declarations && declarations.length > 0) {
-                const decl = declarations[0];
-                // Local variables and parameters holding callables need .call()
-                if (ts.isVariableDeclaration(decl) || ts.isParameter(decl)) {
-                    const type = t.ctx.checker.getTypeAtLocation(node.expression);
-                    if (type.getCallSignatures().length > 0 &&
-                        !type.getConstructSignatures().length) {
-                        return `${callee}.call(${args})`;
-                    }
-                }
-            }
-        }
+    // A Callable VALUE is invoked through `.call()`, whatever expression
+    // produced it — a local, a parameter, a field on another object, the
+    // result of a call, an array element, a lambda written in place.
+    if (isCallableValueCall(t, node.expression)) {
+        return `${callee}.call(${args})`;
     }
     return `${callee}(${args})`;
 }
@@ -768,43 +776,6 @@ export function emitTemplateExpression(t, node) {
         }
     }
     return result;
-}
-// ---- Lambda ----
-export function emitLambda(t, node) {
-    const params = t.emitParameters(node.parameters);
-    // Return type
-    const returnType = tsTypeNodeToGdType(node.type, t.ctx.checker, t.ctx.sourceFile, t.currentClassName, t.ctx.registry);
-    const returnAnnotation = returnType ? ` -> ${returnType}` : '';
-    if (ts.isBlock(node.body)) {
-        // Multi-line lambda: return header only. Body will be emitted by emitLambdaBody().
-        return `func(${params})${returnAnnotation}:`;
-    }
-    // Single expression lambda
-    const body = t.emitExpression(node.body);
-    return `func(${params})${returnAnnotation}: return ${body}`;
-}
-/**
- * Check if an expression is a block-body lambda (arrow function or function expression with a block body).
- */
-export function isBlockLambda(node) {
-    return ((ts.isArrowFunction(node) || ts.isFunctionExpression(node)) &&
-        ts.isBlock(node.body));
-}
-/**
- * Emit the body of a block lambda. Call this after the line containing the lambda header.
- */
-export function emitLambdaBody(t, node) {
-    if (!ts.isBlock(node.body))
-        return;
-    t.emitter.indent();
-    if (node.body.statements.length === 0) {
-        const pos = t.getLineAndCol(node.body);
-        t.emitter.writeLine('pass', pos.line, pos.col);
-    }
-    else {
-        t.visitBlock(node.body);
-    }
-    t.emitter.dedent();
 }
 // ---- Multi-line Dict ----
 /** Emit a multi-line GDScript dict with proper indentation */

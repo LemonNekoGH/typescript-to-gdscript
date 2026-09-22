@@ -52,10 +52,18 @@ export function generateGodotDocsTypings(options) {
     // Bootstrap order matters: deriveValueTypes calls godotTypeToTs (which reads
     // ctx.knownClasses), so we pass a minimal ctx with only knownClasses populated.
     const knownClasses = new Set([...classes.keys()].filter((n) => !n.startsWith('@')));
-    const bootstrapCtx = { ...emptyTypeContext(), knownClasses };
+    // `@GlobalScope`'s enums are the global ones — same source the registry
+    // reads for `globalEnums`, so the two agree by construction.
+    const globalEnumNames = new Set((classes.get('@GlobalScope')?.enums ?? []).map((e) => e.name));
+    const bootstrapCtx = {
+        ...emptyTypeContext(),
+        knownClasses,
+        globalEnumNames,
+    };
     const overrideDirs = options.overrideDirs ?? [];
     const typeCtx = {
         knownClasses,
+        globalEnumNames,
         valueTypes: deriveValueTypes(classes, bootstrapCtx),
         variantParamConverts: deriveVariantParamConverts(classes),
         nonNullableMembers: loadNonNullableOverrides(overrideDirs),

@@ -2,10 +2,10 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { existsSync } from 'fs';
 import { resolve, relative, normalize } from 'path';
-import { parseGodotErrors, getAutoloadNames, isAutoloadFalsePositive, isDuplicateClassFalsePositive, isUnderScratchDir, } from "./error-parser.js";
+import { parseGodotErrors, getAutoloadNames, isAutoloadFalsePositive, isDuplicateClassFalsePositive, isUnindexedOwnClassFalsePositive, collectDeclaredClassNames, collectDeclaredClassNamesUnder, isUnderScratchDir, } from "./error-parser.js";
 import { remapError, remapErrorSync } from "./source-map-remap.js";
 // Re-export everything that external consumers need
-export { parseGodotErrors, getAutoloadNames, isAutoloadFalsePositive, isDuplicateClassFalsePositive, isUnderScratchDir, } from "./error-parser.js";
+export { parseGodotErrors, getAutoloadNames, isAutoloadFalsePositive, isDuplicateClassFalsePositive, isUnindexedOwnClassFalsePositive, collectDeclaredClassNames, collectDeclaredClassNamesUnder, isUnderScratchDir, } from "./error-parser.js";
 export { remapError, remapErrorSync } from "./source-map-remap.js";
 const execFileAsync = promisify(execFile);
 // ─── Main Validation ─────────────────────────────────────────
@@ -52,6 +52,12 @@ export async function validateGdFiles(options) {
     }
     // Collect autoload names to filter false-positive errors (Godot bug #80319)
     const autoloadNames = getAutoloadNames(options.projectRoot);
+    // `class_name`s declared by the very files being validated. Scripts
+    // reference their own class name (the only form valid in a `static
+    // func`), and `--check-only` doesn't run the import pass that
+    // populates Godot's global class cache — so these resolve to
+    // "Identifier not found" against correct code.
+    const declaredClassNames = collectDeclaredClassNames(options.gdFiles.map((f) => (typeof f === 'string' ? f : f.path)));
     // `cacheDir` (if supplied) marks the `ProjectCache` gd-output mirror
     // — diagnostics from files under there are treated as scratch, not
     // real project files. Callers that don't have a resolved config
@@ -108,18 +114,19 @@ export async function validateGdFiles(options) {
             let rawErrors = parseGodotErrors(output, options.projectRoot);
             // Filter false-positive errors
             rawErrors = rawErrors.filter((e) => !isAutoloadFalsePositive(e, autoloadNames) &&
+                !isUnindexedOwnClassFalsePositive(e, declaredClassNames) &&
                 !isDuplicateClassFalsePositive(e, options.projectRoot, cacheDir));
             if (rawErrors.length === 0 && output.trim()) {
                 // Unparsed error output -- report first meaningful line
                 // But first check if it's a known false positive
                 let isFalsePositive = false;
-                if (autoloadNames.size > 0) {
-                    for (const autoloadName of autoloadNames) {
-                        if (output.includes('Identifier not found: ' + autoloadName) ||
-                            output.includes('Identifier "' + autoloadName + '" not declared')) {
-                            isFalsePositive = true;
-                            break;
-                        }
+                // Same two shapes for both name sets: an autoload Godot didn't
+                // load, or a class_name Godot hasn't indexed yet.
+                for (const known of [...autoloadNames, ...declaredClassNames]) {
+                    if (output.includes('Identifier not found: ' + known) ||
+                        output.includes('Identifier "' + known + '" not declared')) {
+                        isFalsePositive = true;
+                        break;
                     }
                 }
                 const isTmpFile = isUnderScratchDir(resolvedFile, options.projectRoot, cacheDir);
@@ -209,6 +216,10 @@ export async function validateGdProject(options) {
     const autoloadNames = getAutoloadNames(options.projectRoot);
     const { cacheDir } = options;
     const resolvedGdDir = normalize(resolve(options.gdDir));
+    // See the note in `validateGdFiles` — `--check-only` never populates
+    // Godot's global class cache, so a script naming its own class reads
+    // as an unknown identifier until the editor imports.
+    const declaredClassNames = collectDeclaredClassNamesUnder(resolvedGdDir);
     // `--check-only` without `--script` enters the SceneTree main loop with
     // no script to call quit(), so on Windows it hangs forever. `--quit-after 1`
     // forces Godot to quit after one main-loop tick — all scripts have already
@@ -248,6 +259,7 @@ export async function validateGdProject(options) {
         return { diagnostics: [], godotAvailable: true };
     let rawErrors = parseGodotErrors(output, options.projectRoot);
     rawErrors = rawErrors.filter((e) => !isAutoloadFalsePositive(e, autoloadNames) &&
+        !isUnindexedOwnClassFalsePositive(e, declaredClassNames) &&
         !isDuplicateClassFalsePositive(e, options.projectRoot, cacheDir));
     // Filter to errors under gdDir only
     rawErrors = rawErrors.filter((e) => {

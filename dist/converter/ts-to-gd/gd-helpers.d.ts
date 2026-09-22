@@ -11,6 +11,17 @@ export declare function tryEmitGdAs(t: TransformerDelegate, node: ts.CallExpress
  */
 export declare function tryEmitGdIs(t: TransformerDelegate, node: ts.CallExpression, obj: ts.Expression, method: string): string | null;
 /**
+ * Handle a global whose GDScript name TypeScript cannot spell:
+ * `gd.typeof(value)` -> `typeof(value)`.
+ *
+ * Keyed on the same predicate the typings generator uses to decide a
+ * global gets no declaration of its own (`sanitizeFunctionName` changes
+ * it), so the two cannot drift: every global `gd` has to carry is one
+ * this rewrites back, under any Godot version. `typeof` is the only
+ * one today. Returns null if this is not such a call.
+ */
+export declare function tryEmitGdUnspellableGlobal(t: TransformerDelegate, node: ts.CallExpression, obj: ts.Expression, method: string): string | null;
+/**
  * Handle `gd.dict([[key, value], ...])` -> `{key: value, ...}`.
  * Returns null if this is not a gd.dict call.
  */
@@ -34,11 +45,4 @@ export declare function emitGdEval(t: TransformerDelegate, node: ts.CallExpressi
     line: number;
     col: number;
 }): void;
-export declare function isGdMatchCall(node: ts.Expression): boolean;
-export declare function visitGdMatchStatement(t: TransformerDelegate, node: ts.CallExpression, visitStatement: (t: TransformerDelegate, node: ts.Statement) => void): void;
-/**
- * Convert a TS expression to a GDScript match pattern.
- * @param bindings - Set of variable names that should be emitted as `var name` pattern bindings
- */
-export declare function emitMatchPatternExpr(t: TransformerDelegate, node: ts.Expression, bindings?: Set<string>): string;
 //# sourceMappingURL=gd-helpers.d.ts.map

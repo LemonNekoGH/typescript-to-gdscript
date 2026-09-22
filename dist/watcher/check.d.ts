@@ -10,10 +10,13 @@
  */
 import ts from 'typescript';
 import type { ProjectCache } from '../cache/index.ts';
+import type { ResolvedExternalPackage } from '../external-packages/index.ts';
 export interface CheckRunnerDeps {
     tsDir: string;
     gdDir: string;
     projectRoot: string;
+    lib?: boolean;
+    externalPackages?: ResolvedExternalPackage[];
     cacheDir?: string;
     tsConfigPath?: string;
     godotPath?: string;

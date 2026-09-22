@@ -1,13 +1,13 @@
 import { writeFileSync, mkdirSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { resolve, dirname, relative } from 'path';
 import { convertTsToGd } from "../converter/ts-to-gd/index.js";
-import { collectRuntimeModules, gdImportOutputPath, gdOutputPath, } from "../converter/ts-to-gd/modules.js";
 import { createTsProgram } from "../parser/typescript/index.js";
 import { resolveConfig, resolveGodotPath } from "../config/index.js";
 import { ProjectCache } from "../cache/index.js";
 import { isConversionErrorSeverity } from "../converter/common/index.js";
 import { debugLog, resolveFiles, generateAllTypings } from "./helpers.js";
 import { collectProjectDiagnostics, printDiagnostics, summarizeDiagnostics, hasReportableErrors, } from "../checker/index.js";
+import { linkExternalPackages, resolveExternalPackages, } from "../external-packages/index.js";
 export function registerConvertCommand(program) {
     program
         .command('convert')
@@ -39,14 +39,25 @@ export function registerConvertCommand(program) {
                 godotPath: opts.godotPath,
             },
         });
+        const projectRoot = opts.projectRoot
+            ? resolve(opts.projectRoot)
+            : cfg.rootDir;
+        // commander: --no-emit sets opts.emit = false, --no-check sets opts.check = false
+        const noEmit = opts.emit === false;
+        const noCheck = opts.check === false;
+        const packageOptions = {
+            rootDir: cfg.rootDir,
+            projectRoot,
+            externalPackages: cfg.externalPackages,
+        };
+        const externalPackages = noEmit
+            ? resolveExternalPackages(packageOptions)
+            : linkExternalPackages(packageOptions);
         const resolvedFiles = resolveFiles(files.length > 0 ? files : undefined, '.ts', cfg.tsDir, cfg.rootDir, cfg.ignore);
         if (resolvedFiles.length === 0) {
             console.log('No TypeScript files found to convert.');
             return;
         }
-        // commander: --no-emit sets opts.emit = false, --no-check sets opts.check = false
-        const noEmit = opts.emit === false;
-        const noCheck = opts.check === false;
         // Cache is write-only by default: every run converts fresh (correct even
         // when types in OTHER files changed — content hashes can't see that),
         // but results are still recorded so the watcher / ts-plugin / check
@@ -63,26 +74,13 @@ export function registerConvertCommand(program) {
             files: resolvedFiles.filter((f) => !f.endsWith('.d.ts')),
             tsConfigPath: cfg.tsconfig ? resolve(cfg.tsconfig) : undefined,
         });
-        const runtimeFiles = collectRuntimeModules(resolvedFiles, sharedProgram);
-        const entryFiles = new Set(resolvedFiles.map((file) => resolve(file)));
         let hasErrors = false;
         let skipped = 0;
         if (!noEmit) {
             // ── Write mode ───────────────────────────────────��─────
-            for (const filePath of runtimeFiles) {
-                const outputOptions = {
-                    tsDir: cfg.tsDir,
-                    gdDir: cfg.gdDir,
-                    projectRoot: cfg.rootDir,
-                };
-                const outputPath = entryFiles.has(filePath)
-                    ? gdOutputPath(filePath, outputOptions)
-                    : gdImportOutputPath(filePath, outputOptions);
-                if (!outputPath) {
-                    console.error(`Cannot stage runtime module without package.json: ${filePath}`);
-                    hasErrors = true;
-                    continue;
-                }
+            for (const filePath of resolvedFiles) {
+                const relPath = relative(cfg.tsDir, filePath);
+                const outputPath = resolve(cfg.gdDir, relPath.replace(/\.ts$/, '.gd'));
                 if (useCacheReads && cache?.isTsToGdFresh(filePath, outputPath)) {
                     debugLog(`Skipped (cache): ${outputPath}`);
                     skipped++;
@@ -101,7 +99,9 @@ export function registerConvertCommand(program) {
                     rootDir: cfg.tsDir,
                     tsDir: cfg.tsDir,
                     gdDir: cfg.gdDir,
-                    projectRoot: cfg.rootDir,
+                    projectRoot,
+                    lib: cfg.lib,
+                    externalPackages,
                     tsConfigPath: cfg.tsconfig ? resolve(cfg.tsconfig) : undefined,
                     sourceMap: true,
                     program: sharedProgram,
@@ -133,7 +133,7 @@ export function registerConvertCommand(program) {
             if (skipped > 0)
                 debugLog(`Skipped ${skipped} unchanged file(s)`);
             if (cache) {
-                const currentFiles = new Set(runtimeFiles.map((f) => f.replace(/\\/g, '/')));
+                const currentFiles = new Set(resolvedFiles.map((f) => f.replace(/\\/g, '/')));
                 cache.cleanStale(currentFiles);
                 cache.save();
             }
@@ -151,16 +151,14 @@ export function registerConvertCommand(program) {
                     // godotPath unavailable — Godot check skipped
                 }
             }
-            const projectRoot = opts.projectRoot
-                ? resolve(opts.projectRoot)
-                : cfg.rootDir;
             debugLog(`Diagnostic check: godotPath=${godotPath ?? '(skipped)'}, tsConfig=${cfg.tsconfig ?? '(none)'}, projectRoot=${projectRoot}`);
             const checkResult = await collectProjectDiagnostics({
                 tsDir: cfg.tsDir,
                 gdDir: cfg.gdDir,
                 projectRoot,
-                tsFiles: runtimeFiles,
-                entryFiles: resolvedFiles,
+                lib: cfg.lib,
+                externalPackages,
+                tsFiles: resolvedFiles.filter((f) => !f.endsWith('.d.ts')),
                 tsConfigPath: cfg.tsconfig ? resolve(cfg.tsconfig) : undefined,
                 cache,
                 godotPath,

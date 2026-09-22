@@ -46,8 +46,14 @@ import { createLintOverlay } from "./lint.js";
  *   - TS2434 / TS2435 — "namespace must precede the class".
  *   - TS2449 — "class used before its declaration", when the
  *               typings module references the script class.
+ *
+ * Only codes the generated typings provoke belong here — a diagnostic
+ * the user opted into is theirs to see. Keep in sync with
+ * `NOISE_CODES` in `src/checker/ts-diagnostics.ts` (duplicated, not
+ * shared, because that module value-imports `typescript` and the
+ * plugin must only ever use the instance tsserver hands it).
  */
-const ALWAYS_FILTERED_CODES = new Set([2434, 2435, 2449]);
+export const ALWAYS_FILTERED_CODES = new Set([2434, 2435, 2449]);
 function init({ typescript: ts }) {
     function create(info) {
         const ls = info.languageService;

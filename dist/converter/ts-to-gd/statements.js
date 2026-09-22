@@ -1,22 +1,23 @@
 import ts from 'typescript';
 import { tsTypeNodeToGdType } from "../common/index.js";
-import { isGdEvalCall, processGdEval, emitGdEval, isGdMatchCall, visitGdMatchStatement, emitMatchPatternExpr, } from "./gd-helpers.js";
+import { isGdEvalCall, processGdEval, emitGdEval } from "./gd-helpers.js";
+import { isGdMatchCall, visitGdMatchStatement } from "./gd-match.js";
+import { isVoidExpression } from "./void-value.js";
+import { SWITCH_BREAK_ERROR, visitSwitchStatement } from "./switch.js";
+import { emitStatements, isLabeledJump, isSwitchBreak, } from "./statement-body.js";
+/**
+ * Labels have no GDScript equivalent, and unlike most unsupported
+ * constructs there is nothing partial to fall back on: a labeled jump
+ * emitted bare binds to the nearest loop instead, which is a different
+ * program. Both the label and the jumps naming it are rejected.
+ */
+const LABEL_ERROR = 'Labels are not supported — GDScript has none, and a `break` or ' +
+    '`continue` naming one would bind to the nearest loop instead. ' +
+    'Restructure the loop: an early `return`, or a flag its condition ' +
+    'checks.';
 // ---- Block / Statement Visitors ----
 export function visitBlock(t, block) {
-    if (block.statements.length === 0) {
-        const pos = t.getLineAndCol(block);
-        t.emitter.writeLine('pass', pos.line, pos.col);
-        return;
-    }
-    for (const stmt of block.statements) {
-        t.emitLeadingComments(stmt);
-        visitStatement(t, stmt);
-    }
-    // Emit trailing comments before the closing brace
-    const closeBrace = block.getLastToken();
-    if (closeBrace) {
-        t.emitLeadingComments(closeBrace);
-    }
+    emitStatements(t, block.statements, t.getLineAndCol(block), block.getLastToken());
 }
 export function visitStatement(t, node) {
     const pos = t.getLineAndCol(node);
@@ -28,15 +29,26 @@ export function visitStatement(t, node) {
             emitGdEval(t, node.expression, pos);
         }
         else if (isGdMatchCall(node.expression)) {
-            visitGdMatchStatement(t, node.expression, visitStatement);
+            visitGdMatchStatement(t, node.expression);
         }
         else {
             t.emitter.writeLine(t.emitExpression(node.expression), pos.line, pos.col);
         }
     }
     else if (ts.isReturnStatement(node)) {
-        const expr = node.expression ? ` ${t.emitExpression(node.expression)}` : '';
-        t.emitter.writeLine(`return${expr}`, pos.line, pos.col);
+        if (node.expression && isVoidExpression(t, node.expression)) {
+            // GDScript refuses to take the value of a call that returns
+            // nothing, so the call stands on its own and the `return` goes
+            // bare — it still has to be there to leave early.
+            t.emitter.writeLine(t.emitExpression(node.expression), pos.line, pos.col);
+            t.emitter.writeLine('return', pos.line, pos.col);
+        }
+        else {
+            const expr = node.expression
+                ? ` ${t.emitExpression(node.expression)}`
+                : '';
+            t.emitter.writeLine(`return${expr}`, pos.line, pos.col);
+        }
     }
     else if (ts.isIfStatement(node)) {
         visitIfStatement(t, node);
@@ -51,15 +63,59 @@ export function visitStatement(t, node) {
         visitWhileStatement(t, node);
     }
     else if (ts.isBlock(node)) {
+        // GDScript has no bare block, so a block statement flattens into
+        // the body around it. Its comments still belong to the output —
+        // and whether what is left needs `pass` is that body's call, not
+        // this one, so there is no fallback here.
         for (const s of node.statements) {
+            t.emitLeadingComments(s);
             visitStatement(t, s);
         }
+        const closeBrace = node.getLastToken();
+        if (closeBrace)
+            t.emitLeadingComments(closeBrace);
+    }
+    else if (ts.isTypeAliasDeclaration(node) ||
+        ts.isInterfaceDeclaration(node)) {
+        // Type-only, so there is nothing to convert and nothing to report:
+        // it declares no value and runs no code. Erased here the same way
+        // `file-scope.ts` and the namespace walk erase it at their levels —
+        // this branch is what makes the rule hold at every scope instead of
+        // two out of three. A body left empty by the erasure still gets
+        // `pass` from `emitStatements`, which asks the emitter what came
+        // out rather than counting statements.
+    }
+    else if (isLabeledJump(node)) {
+        // Unreachable through a well-formed program — TypeScript requires
+        // the label to be in scope, so the `LabeledStatement` holding it is
+        // rejected below before the jump is ever visited. Kept so the rule
+        // stands on its own: emitting a labeled jump bare would bind it to
+        // the nearest loop instead of the labeled one, and nothing else
+        // here would notice.
+        t.addDiagnostic(node, 'error', LABEL_ERROR);
     }
     else if (ts.isBreakStatement(node)) {
-        t.emitter.writeLine('break', pos.line, pos.col);
+        // A `break` bound to the enclosing `switch` has no GDScript
+        // equivalent. Reported here, where the emitter is positioned
+        // inside the branch the `break` was written in, so its `# ERROR:`
+        // marker lands there instead of above the `match`.
+        if (isSwitchBreak(node)) {
+            t.addDiagnostic(node, 'error', SWITCH_BREAK_ERROR);
+        }
+        else {
+            t.emitter.writeLine('break', pos.line, pos.col);
+        }
     }
     else if (ts.isContinueStatement(node)) {
         t.emitter.writeLine('continue', pos.line, pos.col);
+    }
+    else if (ts.isLabeledStatement(node)) {
+        // The label carries the whole meaning — a `break`/`continue` naming
+        // it jumps somewhere a bare one would not — so the statement is
+        // rejected as a unit rather than emitted without its label. Its
+        // body is deliberately NOT visited: emitting the loop inside would
+        // look like a successful conversion of something that isn't one.
+        t.addDiagnostic(node, 'error', LABEL_ERROR);
     }
     else if (ts.isSwitchStatement(node)) {
         visitSwitchStatement(t, node);
@@ -111,10 +167,6 @@ export function visitVariableStatement(t, node) {
             ? ` = ${t.emitExpression(decl.initializer)}`
             : '';
         t.emitter.writeLine(`var ${name}${typeAnnotation}${init}`, pos.line, pos.col);
-        // If the initializer was a block lambda, emit its body after the declaration line
-        if (decl.initializer && t.isBlockLambda(decl.initializer)) {
-            t.emitLambdaBody(decl.initializer);
-        }
     }
 }
 // ---- If Statement ----
@@ -203,60 +255,14 @@ export function visitWhileStatement(t, node) {
     visitStatementBody(t, node.statement);
     t.emitter.dedent();
 }
-// ---- Switch -> Match ----
-export function visitSwitchStatement(t, node) {
-    const pos = t.getLineAndCol(node);
-    t.emitter.writeLine(`match ${t.emitExpression(node.expression)}:`, pos.line, pos.col);
-    t.emitter.indent();
-    for (const clause of node.caseBlock.clauses) {
-        const clausePos = t.getLineAndCol(clause);
-        if (ts.isCaseClause(clause)) {
-            t.emitter.writeLine(`${t.emitExpression(clause.expression)}:`, clausePos.line, clausePos.col);
-            t.emitter.indent();
-            const stmts = clause.statements.filter((s) => !ts.isBreakStatement(s));
-            if (stmts.length === 0) {
-                t.emitter.writeLine('pass', clausePos.line, clausePos.col);
-            }
-            else {
-                for (const stmt of stmts) {
-                    visitStatement(t, stmt);
-                }
-            }
-            t.emitter.dedent();
-        }
-        else {
-            t.emitter.writeLine('_:', clausePos.line, clausePos.col);
-            t.emitter.indent();
-            const stmts = clause.statements.filter((s) => !ts.isBreakStatement(s));
-            if (stmts.length === 0) {
-                t.emitter.writeLine('pass', clausePos.line, clausePos.col);
-            }
-            else {
-                for (const stmt of stmts) {
-                    visitStatement(t, stmt);
-                }
-            }
-            t.emitter.dedent();
-        }
-    }
-    t.emitter.dedent();
-}
 // ---- Statement Body Helper ----
 export function visitStatementBody(t, node) {
+    const pos = t.getLineAndCol(node);
     if (ts.isBlock(node)) {
-        if (node.statements.length === 0) {
-            const pos = t.getLineAndCol(node);
-            t.emitter.writeLine('pass', pos.line, pos.col);
-        }
-        else {
-            for (const stmt of node.statements) {
-                t.emitLeadingComments(stmt);
-                visitStatement(t, stmt);
-            }
-        }
+        emitStatements(t, node.statements, pos, node.getLastToken());
     }
     else {
-        visitStatement(t, node);
+        emitStatements(t, [node], pos);
     }
 }
 //# sourceMappingURL=statements.js.map

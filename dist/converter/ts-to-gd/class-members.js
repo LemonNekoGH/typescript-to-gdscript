@@ -110,9 +110,6 @@ export function visitPropertyDeclaration(node, t) {
         decl += ` = ${t.emitExpression(node.initializer)}`;
     }
     t.emitter.writeLine(decl, pos.line, pos.col);
-    if (node.initializer && t.isBlockLambda(node.initializer)) {
-        t.emitLambdaBody(node.initializer);
-    }
 }
 // ── Accessor Pair (get/set) ──────────────────────────────────
 export function visitAccessorPair(name, getNode, setNode, t) {
@@ -135,8 +132,7 @@ export function visitAccessorPair(name, getNode, setNode, t) {
         const getPos = t.getLineAndCol(getNode);
         t.emitter.writeLine('get:', getPos.line, getPos.col);
         t.emitter.indent();
-        for (const stmt of getNode.body.statements)
-            t.visitStatement(stmt);
+        t.visitBlock(getNode.body);
         t.emitter.dedent();
     }
     else {
@@ -152,8 +148,7 @@ export function visitAccessorPair(name, getNode, setNode, t) {
             : 'value';
         t.emitter.writeLine(`set(${paramName}):`, setPos.line, setPos.col);
         t.emitter.indent();
-        for (const stmt of setNode.body.statements)
-            t.visitStatement(stmt);
+        t.visitBlock(setNode.body);
         t.emitter.dedent();
     }
     else {
@@ -194,6 +189,15 @@ export function visitMethodDeclaration(node, t) {
         t.emitter.writeLine('@abstract', pos.line, pos.col);
     const isStatic = node.modifiers?.some((m) => m.kind === ts.SyntaxKind.StaticKeyword);
     const staticPrefix = isStatic ? 'static ' : '';
+    // An `@abstract` function is the signature ALONE — Godot rejects a
+    // body after it ("An abstract function cannot have a body") and also
+    // rejects a bare trailing colon ("Expected indented block after
+    // function declaration"). TS guarantees `abstract` members have no
+    // body, so there is nothing to drop.
+    if (isAbstract) {
+        t.emitter.writeLine(`${staticPrefix}func ${name}(${params})${returnAnnotation}`, pos.line, pos.col);
+        return;
+    }
     t.emitter.writeLine(`${staticPrefix}func ${name}(${params})${returnAnnotation}:`, pos.line, pos.col);
     t.emitter.indent();
     if (node.body) {

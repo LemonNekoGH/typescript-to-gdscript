@@ -5,7 +5,7 @@ import { emitClassHeader, emitClassMembers } from "./class-body.js";
 import { collectLiftedNames, emitFileScopeNamespace } from "./file-scope.js";
 import { emitParameters as emitParametersImpl } from "./parameters.js";
 import { visitBlock as visitBlockImpl, visitStatement as visitStatementImpl, visitVariableStatement as visitVariableStatementImpl, } from "./statements.js";
-import { emitExpression as emitExpressionImpl, emitStringLiteral as emitStringLiteralImpl, escapeGdString as escapeGdStringImpl, isBlockLambda as isBlockLambdaImpl, emitLambdaBody as emitLambdaBodyImpl, emitMultiLineDict as emitMultiLineDictImpl, checkExplicitPromiseTypes, } from "./expressions.js";
+import { emitExpression as emitExpressionImpl, emitStringLiteral as emitStringLiteralImpl, escapeGdString as escapeGdStringImpl, emitMultiLineDict as emitMultiLineDictImpl, checkExplicitPromiseTypes, } from "./expressions.js";
 /**
  * Transforms a TypeScript AST into GDScript code.
  *
@@ -91,6 +91,10 @@ export class TsToGdTransformer {
         // reach the emitter.
         checkExplicitPromiseTypes(this);
         this.visitSourceFile(this.ctx.sourceFile);
+        // Every lambda body reserved during emission must have been
+        // written by now; one left over means an expression string was
+        // built and dropped, taking a function body with it.
+        this.emitter.assertBlocksDrained();
         return {
             code: this.emitter.getOutput(),
             sourceMap: this.emitter.getSourceMap(),
@@ -113,7 +117,14 @@ export class TsToGdTransformer {
     emitParameters(params) {
         return emitParametersImpl(this, params);
     }
-    emitLeadingComments(node) {
+    /**
+     * `statementsAllowed: false` marks a position where GDScript takes
+     * no statement — the pattern section of a `match`, between one
+     * branch and the next. It only changes the `/* *\/` substitution:
+     * `"""..."""` is a string expression, so there it would not parse.
+     * `#` and `##` are comments wherever they are written.
+     */
+    emitLeadingComments(node, { statementsAllowed = true } = {}) {
         const sourceText = this.ctx.sourceFile.getFullText();
         const ranges = ts.getLeadingCommentRanges(sourceText, node.getFullStart());
         if (!ranges)
@@ -138,19 +149,50 @@ export class TsToGdTransformer {
             }
             else if (range.kind === ts.SyntaxKind.MultiLineCommentTrivia) {
                 if (commentText.startsWith('/**')) {
-                    // /** comment */ -> ## comment (doc comment)
+                    // /** comment */ -> ## comment (doc comment). One `##` line
+                    // per source line: GDScript has no multi-line comment, so a
+                    // single write with newlines in it puts every line after the
+                    // first at column 0 with no `#` — which ends the block it
+                    // was written in and, in a body that holds nothing else,
+                    // reads as a statement to `hasCodeSince` and suppresses the
+                    // `pass` that body needs.
+                    // The per-line strip is horizontal-space only: `\s` matches
+                    // a newline, so a line holding nothing but `*` would eat the
+                    // break after it and pull the next line up — turning a blank
+                    // line, which is a paragraph break in a Godot doc comment,
+                    // into nothing.
                     const content = commentText
                         .replace(/^\/\*\*\s*/, '')
                         .replace(/\s*\*\/$/, '')
-                        .replace(/^\s*\*\s?/gm, '')
+                        .replace(/^[ \t]*\*[ \t]?/gm, '')
                         .trim();
-                    this.emitter.writeLine(`## ${content}`, origLine, origCol);
+                    content.split('\n').forEach((raw, i) => {
+                        const text = raw.trimEnd();
+                        this.emitter.writeLine(text ? `## ${text}` : '##', origLine + i, origCol);
+                    });
                 }
                 else {
                     // /* comment */ -> """comment""" (block comment)
                     const content = commentText
                         .replace(/^\/\*\s?/, '')
                         .replace(/\s?\*\/$/, '');
+                    if (!statementsAllowed) {
+                        // One `#` per line, like the doc-comment path: a single
+                        // write with newlines in it puts every line after the
+                        // first at column 0, which closes the block. The `*`
+                        // margin and the outer blank lines go the same way they
+                        // do there — this is a comment now, not the verbatim
+                        // string the `"""` form carries.
+                        const lines = content
+                            .replace(/^[ \t]*\*[ \t]?/gm, '')
+                            .trim()
+                            .split('\n');
+                        lines.forEach((raw, i) => {
+                            const text = raw.trim();
+                            this.emitter.writeLine(text ? `# ${text}` : '#', origLine + i, origCol);
+                        });
+                        continue;
+                    }
                     if (!content.includes('\n')) {
                         // Single-line block comment
                         this.emitter.writeLine(`"""${content.trim()}"""`, origLine, origCol);
@@ -185,12 +227,6 @@ export class TsToGdTransformer {
     }
     escapeGdString(text) {
         return escapeGdStringImpl(text);
-    }
-    isBlockLambda(node) {
-        return isBlockLambdaImpl(node);
-    }
-    emitLambdaBody(node) {
-        emitLambdaBodyImpl(this, node);
     }
     addDiagnostic(node, severity, message) {
         const { line, col } = this.getLineAndCol(node);

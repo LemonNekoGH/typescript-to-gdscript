@@ -1,7 +1,16 @@
 import ts from 'typescript';
 import { normalize, resolve } from 'path';
-/** TS diagnostic codes that are correct-but-noisy for the namespace+class merge pattern. */
-const NOISE_CODES = new Set([2434, 2435, 2449]);
+/**
+ * TS diagnostic codes that are correct-but-noisy for the namespace+class
+ * merge pattern the typings generator emits.
+ *
+ * Only codes the generated typings themselves provoke belong here.
+ * Diagnostics a user opted into stay visible even when they fire on
+ * every file — `noFallthroughCasesInSwitch` (TS7029) is incompatible
+ * with this dialect, but silently overriding an explicit compiler
+ * setting is worse than letting it say so.
+ */
+export const NOISE_CODES = new Set([2434, 2435, 2449]);
 function flattenDiagnosticMessage(msg) {
     if (typeof msg === 'string')
         return msg;

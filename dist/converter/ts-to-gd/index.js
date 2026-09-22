@@ -45,6 +45,8 @@ export function convertTsToGd(options) {
         tsDir: options.tsDir ?? options.rootDir,
         gdDir: options.gdDir ?? options.rootDir,
         projectRoot: options.projectRoot ?? options.rootDir,
+        lib: options.lib ?? false,
+        externalPackages: options.externalPackages ?? [],
     }, {
         sourceMap: options.sourceMap ?? false,
     });

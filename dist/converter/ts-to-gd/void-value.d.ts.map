@@ -1,0 +1,1 @@
+{"version":3,"file":"void-value.d.ts","sourceRoot":"","sources":["../../../src/converter/ts-to-gd/void-value.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,YAAY,CAAC;AAC5B,OAAO,KAAK,EAAE,mBAAmB,EAAE,MAAM,wBAAwB,CAAC;AAElE;;;;;;GAMG;AACH,eAAO,MAAM,mBAAmB,QAGwB,CAAC;AAEzD;;;;GAIG;AACH,wBAAgB,gBAAgB,CAC9B,CAAC,EAAE,mBAAmB,EACtB,IAAI,EAAE,EAAE,CAAC,UAAU,GAClB,OAAO,CAET"}

@@ -17,11 +17,11 @@ export interface TransformerDelegate {
     visitBlock(block: ts.Block): void;
     visitVariableStatement(node: ts.VariableStatement): void;
     emitParameters(params: ts.NodeArray<ts.ParameterDeclaration>): string;
-    emitLeadingComments(node: ts.Node): void;
+    emitLeadingComments(node: ts.Node, opts?: {
+        statementsAllowed?: boolean;
+    }): void;
     emitStringLiteral(node: ts.StringLiteral): string;
     escapeGdString(text: string): string;
-    isBlockLambda(node: ts.Expression): node is ts.ArrowFunction | ts.FunctionExpression;
-    emitLambdaBody(node: ts.ArrowFunction | ts.FunctionExpression): void;
     addDiagnostic(node: ts.Node, severity: TransformDiagnostic['severity'], message: string): void;
     getLineAndCol(node: ts.Node): {
         line: number;

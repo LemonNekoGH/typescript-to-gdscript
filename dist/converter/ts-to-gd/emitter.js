@@ -3,6 +3,32 @@ import { SourceMapper } from "../../sourcemap/index.js";
  * GDScript code emitter with source map support.
  * Tracks line/column positions as code is emitted.
  */
+/**
+ * An annotation alone on its line — no statement after it to attach to.
+ * `@onready`, `@warning_ignore("unused_variable")`, `@export_range(0, 1)`.
+ *
+ * The argument list runs to the LAST `)` on the line, not the first:
+ * an argument is free-form text (it can reach the emitter through
+ * `gd.eval`) and may contain `)` inside a string. Matching too eagerly
+ * only costs a redundant `pass`; matching too little suppresses one
+ * and emits a block GDScript refuses to parse. An annotation with a
+ * statement after it (`@export var x = 1`) still fails to match, since
+ * the line then has text left over after the closing `)`.
+ */
+const BARE_ANNOTATION = /^@[A-Za-z_]\w*\s*(\(.*\))?$/;
+/**
+ * Stands in for a block of GDScript that belongs in the middle of an
+ * expression — a lambda body. The expression emitter builds a string
+ * and cannot write indented lines of its own, and the lambda is
+ * rarely the last thing on its line (`f(func(): …, 0, 1)`), so it
+ * reserves the block with {@link GDScriptEmitter.reserveBlock} and
+ * leaves this marker where the body goes. `writeLine` expands it.
+ *
+ * The `\0` cannot arrive from source: string literals are emitted
+ * from `getText()`, so a `\0` escape in TypeScript stays the two
+ * characters `\` and `0`.
+ */
+const BLOCK_MARKER = /\0block:(\d+)\0/;
 export class GDScriptEmitter {
     output = [];
     currentLine = 1;
@@ -11,6 +37,8 @@ export class GDScriptEmitter {
     indentStr = '\t';
     sourceMapper = null;
     sourceFile;
+    blocks = new Map();
+    nextBlockId = 1;
     constructor(sourceFile, generatedFile, enableSourceMap = false) {
         this.sourceFile = sourceFile;
         if (enableSourceMap && generatedFile) {
@@ -49,10 +77,53 @@ export class GDScriptEmitter {
                 ? lines.at(-1).length
                 : this.currentColumn + lines.at(0).length;
     }
+    /**
+     * Reserve a block of lines for a spot inside an expression, and
+     * return the marker to leave there. `emit` runs later, from
+     * `writeLine`, with the indent level already set to the block's
+     * body — so it writes whole lines exactly as a statement would,
+     * keeping its own source-map positions.
+     */
+    reserveBlock(emit) {
+        const id = this.nextBlockId++;
+        this.blocks.set(id, emit);
+        return `\0block:${id}\0`;
+    }
     /** Write text followed by a newline, with mapping at column 0 (line start). */
     writeLine(text, originalLine, originalColumn) {
         const indent = this.indentStr.repeat(this.indentLevel);
-        this.write(indent + text, originalLine, originalColumn);
+        if (!text.includes('\0')) {
+            this.write(indent + text, originalLine, originalColumn);
+            this.write('\n');
+            return;
+        }
+        // `[before, id, between, id, …, after]` — `split` on a regex with
+        // one capture group hands back the ids between the segments.
+        const parts = text.split(BLOCK_MARKER);
+        const bodyIndent = this.indentStr.repeat(this.indentLevel + 1);
+        this.write(indent + parts[0], originalLine, originalColumn);
+        for (let i = 1; i < parts.length; i += 2) {
+            const id = Number(parts[i]);
+            const emit = this.blocks.get(id);
+            // Emitting the header without its body would produce a `func():`
+            // GDScript cannot parse, so a marker that lost its block is a
+            // bug in the caller, not something to paper over.
+            if (!emit)
+                throw new Error(`Inline block ${id} was never reserved`);
+            this.blocks.delete(id);
+            this.write('\n');
+            this.indentLevel++;
+            emit();
+            this.indentLevel--;
+            // The block wrote whole lines, so whatever followed the lambda
+            // has to start a new one. It goes at the body's indent: GDScript
+            // takes a continuation there, but not at a level in between —
+            // an unindent has to land on one the parser still has open.
+            const rest = parts[i + 1] ?? '';
+            if (rest === '' && i + 2 >= parts.length)
+                return;
+            this.write(bodyIndent + rest, originalLine, originalColumn);
+        }
         this.write('\n');
     }
     /** Write an empty line */
@@ -71,6 +142,56 @@ export class GDScriptEmitter {
     writeIndent() {
         const indent = this.indentStr.repeat(this.indentLevel);
         this.write(indent);
+    }
+    /**
+     * Opaque marker for the current end of output, for
+     * {@link hasCodeSince}.
+     */
+    mark() {
+        return this.output.length;
+    }
+    /**
+     * True when a real GDScript statement has been written since `mark`.
+     * Asking the output rather than the AST keeps the rule correct for
+     * every statement kind, including ones that emit only an error
+     * marker. Three things produce a line without filling an indented
+     * block, and GDScript rejects a block none of whose lines is a
+     * statement: a blank line, a comment, and an annotation with nothing
+     * after it (an annotation attaches to the statement that follows,
+     * so `@export var x = 1` counts but a lone `@warning_ignore(...)`
+     * does not).
+     */
+    hasCodeSince(mark) {
+        return this.output
+            .slice(mark)
+            .join('')
+            .split('\n')
+            .some((line) => {
+            const text = line.trim();
+            if (text === '' || text.startsWith('#'))
+                return false;
+            return !BARE_ANNOTATION.test(text);
+        });
+    }
+    /**
+     * Throw when a reserved block never reached `writeLine`.
+     *
+     * `writeLine` already rejects the opposite mismatch — a marker whose
+     * block is gone. This is the half that matters more: a block whose
+     * marker was dropped is a lambda body that vanished from the output
+     * with nothing to show for it, which is precisely the silent loss
+     * `reserveBlock` exists to prevent. It can only happen if a caller
+     * emits an expression and then throws the string away, so it is a
+     * bug in the caller, and a converter that fails loudly beats one
+     * that writes a `.gd` missing a function body.
+     */
+    assertBlocksDrained() {
+        if (this.blocks.size === 0)
+            return;
+        const ids = [...this.blocks.keys()].join(', ');
+        throw new Error(`Inline block(s) ${ids} were reserved but never written — ` +
+            'an emitted expression string was discarded after a lambda ' +
+            'body was reserved for it.');
     }
     /** Get the generated code */
     getOutput() {

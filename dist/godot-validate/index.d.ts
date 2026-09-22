@@ -1,5 +1,5 @@
 import type { TransformDiagnostic } from '../converter/common/index.ts';
-export { parseGodotErrors, getAutoloadNames, isAutoloadFalsePositive, isDuplicateClassFalsePositive, isUnderScratchDir, } from './error-parser.ts';
+export { parseGodotErrors, getAutoloadNames, isAutoloadFalsePositive, isDuplicateClassFalsePositive, isUnindexedOwnClassFalsePositive, collectDeclaredClassNames, collectDeclaredClassNamesUnder, isUnderScratchDir, } from './error-parser.ts';
 export type { GodotRawError } from './error-parser.ts';
 export { remapError, remapErrorSync } from './source-map-remap.ts';
 export interface GodotValidateOptions {

@@ -40,6 +40,21 @@ type LS = tsModule.LanguageService;
 interface PluginInit {
     typescript: TS;
 }
+/**
+ * Diagnostic codes emitted by the namespace+class merge pattern in
+ * the generated `.gd.d.ts` files that never correspond to real user
+ * mistakes. Always filtered for in-scope files.
+ *   - TS2434 / TS2435 — "namespace must precede the class".
+ *   - TS2449 — "class used before its declaration", when the
+ *               typings module references the script class.
+ *
+ * Only codes the generated typings provoke belong here — a diagnostic
+ * the user opted into is theirs to see. Keep in sync with
+ * `NOISE_CODES` in `src/checker/ts-diagnostics.ts` (duplicated, not
+ * shared, because that module value-imports `typescript` and the
+ * plugin must only ever use the instance tsserver hands it).
+ */
+export declare const ALWAYS_FILTERED_CODES: Set<number>;
 declare function init({ typescript: ts }: PluginInit): {
     create: (info: tsModule.server.PluginCreateInfo) => LS;
 };

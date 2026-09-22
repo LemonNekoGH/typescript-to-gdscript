@@ -26,6 +26,16 @@ export interface TsToGdConfig {
     godotTypingsDir?: string;
     /** Converter behavior tweaks. */
     converterOptions?: ConverterOptions;
+    /** Build this project as a reusable package with relative GDScript imports. */
+    lib?: boolean;
+    /** Shared tstogd projects that need an explicit source path or mount name. */
+    externalPackages?: ExternalPackageConfig[];
+}
+export interface ExternalPackageConfig {
+    /** npm package name or path to a tstogd library. */
+    from: string;
+    /** Optional path below tstogd_modules. Defaults to the package name. */
+    to?: string;
 }
 /**
  * Knobs that change how the converter and typings generator emit code.
@@ -63,6 +73,10 @@ export interface ResolvedConfig {
     projectFile: string;
     /** Disable Godot executable validation. */
     disableGodotLint: boolean;
+    /** Build this project as a reusable package with relative imports. */
+    lib: boolean;
+    /** Explicit shared package mappings. */
+    externalPackages: ExternalPackageConfig[];
     /** Absolute path to cache directory. */
     cacheDir: string;
     /** Absolute path to Godot engine typings directory. */

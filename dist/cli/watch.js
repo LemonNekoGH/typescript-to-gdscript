@@ -2,6 +2,7 @@ import { resolve } from 'path';
 import { Watcher } from "../watcher/index.js";
 import { resolveConfig, resolveGodotPath } from "../config/index.js";
 import { isDebugEnabled } from "./helpers.js";
+import { linkExternalPackages } from "../external-packages/index.js";
 export function registerWatchCommand(program) {
     program
         .command('watch')
@@ -29,6 +30,14 @@ export function registerWatchCommand(program) {
         const godotPath = cfg.godotPath
             ? resolveGodotPath({ godotPath: cfg.godotPath })
             : undefined;
+        const projectRoot = opts.projectRoot
+            ? resolve(opts.projectRoot)
+            : cfg.rootDir;
+        const externalPackages = linkExternalPackages({
+            rootDir: cfg.rootDir,
+            projectRoot,
+            externalPackages: cfg.externalPackages,
+        });
         const watcher = new Watcher({
             rootDir: cfg.rootDir,
             tsDir: cfg.tsDir,
@@ -42,7 +51,9 @@ export function registerWatchCommand(program) {
             ignore: cfg.ignore,
             projectFile: cfg.projectFile,
             godotPath,
-            projectRoot: opts.projectRoot ? resolve(opts.projectRoot) : undefined,
+            projectRoot,
+            lib: cfg.lib,
+            externalPackages,
             emitOnError: opts.emitOnError,
             noCheck: opts.check === false,
             debug: isDebugEnabled(),

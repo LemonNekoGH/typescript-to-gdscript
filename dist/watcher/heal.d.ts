@@ -16,6 +16,7 @@
  * sits in the converted batch, which is excluded anyway).
  */
 import type ts from 'typescript';
+import type { ResolvedExternalPackage } from '../external-packages/index.ts';
 import type { CheckResult } from '../checker/index.ts';
 import type { ProjectCache } from '../cache/index.ts';
 /** Normalize a path for map keys (forward slashes). */
@@ -49,6 +50,8 @@ export interface HealOptions {
     tsDir: string;
     gdDir: string;
     projectRoot: string;
+    lib?: boolean;
+    externalPackages?: ResolvedExternalPackage[];
     tsConfigPath?: string;
     emitOnError?: boolean;
     onLog?: (file: string, message: string) => void;

@@ -7,6 +7,5 @@ export declare function visitIfStatement(t: TransformerDelegate, node: ts.IfStat
 export declare function visitForOfStatement(t: TransformerDelegate, node: ts.ForOfStatement): void;
 export declare function visitForStatement(t: TransformerDelegate, node: ts.ForStatement): void;
 export declare function visitWhileStatement(t: TransformerDelegate, node: ts.WhileStatement): void;
-export declare function visitSwitchStatement(t: TransformerDelegate, node: ts.SwitchStatement): void;
 export declare function visitStatementBody(t: TransformerDelegate, node: ts.Statement): void;
 //# sourceMappingURL=statements.d.ts.map

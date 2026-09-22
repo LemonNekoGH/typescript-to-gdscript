@@ -96,6 +96,8 @@ export function healFiles(options) {
             tsDir: options.tsDir,
             gdDir: options.gdDir,
             projectRoot: options.projectRoot,
+            lib: options.lib,
+            externalPackages: options.externalPackages,
             tsConfigPath: options.tsConfigPath,
             sourceMap: true,
             program: options.program,

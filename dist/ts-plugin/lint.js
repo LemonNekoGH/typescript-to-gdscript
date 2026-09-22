@@ -27,10 +27,22 @@ import { resolveGodotPath } from "../config/index.js";
 import { convertTsToGd } from "../converter/ts-to-gd/index.js";
 import { validateGdFiles } from "../godot-validate/index.js";
 import { LRU } from "./lru.js";
+import { resolveExternalPackages, } from "../external-packages/index.js";
 /** Diagnostic codes the plugin owns — users can filter them via source === 'tstogd'. */
 const DIAG_CODE_BASE = 90000;
 export function createLintOverlay(deps) {
     const { ts, info, ls, cfg, cache, log, trace } = deps;
+    let externalPackages = [];
+    try {
+        externalPackages = resolveExternalPackages({
+            rootDir: cfg.rootDir,
+            projectRoot: cfg.rootDir,
+            externalPackages: cfg.externalPackages,
+        });
+    }
+    catch (error) {
+        log(`external package resolution failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
     /**
      * Per-file memo of converter + Godot diagnostics, keyed by fileName.
      * Each entry is small (a few hundred bytes) so the cap is generous
@@ -233,6 +245,8 @@ export function createLintOverlay(deps) {
                 tsDir: cfg.tsDir,
                 gdDir: cfg.gdDir,
                 projectRoot: cfg.rootDir,
+                lib: cfg.lib,
+                externalPackages,
                 sourceMap: true,
                 program,
             });

@@ -1,7 +1,7 @@
 /**
  * Godot error output parser and false-positive filtering.
  */
-import { existsSync } from 'fs';
+import { existsSync, readFileSync, readdirSync } from 'fs';
 import { resolve, join, relative, isAbsolute } from 'path';
 import { parseAutoloads } from "../typings/scenes.js";
 // ─── Autoload Error Filtering ────────────────────────────────
@@ -34,6 +34,74 @@ export function isAutoloadFalsePositive(error, autoloadNames) {
     if (match2 && autoloadNames.has(match2[1]))
         return true;
     return false;
+}
+/**
+ * `class_name` declarations found in the given `.gd` files.
+ *
+ * Unreadable files are skipped — a missing file is the caller's
+ * problem to report, not this helper's.
+ */
+export function collectDeclaredClassNames(gdFilePaths) {
+    const names = new Set();
+    for (const filePath of gdFilePaths) {
+        let source;
+        try {
+            source = readFileSync(filePath, 'utf-8');
+        }
+        catch {
+            continue;
+        }
+        for (const m of source.matchAll(/^class_name[ 	]+(\w+)/gm)) {
+            names.add(m[1]);
+        }
+    }
+    return names;
+}
+/**
+ * `class_name` declarations under a directory tree, recursively.
+ *
+ * A missing or unreadable directory yields an empty set rather than
+ * throwing: "no output tree yet" is the honest answer for a check that
+ * runs before anything has been converted, and it is the same answer
+ * the per-file read gives for a file it cannot open.
+ */
+export function collectDeclaredClassNamesUnder(gdDir) {
+    let entries;
+    try {
+        entries = readdirSync(gdDir, { recursive: true, encoding: 'utf-8' });
+    }
+    catch {
+        return new Set();
+    }
+    return collectDeclaredClassNames(entries.filter((f) => f.endsWith('.gd')).map((f) => resolve(gdDir, f)));
+}
+/**
+ * True when the error is an "identifier not found" naming a class that
+ * one of the files under validation declares with `class_name`.
+ *
+ * A script reaches its own class-level members through its class name
+ * (`MyClass.CONST`) — the only spelling valid inside a `static func`,
+ * where `self` doesn't exist. Godot resolves that name through the
+ * project-wide global class cache, which only an import pass
+ * populates, and `--check-only` does not import. So a freshly
+ * generated or just-renamed script reports
+ * `Identifier not found: MyClass` against perfectly good code.
+ *
+ * The class is right there in the source being checked, so this is
+ * Godot's index lagging rather than a real error. Narrow by
+ * construction: a not-found for a name nothing declares still
+ * surfaces.
+ */
+export function isUnindexedOwnClassFalsePositive(error, declaredClassNames) {
+    if (declaredClassNames.size === 0)
+        return false;
+    return [
+        /Identifier not found: (\w+)/,
+        /Identifier "(\w+)" not declared/,
+    ].some((re) => {
+        const name = error.message.match(re)?.[1];
+        return name !== undefined && declaredClassNames.has(name);
+    });
 }
 /**
  * Returns true if the error is a false positive caused by validating a

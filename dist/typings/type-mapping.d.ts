@@ -8,6 +8,12 @@ export interface TypeContext {
     /** Set of known Godot class names (excludes `@`-prefixed pseudo-classes). */
     knownClasses: Set<string>;
     /**
+     * Names of `@GlobalScope`'s enums, exactly as Godot spells them
+     * (`Key`, `Variant.Type`, ...). A dotted one is declared as a
+     * namespaced `const enum` and so is nameable from TypeScript.
+     */
+    globalEnumNames: Set<string>;
+    /**
      * Fundamental value types constructed as function calls in GDScript (not `new`).
      * Derived set — classes with a copy constructor (single parameter of own type).
      */

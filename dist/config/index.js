@@ -4,6 +4,7 @@ import { tmpdir } from 'os';
 import { fileURLToPath } from 'url';
 import { minimatch } from 'minimatch';
 import { GodotClassRegistry } from "../typings/godot-registry.js";
+import { TSTOGD_MODULES_DIR } from "../external-packages/index.js";
 export function resolveConfig(options) {
     const searchDir = options?.configDir ?? process.cwd();
     const loaded = loadConfig(searchDir);
@@ -42,6 +43,8 @@ export function resolveConfig(options) {
                 : undefined),
         godotPath: overrides.godotPath ?? config?.godotPath,
         disableGodotLint: config?.disableGodotLint ?? false,
+        lib: overrides.lib ?? config?.lib ?? false,
+        externalPackages: overrides.externalPackages ?? config?.externalPackages ?? [],
         cacheDir,
         godotTypingsDir,
         converterOptions: {
@@ -57,9 +60,12 @@ export function resolveConfig(options) {
  * Paths are compared relative to rootDir using forward slashes.
  */
 export function shouldIgnore(filePath, rootDir, patterns) {
+    const rel = relative(rootDir, filePath).replace(/\\/g, '/');
+    if (rel === TSTOGD_MODULES_DIR || rel.startsWith(`${TSTOGD_MODULES_DIR}/`)) {
+        return true;
+    }
     if (patterns.length === 0)
         return false;
-    const rel = relative(rootDir, filePath).replace(/\\/g, '/');
     return patterns.some((pattern) => minimatch(rel, pattern, { dot: true }));
 }
 const CONFIG_FILENAME = 'tstogd.json';

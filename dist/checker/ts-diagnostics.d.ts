@@ -1,6 +1,17 @@
 import ts from 'typescript';
 import type { TransformDiagnostic } from '../converter/common/index.ts';
 /**
+ * TS diagnostic codes that are correct-but-noisy for the namespace+class
+ * merge pattern the typings generator emits.
+ *
+ * Only codes the generated typings themselves provoke belong here.
+ * Diagnostics a user opted into stay visible even when they fire on
+ * every file — `noFallthroughCasesInSwitch` (TS7029) is incompatible
+ * with this dialect, but silently overriding an explicit compiler
+ * setting is worse than letting it say so.
+ */
+export declare const NOISE_CODES: Set<number>;
+/**
  * Collect TypeScript semantic + syntactic diagnostics from `program`,
  * limited to source files under `tsDir`. Filters out:
  * - `.d.ts` declaration files

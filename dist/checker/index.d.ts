@@ -1,13 +1,14 @@
 import type ts from 'typescript';
 import type { TransformDiagnostic } from '../converter/common/index.ts';
 import type { ProjectCache } from '../cache/index.ts';
+import type { ResolvedExternalPackage } from '../external-packages/index.ts';
 export interface CheckOptions {
     tsDir: string;
     gdDir: string;
     projectRoot: string;
+    lib?: boolean;
+    externalPackages?: ResolvedExternalPackage[];
     tsFiles: string[];
-    /** Source files passed to the converter, rather than reached through imports. */
-    entryFiles?: string[];
     tsConfigPath?: string;
     cache: ProjectCache | null;
     godotPath?: string;

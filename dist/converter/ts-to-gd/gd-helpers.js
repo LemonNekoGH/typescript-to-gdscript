@@ -1,4 +1,5 @@
 import ts from 'typescript';
+import { sanitizeFunctionName } from "../../typings/class-generator.js";
 // ---- gd.as / gd.is ----
 /**
  * Handle `gd.as(value, Type)` -> `value as Type`.
@@ -27,6 +28,26 @@ export function tryEmitGdIs(t, node, obj, method) {
         return `${value} is ${type}`;
     }
     return null;
+}
+/**
+ * Handle a global whose GDScript name TypeScript cannot spell:
+ * `gd.typeof(value)` -> `typeof(value)`.
+ *
+ * Keyed on the same predicate the typings generator uses to decide a
+ * global gets no declaration of its own (`sanitizeFunctionName` changes
+ * it), so the two cannot drift: every global `gd` has to carry is one
+ * this rewrites back, under any Godot version. `typeof` is the only
+ * one today. Returns null if this is not such a call.
+ */
+export function tryEmitGdUnspellableGlobal(t, node, obj, method) {
+    if (!ts.isIdentifier(obj) || obj.text !== 'gd')
+        return null;
+    if (!t.ctx.registry?.isGlobalFunction(method) ||
+        sanitizeFunctionName(method) === method) {
+        return null;
+    }
+    const args = node.arguments.map((a) => t.emitExpression(a)).join(', ');
+    return `${method}(${args})`;
 }
 // ---- gd.dict() ----
 /**
@@ -233,226 +254,5 @@ export function emitGdEval(t, node, pos) {
     for (const line of lines) {
         t.emitter.writeLine(line, pos.line, pos.col);
     }
-}
-// ---- gd.match() -> match ----
-export function isGdMatchCall(node) {
-    if (!ts.isCallExpression(node))
-        return false;
-    if (!ts.isPropertyAccessExpression(node.expression))
-        return false;
-    const obj = node.expression.expression;
-    return (ts.isIdentifier(obj) &&
-        obj.text === 'gd' &&
-        node.expression.name.text === 'match');
-}
-export function visitGdMatchStatement(t, node, visitStatement) {
-    if (node.arguments.length < 2)
-        return;
-    const pos = t.getLineAndCol(node);
-    const valueExpr = node.arguments[0];
-    const casesExpr = node.arguments[1];
-    t.emitter.writeLine(`match ${t.emitExpression(valueExpr)}:`, pos.line, pos.col);
-    t.emitter.indent();
-    if (ts.isArrayLiteralExpression(casesExpr)) {
-        for (const caseElement of casesExpr.elements) {
-            if (ts.isObjectLiteralExpression(caseElement)) {
-                emitGdMatchCase(t, caseElement, visitStatement);
-            }
-            else if (ts.isArrowFunction(caseElement)) {
-                emitGdMatchArrowCase(t, caseElement, visitStatement);
-            }
-            else if (ts.isParenthesizedExpression(caseElement)) {
-                // (x, y) => ({...}) sometimes parenthesized
-                const inner = caseElement.expression;
-                if (ts.isArrowFunction(inner)) {
-                    emitGdMatchArrowCase(t, inner, visitStatement);
-                }
-            }
-        }
-    }
-    t.emitter.dedent();
-}
-/** Emit a plain object case: { match: ..., do() { ... } } or { matchMany: [...], do() { ... } } */
-function emitGdMatchCase(t, obj, visitStatement) {
-    let matchExpr;
-    let matchManyExpr;
-    let doBody;
-    for (const prop of obj.properties) {
-        if (!ts.isPropertyAssignment(prop) && !ts.isMethodDeclaration(prop))
-            continue;
-        const name = prop.name?.getText(t.ctx.sourceFile);
-        if (name === 'match' && ts.isPropertyAssignment(prop)) {
-            matchExpr = prop.initializer;
-        }
-        else if (name === 'matchMany' && ts.isPropertyAssignment(prop)) {
-            matchManyExpr = prop.initializer;
-        }
-        else if (name === 'do' && ts.isMethodDeclaration(prop) && prop.body) {
-            doBody = prop.body;
-        }
-        else if (name === 'do' && ts.isPropertyAssignment(prop)) {
-            // do: () => { ... } (arrow function variant preserving `this`)
-            const init = prop.initializer;
-            if (ts.isArrowFunction(init) && ts.isBlock(init.body)) {
-                doBody = init.body;
-            }
-        }
-    }
-    const casePos = t.getLineAndCol(obj);
-    if (matchManyExpr && ts.isArrayLiteralExpression(matchManyExpr)) {
-        // Multiple patterns: 1, 2, 3:
-        const patterns = matchManyExpr.elements.map((e) => emitMatchPatternExpr(t, e));
-        t.emitter.writeLine(`${patterns.join(', ')}:`, casePos.line, casePos.col);
-    }
-    else if (matchExpr) {
-        const pattern = emitMatchPatternExpr(t, matchExpr);
-        t.emitter.writeLine(`${pattern}:`, casePos.line, casePos.col);
-    }
-    else {
-        return;
-    }
-    t.emitter.indent();
-    if (doBody) {
-        const stmts = doBody.statements;
-        if (stmts.length === 0) {
-            t.emitter.writeLine('pass', casePos.line, casePos.col);
-        }
-        else {
-            for (const stmt of stmts) {
-                visitStatement(t, stmt);
-            }
-        }
-    }
-    else {
-        t.emitter.writeLine('pass', casePos.line, casePos.col);
-    }
-    t.emitter.dedent();
-}
-/** Emit an arrow function case: (bindings...) => ({ match: ..., when?: ..., do() { ... } }) */
-function emitGdMatchArrowCase(t, arrow, visitStatement) {
-    // Extract parameter names (bindings)
-    const bindings = arrow.parameters.map((p) => p.name.getText(t.ctx.sourceFile));
-    // Get the object literal from body
-    let obj;
-    if (ts.isParenthesizedExpression(arrow.body)) {
-        const inner = arrow.body.expression;
-        if (ts.isObjectLiteralExpression(inner))
-            obj = inner;
-    }
-    else if (ts.isObjectLiteralExpression(arrow.body)) {
-        obj = arrow.body;
-    }
-    if (!obj)
-        return;
-    let matchExpr;
-    let whenExpr;
-    let doBody;
-    for (const prop of obj.properties) {
-        if (!ts.isPropertyAssignment(prop) && !ts.isMethodDeclaration(prop))
-            continue;
-        const name = prop.name?.getText(t.ctx.sourceFile);
-        if (name === 'match' && ts.isPropertyAssignment(prop)) {
-            matchExpr = prop.initializer;
-        }
-        else if (name === 'when' && ts.isPropertyAssignment(prop)) {
-            whenExpr = prop.initializer;
-        }
-        else if (name === 'do' && ts.isMethodDeclaration(prop) && prop.body) {
-            doBody = prop.body;
-        }
-        else if (name === 'do' && ts.isPropertyAssignment(prop)) {
-            // do: () => { ... } (arrow function variant preserving `this`)
-            const init = prop.initializer;
-            if (ts.isArrowFunction(init) && ts.isBlock(init.body)) {
-                doBody = init.body;
-            }
-        }
-    }
-    if (!matchExpr)
-        return;
-    const arrowPos = t.getLineAndCol(arrow);
-    // Build the pattern, replacing binding names with `var name`
-    const bindingSet = new Set(bindings);
-    const pattern = emitMatchPatternExpr(t, matchExpr, bindingSet);
-    if (whenExpr) {
-        t.emitter.writeLine(`${pattern} when ${t.emitExpression(whenExpr)}:`, arrowPos.line, arrowPos.col);
-    }
-    else {
-        t.emitter.writeLine(`${pattern}:`, arrowPos.line, arrowPos.col);
-    }
-    t.emitter.indent();
-    if (doBody) {
-        const stmts = doBody.statements;
-        if (stmts.length === 0) {
-            t.emitter.writeLine('pass', arrowPos.line, arrowPos.col);
-        }
-        else {
-            for (const stmt of stmts) {
-                visitStatement(t, stmt);
-            }
-        }
-    }
-    else {
-        t.emitter.writeLine('pass', arrowPos.line, arrowPos.col);
-    }
-    t.emitter.dedent();
-}
-/**
- * Convert a TS expression to a GDScript match pattern.
- * @param bindings - Set of variable names that should be emitted as `var name` pattern bindings
- */
-export function emitMatchPatternExpr(t, node, bindings) {
-    // undefined -> _ (wildcard)
-    if (ts.isIdentifier(node) && node.text === 'undefined') {
-        return '_';
-    }
-    // Binding variable: becomes `var name`
-    if (bindings && ts.isIdentifier(node) && bindings.has(node.text)) {
-        return `var ${node.text}`;
-    }
-    // Array literal -> array pattern
-    if (ts.isArrayLiteralExpression(node)) {
-        const elements = [];
-        for (const el of node.elements) {
-            // ...[] -> .. (open ending)
-            if (ts.isSpreadElement(el)) {
-                elements.push('..');
-                continue;
-            }
-            elements.push(emitMatchPatternExpr(t, el, bindings));
-        }
-        return `[${elements.join(', ')}]`;
-    }
-    // Object literal -> dictionary pattern
-    if (ts.isObjectLiteralExpression(node)) {
-        const entries = [];
-        let hasSpread = false;
-        for (const prop of node.properties) {
-            if (ts.isSpreadAssignment(prop)) {
-                // ...{} -> ..
-                hasSpread = true;
-                continue;
-            }
-            if (ts.isPropertyAssignment(prop)) {
-                const key = ts.isStringLiteral(prop.name)
-                    ? t.emitStringLiteral(prop.name)
-                    : `"${t.escapeGdString(prop.name.getText(t.ctx.sourceFile))}"`;
-                const val = emitMatchPatternExpr(t, prop.initializer, bindings);
-                if (val === '_') {
-                    // { name: undefined } -> just "name" as a key-only check
-                    entries.push(key);
-                }
-                else {
-                    entries.push(`${key}: ${val}`);
-                }
-            }
-        }
-        if (hasSpread) {
-            return `{${entries.join(', ')}, ..}`;
-        }
-        return `{${entries.join(', ')}}`;
-    }
-    // Everything else: regular expression
-    return t.emitExpression(node);
 }
 //# sourceMappingURL=gd-helpers.js.map

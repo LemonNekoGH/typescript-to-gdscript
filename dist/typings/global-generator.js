@@ -5,14 +5,33 @@ import { emitJsDoc, sanitizeParamName, sanitizeFunctionName, sanitizeClassName, 
 export const SKIP_CLASSES = new Set(['int', 'float', 'bool', 'Nil']);
 // ─── Global scope generators ─────────────────────────────────────
 /**
+ * Emits one `const enum` block (without a leading `declare`) at the given
+ * indentation. Descriptions come from the matching constant entries.
+ */
+function emitConstEnum(cls, e, name, indent) {
+    const lines = [`${indent}const enum ${name} {`];
+    for (const v of e.values) {
+        const constInfo = cls.constants.find((c) => c.name === v.name);
+        lines.push(...emitJsDoc(constInfo?.description, `${indent}  `));
+        lines.push(`${indent}  ${v.name} = ${v.value},`);
+    }
+    lines.push(`${indent}}`);
+    return lines.join('\n');
+}
+/**
  * Generates global scope declarations (top-level functions, constants, enums).
  */
 export function generateGlobalScopeDeclaration(cls, ctx) {
     const lines = [];
     lines.push('// @GlobalScope — global functions and constants');
     lines.push('');
-    // Global functions
+    // Global functions. A name TypeScript cannot spell (`typeof`) is left
+    // out: declaring it under a sanitized alias would only let users write
+    // a call that converts back to GDScript under the wrong name. Those
+    // globals live in the `gd` namespace instead — see `gd.typeof`.
     for (const method of cls.methods) {
+        if (sanitizeFunctionName(method.name) !== method.name)
+            continue;
         lines.push(...emitJsDoc(method.description, ''));
         let seenOptional = false;
         const params = method.parameters.map((p) => {
@@ -28,17 +47,40 @@ export function generateGlobalScopeDeclaration(cls, ctx) {
         const returnType = godotTypeToTs(method.returnType, ctx);
         lines.push(`declare function ${sanitizeFunctionName(method.name)}(${params.join(', ')}): ${returnType};`);
     }
-    // Global enums
+    // Global enums. A dotted Godot name (`Variant.Type`) is a namespaced
+    // enum: GDScript spells the dot in both type and value position, so
+    // TypeScript has to as well, which means a `namespace` wrapper. Split
+    // on the LAST dot, so a deeper name nests as `namespace A.B` rather
+    // than producing `const enum B.C`. Enums sharing a prefix merge into
+    // one block.
+    //
+    // The prefix may also name a class (`Variant` is documented as one),
+    // in which case TypeScript merges the namespace into that class
+    // declaration. That is what makes `Variant.Type` reachable at all, and
+    // it is safe while the class is empty — a future dotted enum whose
+    // prefix is a NON-empty class would silently add members to it.
     if (cls.enums.length > 0) {
         lines.push('');
+        const namespaced = new Map();
         for (const e of cls.enums) {
-            let enumName = e.name.includes('.') ? e.name.replace(/\./g, '_') : e.name;
-            lines.push(`declare const enum ${enumName} {`);
-            for (const v of e.values) {
-                // Find description from constants
-                const constInfo = cls.constants.find((c) => c.name === v.name);
-                lines.push(...emitJsDoc(constInfo?.description));
-                lines.push(`  ${v.name} = ${v.value},`);
+            const dot = e.name.lastIndexOf('.');
+            if (dot === -1) {
+                lines.push(`declare ${emitConstEnum(cls, e, e.name, '')}`);
+                lines.push('');
+            }
+            else {
+                const prefix = e.name.slice(0, dot);
+                const group = namespaced.get(prefix);
+                if (group)
+                    group.push(e);
+                else
+                    namespaced.set(prefix, [e]);
+            }
+        }
+        for (const [prefix, group] of namespaced) {
+            lines.push(`declare namespace ${prefix} {`);
+            for (const e of group) {
+                lines.push(emitConstEnum(cls, e, e.name.slice(prefix.length + 1), '  '));
             }
             lines.push('}');
             lines.push('');

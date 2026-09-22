@@ -3,9 +3,8 @@ export function buildGlobalEnumMap(registry) {
     const map = new Map();
     const data = registry.getData();
     for (const e of data.globalEnums) {
-        const enumName = e.name.includes('.') ? e.name.replace(/\./g, '_') : e.name;
         for (const v of e.values) {
-            map.set(v.name, `${enumName}.${v.name}`);
+            map.set(v.name, `${e.name}.${v.name}`);
         }
     }
     return map;
