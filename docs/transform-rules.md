@@ -876,6 +876,10 @@ Imports from a linked library use its fixed consumer mount:
 const _Anon = preload("res://tstogd_modules/@scope/shared/scripts/anon.gd")
 ```
 
+The same rule applies when a library imports another shared library. Only imports inside the same library use relative paths.
+
+The consumer must keep the dependency at its expected mount name. A custom mount name does not rewrite paths in prebuilt GDScript.
+
 The linked library maps its TypeScript target through its own `tsDir` and `gdDir`. tstogd reports an error when an import that needs `preload()` has no valid source mapping.
 
 ## Restrictions — unsupported TypeScript features

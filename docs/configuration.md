@@ -79,7 +79,7 @@ A shared package builds its own complete Godot content. Set `lib: true` in the p
 }
 ```
 
-Library imports use relative `preload()` paths. A consumer can mount the package at a different project location.
+Imports inside the same library use relative `preload()` paths. A consumer can mount the library at a different project location.
 
 Publish the TypeScript source, `tstogd.json`, generated GDScript, scenes, resources, and Godot UID files. Godot creates the UIDs during its normal scan.
 
@@ -88,6 +88,14 @@ Keep the UID files stable between releases. This prevents broken resource refere
 `tstogd convert` and `tstogd watch` scan the project dependencies. They link each dependency with `lib: true` into `tstogd_modules/<package-name>`.
 
 The consumer does not convert the dependency. Godot scans the complete linked package, including files that no TypeScript import uses.
+
+tstogd does not bundle one shared package into another. It finds declared shared-package dependencies recursively and links each package separately.
+
+A shared package must declare its shared-package dependencies in `package.json`. Each dependency must publish its generated Godot content and a `tstogd.json` with `lib: true`.
+
+Cross-package imports use fixed `res://tstogd_modules/<package-name>/...` paths. Do not change the mount name of a dependency that a prebuilt shared package imports.
+
+A custom mount name does not rewrite paths inside prebuilt GDScript. This restriction also applies to local monorepo and workspace packages.
 
 Use `externalPackages` for a plain folder or a custom mount name:
 
