@@ -1,3 +1,8 @@
+## [0.1.6](https://github.com/nnn3d/typescript-to-gdscript/compare/v0.1.5...v0.1.6) (2026-09-24)
+
+### Features
+
+* allow to compile external packages ([#3](https://github.com/nnn3d/typescript-to-gdscript/issues/3)) ([7ca8be4](https://github.com/nnn3d/typescript-to-gdscript/commit/7ca8be4aa7050b20ed56b90aa7be8a4ea23e941f))
 ## [0.1.5](https://github.com/nnn3d/typescript-to-gdscript/compare/v0.1.4...v0.1.5) (2026-09-17)
 
 ### Features
