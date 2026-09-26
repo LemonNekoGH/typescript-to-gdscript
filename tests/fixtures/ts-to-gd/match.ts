@@ -89,7 +89,7 @@ export class Match extends Node {
           print("Point on line y = x");
         },
       }),
-      (x, y) => ({
+      (x: any, y: any) => ({
         match: [x, y],
         when: y === -x,
         do: () => {

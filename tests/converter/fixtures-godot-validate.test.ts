@@ -53,7 +53,7 @@ const SKIP = new Map<string, string>([
   ],
   [
     'extends-path',
-    '`extends "res://…"` points at a script outside the fixture project',
+    '`extends "res://super-script-parent.gd"` points at a sibling fixture',
   ],
   [
     'gd-eval-comments',

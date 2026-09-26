@@ -10,7 +10,7 @@ export class UnsupportedBody extends Node {
   // `pass` for the `--emit-on-error` output to parse.
   rejected_body(value: int) {
     if (value > 0) {
-      throw new Error('boom');
+      throw 'boom';
     }
   }
 

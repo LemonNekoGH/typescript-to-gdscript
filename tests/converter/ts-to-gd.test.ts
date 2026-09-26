@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { convertTsToGd } from '../../src/converter/ts-to-gd/index.js';
 import { createTsProgram } from '../../src/parser/typescript/index.js';
+import { collectTsDiagnostics } from '../../src/checker/ts-diagnostics.js';
 import { readFileSync, readdirSync } from 'fs';
-import { join, basename } from 'path';
+import { join, basename, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
@@ -74,8 +75,38 @@ const fixtureFiles = readdirSync(FIXTURES_DIR)
  */
 const FIXTURES_EXPECTING_DIAGNOSTICS = new Set(['unsupported-body']);
 
+/**
+ * The TypeScript diagnostics of each fixture's INPUT, keyed by file.
+ *
+ * Converting and comparing the output never type-checks the input, so a
+ * fixture could pin the conversion of TS no user could write — an
+ * undeclared field, a `null` in a non-nullable slot — and stay green.
+ * One fixture did exactly that and hid invalid GDScript: `self.v1` was
+ * never declared, so Godot could not see that `v1 - 2` subtracts an
+ * `int` from a `Vector2`. Same program, same `strict` config and the
+ * same dialect filter (`NOISE_CODES`) as a real project's checker.
+ *
+ * Shapes a real project gets from its GENERATED script typings, which
+ * this program does not load, are mirrored by hand in `*.gd.d.ts` files
+ * next to the fixtures that need them (`preload` targets, the statics
+ * merge, global script names).
+ */
+const tsDiagnosticsByFile = new Map<string, string[]>();
+for (const d of collectTsDiagnostics(program, FIXTURES_DIR)) {
+  const key = resolve(d.file);
+  const list = tsDiagnosticsByFile.get(key) ?? [];
+  list.push(`  ${d.line}:${d.column} ${d.message}`);
+  tsDiagnosticsByFile.set(key, list);
+}
+
 describe('TS to GD: Fixture-based tests', () => {
   for (const fixtureName of fixtureFiles) {
+    it(`type-checks as written: ${fixtureName}`, () => {
+      const key = resolve(FIXTURES_DIR, `${fixtureName}.ts`);
+      const found = tsDiagnosticsByFile.get(key) ?? [];
+      expect(found.join('\n'), `${fixtureName}.ts has TS diagnostics`).toBe('');
+    });
+
     it(`should correctly convert: ${fixtureName}`, () => {
       const tsFilePath = join(FIXTURES_DIR, `${fixtureName}.ts`);
       const expectedGd = readFileSync(

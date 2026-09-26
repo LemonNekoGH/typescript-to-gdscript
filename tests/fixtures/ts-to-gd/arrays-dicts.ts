@@ -13,7 +13,11 @@ export class MyClass extends Node {
   }
 
   test_dictionaries() {
-    let dict = { name: "Player", health: 100, alive: true };
+    let dict: { name: string; health: int; alive: boolean; score?: int } = {
+      name: "Player",
+      health: 100,
+      alive: true,
+    };
     let player_name = dict["name"];
 
     dict["score"] = 9001;

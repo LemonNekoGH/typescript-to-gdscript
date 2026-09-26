@@ -1,4 +1,4 @@
-export class _ExtendsPath extends preload("res://some_script.gd") {
+export class _ExtendsPath extends preload("res://super-script-parent.gd") {
   value: int = 42;
 
   get_value(): int {

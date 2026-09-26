@@ -54,7 +54,7 @@ export class MyClass extends Node {
     }
   }
 
-  test_is(x) {
+  test_is(x: unknown) {
     if (x instanceof Node2D) {
       print(x, 'is Node2D');
     }

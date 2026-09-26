@@ -11,7 +11,7 @@ export class MyClass extends Node2D {
   jump_height: float = 200.0;
 
   @onready
-  sprite: Sprite2D = null;
+  sprite: Sprite2D | null = null;
 
   _ready() {
     print("Speed: " + str(this.speed));

@@ -2,7 +2,7 @@ class_name MyClass
 extends Node
 
 # Block lambda in a field initializer
-var on_ready = func():
+var on_ready: Callable = func():
 	print("field")
 var registry = {}
 

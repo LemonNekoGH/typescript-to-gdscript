@@ -1,6 +1,9 @@
 class_name MyClass
 extends Node
 
+var v1: Vector2 = Vector2(1, 2)
+var v2: Vector2 = Vector2(3, 4)
+
 func test_arithmetic():
 	var a: int = 10
 	var b: int = 3
@@ -69,4 +72,4 @@ func test_multipple_vector_math():
 	var v3 = ((self.v1 + self.v2) + self.v1)
 	var v4 = ((self.v1 * self.v2) - self.v1)
 	var v5 = ((self.v1 - (self.v2 * self.v2)) + (self.v1 / self.v2))
-	var v6 = ((self.v1 - (2 * 1)) + (self.v1 / self.v2))
+	var v6 = ((self.v1 * (2 * 1)) + (self.v1 / self.v2))

@@ -19,6 +19,6 @@ export class MyClass extends Node {
     let result = x + y;
 
     // Null value
-    let node: Node = null;
+    let node: Node | null = null;
   }
 }

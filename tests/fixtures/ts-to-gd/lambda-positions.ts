@@ -1,6 +1,6 @@
 export class MyClass extends Node {
   // Block lambda in a field initializer
-  on_ready = () => {
+  on_ready: Callable = () => {
     print("field");
   };
 
