@@ -412,6 +412,20 @@ describe('Godot Registry: Real Godot Docs', () => {
     expect(classes.has('@GlobalScope')).toBe(true);
   });
 
+  it('should mark engine virtuals, walking the inheritance chain', () => {
+    const classes = parseAllClassXmls(GODOT_DOCS_DIR);
+    const reg = new GodotClassRegistry(generateRegistryData(classes));
+
+    // Declared on Node, reached from a descendant through the chain.
+    expect(reg.isVirtualMethod('Sprite2D', '_ready')).toBe(true);
+    expect(reg.isVirtualMethod('Sprite2D', '_process')).toBe(true);
+    // Declared on Object, the far end of the same chain.
+    expect(reg.isVirtualMethod('Sprite2D', '_init')).toBe(true);
+    // A regular engine method is reachable through `super`, so not virtual.
+    expect(reg.isVirtualMethod('Sprite2D', 'get_child')).toBe(false);
+    expect(reg.isVirtualMethod('Sprite2D', 'nonexistent_member')).toBe(false);
+  });
+
   it('should generate a complete registry from real docs', () => {
     const classes = parseAllClassXmls(GODOT_DOCS_DIR);
     const data = generateRegistryData(classes);

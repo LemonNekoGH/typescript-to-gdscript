@@ -1328,6 +1328,9 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_post_process_key_value"
       ]
     },
     "AnimationNode": {
@@ -1432,6 +1435,16 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_get_caption",
+        "_get_child_by_name",
+        "_get_child_nodes",
+        "_get_parameter_default_value",
+        "_get_parameter_list",
+        "_has_filter",
+        "_is_parameter_read_only",
+        "_process"
       ]
     },
     "AnimationNodeAdd2": {
@@ -1765,7 +1778,10 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_process_animation_node"
+      ]
     },
     "AnimationNodeOneShot": {
       "name": "AnimationNodeOneShot",
@@ -3025,7 +3041,12 @@
       ],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_compute_cost",
+        "_estimate_cost",
+        "_filter_neighbor"
+      ]
     },
     "AStar3D": {
       "name": "AStar3D",
@@ -3066,7 +3087,12 @@
       ],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_compute_cost",
+        "_estimate_cost",
+        "_filter_neighbor"
+      ]
     },
     "AStarGrid2D": {
       "name": "AStarGrid2D",
@@ -3194,6 +3220,10 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_compute_cost",
+        "_estimate_cost"
       ]
     },
     "AtlasTexture": {
@@ -3243,7 +3273,10 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_instantiate"
+      ]
     },
     "AudioEffectAmplify": {
       "name": "AudioEffectAmplify",
@@ -3641,7 +3674,11 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_process",
+        "_process_silence"
+      ]
     },
     "AudioEffectLimiter": {
       "name": "AudioEffectLimiter",
@@ -4178,7 +4215,19 @@
         }
       ],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_bar_beats",
+        "_get_beat_count",
+        "_get_bpm",
+        "_get_length",
+        "_get_parameter_list",
+        "_get_stream_name",
+        "_get_tags",
+        "_has_loop",
+        "_instantiate_playback",
+        "_is_monophonic"
+      ]
     },
     "AudioStreamGenerator": {
       "name": "AudioStreamGenerator",
@@ -4278,7 +4327,19 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_loop_count",
+        "_get_parameter",
+        "_get_playback_position",
+        "_is_playing",
+        "_mix",
+        "_seek",
+        "_set_parameter",
+        "_start",
+        "_stop",
+        "_tag_used_streams"
+      ]
     },
     "AudioStreamPlaybackPolyphonic": {
       "name": "AudioStreamPlaybackPolyphonic",
@@ -4310,7 +4371,11 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_stream_sampling_rate",
+        "_mix_resampled"
+      ]
     },
     "AudioStreamPlayer": {
       "name": "AudioStreamPlayer",
@@ -4887,6 +4952,10 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_pressed",
+        "_toggled"
       ]
     },
     "BaseMaterial3D": {
@@ -6783,6 +6852,12 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_activate_feed",
+        "_deactivate_feed",
+        "_get_formats",
+        "_set_format"
       ]
     },
     "CameraServer": {
@@ -7145,6 +7220,9 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_draw"
       ]
     },
     "CanvasItemMaterial": {
@@ -8103,6 +8181,11 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_confirm_code_completion",
+        "_filter_code_completion_candidates",
+        "_request_code_completion"
       ]
     },
     "CodeHighlighter": {
@@ -8270,6 +8353,13 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_input_event",
+        "_mouse_enter",
+        "_mouse_exit",
+        "_mouse_shape_enter",
+        "_mouse_shape_exit"
       ]
     },
     "CollisionObject3D": {
@@ -8375,6 +8465,11 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_input_event",
+        "_mouse_enter",
+        "_mouse_exit"
       ]
     },
     "CollisionPolygon2D": {
@@ -9001,6 +9096,9 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_render_callback"
       ]
     },
     "CompressedCubemap": {
@@ -9250,7 +9348,11 @@
         "NOTIFICATION_PRE_SORT_CHILDREN",
         "NOTIFICATION_SORT_CHILDREN"
       ],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_allowed_size_flags_horizontal",
+        "_get_allowed_size_flags_vertical"
+      ]
     },
     "Control": {
       "name": "Control",
@@ -9935,6 +10037,22 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_accessibility_get_contextual_info",
+        "_can_drop_data",
+        "_drop_data",
+        "_get_accessibility_container_name",
+        "_get_cursor_shape",
+        "_get_drag_data",
+        "_get_maximum_size",
+        "_get_minimum_size",
+        "_get_tooltip",
+        "_get_tooltip_auto_translate_mode_at",
+        "_gui_input",
+        "_has_point",
+        "_make_custom_tooltip",
+        "_structured_text_parser"
       ]
     },
     "ConvertTransformModifier3D": {
@@ -12886,6 +13004,9 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_popup_menu"
       ]
     },
     "EditorDebuggerPlugin": {
@@ -12905,7 +13026,15 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_breakpoint_set_in_tree",
+        "_breakpoints_cleared_in_tree",
+        "_capture",
+        "_goto_script_line",
+        "_has_capture",
+        "_setup_session"
+      ]
     },
     "EditorDebuggerSession": {
       "name": "EditorDebuggerSession",
@@ -13091,6 +13220,11 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_load_layout_from_config",
+        "_save_layout_to_config",
+        "_update_layout"
       ]
     },
     "EditorExportPlatform": {
@@ -13232,7 +13366,40 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_can_export",
+        "_cleanup",
+        "_export_pack",
+        "_export_pack_patch",
+        "_export_project",
+        "_export_zip",
+        "_export_zip_patch",
+        "_get_binary_extensions",
+        "_get_debug_protocol",
+        "_get_device_architecture",
+        "_get_export_option_visibility",
+        "_get_export_option_warning",
+        "_get_export_options",
+        "_get_logo",
+        "_get_name",
+        "_get_option_icon",
+        "_get_option_label",
+        "_get_option_tooltip",
+        "_get_options_count",
+        "_get_options_tooltip",
+        "_get_os_name",
+        "_get_platform_features",
+        "_get_preset_features",
+        "_get_run_icon",
+        "_has_valid_export_configuration",
+        "_has_valid_project_configuration",
+        "_initialize",
+        "_is_executable",
+        "_poll_export",
+        "_run",
+        "_should_update_export_options"
+      ]
     },
     "EditorExportPlatformPC": {
       "name": "EditorExportPlatformPC",
@@ -13300,7 +13467,35 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_begin_customize_resources",
+        "_begin_customize_scenes",
+        "_customize_resource",
+        "_customize_scene",
+        "_end_customize_resources",
+        "_end_customize_scenes",
+        "_end_generate_apple_embedded_project",
+        "_export_begin",
+        "_export_end",
+        "_export_file",
+        "_get_android_dependencies",
+        "_get_android_dependencies_maven_repos",
+        "_get_android_libraries",
+        "_get_android_manifest_activity_element_contents",
+        "_get_android_manifest_application_element_contents",
+        "_get_android_manifest_element_contents",
+        "_get_customization_configuration_hash",
+        "_get_export_features",
+        "_get_export_option_visibility",
+        "_get_export_option_warning",
+        "_get_export_options",
+        "_get_export_options_overrides",
+        "_get_name",
+        "_should_update_export_options",
+        "_supports_platform",
+        "_update_android_prebuilt_manifest"
+      ]
     },
     "EditorExportPreset": {
       "name": "EditorExportPreset",
@@ -13597,7 +13792,12 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_file_extensions",
+        "_is_active",
+        "_query"
+      ]
     },
     "EditorImportPlugin": {
       "name": "EditorImportPlugin",
@@ -13623,7 +13823,23 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_can_import_threaded",
+        "_get_format_version",
+        "_get_import_options",
+        "_get_import_order",
+        "_get_importer_name",
+        "_get_option_visibility",
+        "_get_preset_count",
+        "_get_preset_name",
+        "_get_priority",
+        "_get_recognized_extensions",
+        "_get_resource_type",
+        "_get_save_extension",
+        "_get_visible_name",
+        "_import"
+      ]
     },
     "EditorInspector": {
       "name": "EditorInspector",
@@ -13763,7 +13979,15 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_can_handle",
+        "_parse_begin",
+        "_parse_category",
+        "_parse_end",
+        "_parse_group",
+        "_parse_property"
+      ]
     },
     "EditorInterface": {
       "name": "EditorInterface",
@@ -13884,7 +14108,21 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_begin_handle_action",
+        "_commit_handle",
+        "_commit_subgizmos",
+        "_get_handle_name",
+        "_get_handle_value",
+        "_get_subgizmo_transform",
+        "_is_handle_highlighted",
+        "_redraw",
+        "_set_handle",
+        "_set_subgizmo_transform",
+        "_subgizmos_intersect_frustum",
+        "_subgizmos_intersect_ray"
+      ]
     },
     "EditorNode3DGizmoPlugin": {
       "name": "EditorNode3DGizmoPlugin",
@@ -13919,7 +14157,28 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_begin_handle_action",
+        "_can_be_hidden",
+        "_can_commit_handle_on_click",
+        "_commit_handle",
+        "_commit_subgizmos",
+        "_create_gizmo",
+        "_get_gizmo_name",
+        "_get_handle_name",
+        "_get_handle_value",
+        "_get_priority",
+        "_get_subgizmo_transform",
+        "_has_gizmo",
+        "_is_handle_highlighted",
+        "_is_selectable_when_hidden",
+        "_redraw",
+        "_set_handle",
+        "_set_subgizmo_transform",
+        "_subgizmos_intersect_frustum",
+        "_subgizmos_intersect_ray"
+      ]
     },
     "EditorPaths": {
       "name": "EditorPaths",
@@ -14193,6 +14452,33 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_apply_changes",
+        "_build",
+        "_clear",
+        "_disable_plugin",
+        "_edit",
+        "_enable_plugin",
+        "_forward_3d_draw_over_viewport",
+        "_forward_3d_force_draw_over_viewport",
+        "_forward_3d_gui_input",
+        "_forward_canvas_draw_over_viewport",
+        "_forward_canvas_force_draw_over_viewport",
+        "_forward_canvas_gui_input",
+        "_get_breakpoints",
+        "_get_plugin_icon",
+        "_get_plugin_name",
+        "_get_state",
+        "_get_unsaved_status",
+        "_get_window_layout",
+        "_handles",
+        "_has_main_screen",
+        "_make_visible",
+        "_run_scene",
+        "_save_external_data",
+        "_set_state",
+        "_set_window_layout"
       ]
     },
     "EditorProperty": {
@@ -14418,7 +14704,11 @@
         }
       ],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_set_read_only",
+        "_update_property"
+      ]
     },
     "EditorResourceConversionPlugin": {
       "name": "EditorResourceConversionPlugin",
@@ -14432,7 +14722,12 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_convert",
+        "_converts_to",
+        "_handles"
+      ]
     },
     "EditorResourcePicker": {
       "name": "EditorResourcePicker",
@@ -14483,7 +14778,11 @@
         }
       ],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_handle_menu_selected",
+        "_set_create_options"
+      ]
     },
     "EditorResourcePreview": {
       "name": "EditorResourcePreview",
@@ -14526,7 +14825,14 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_can_generate_small_preview",
+        "_generate",
+        "_generate_from_path",
+        "_generate_small_preview_automatically",
+        "_handles"
+      ]
     },
     "EditorResourceTooltipPlugin": {
       "name": "EditorResourceTooltipPlugin",
@@ -14540,7 +14846,11 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_handles",
+        "_make_tooltip_for_path"
+      ]
     },
     "EditorSceneFormatImporter": {
       "name": "EditorSceneFormatImporter",
@@ -14591,6 +14901,12 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_get_extensions",
+        "_get_import_options",
+        "_get_option_visibility",
+        "_import_scene"
       ]
     },
     "EditorScenePostImport": {
@@ -14604,7 +14920,10 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_post_import"
+      ]
     },
     "EditorScenePostImportPlugin": {
       "name": "EditorScenePostImportPlugin",
@@ -14664,6 +14983,16 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_get_import_options",
+        "_get_internal_import_options",
+        "_get_internal_option_update_view_required",
+        "_get_internal_option_visibility",
+        "_get_option_visibility",
+        "_internal_process",
+        "_post_process",
+        "_pre_process"
       ]
     },
     "EditorScript": {
@@ -14679,7 +15008,10 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_run"
+      ]
     },
     "EditorScriptPicker": {
       "name": "EditorScriptPicker",
@@ -15327,7 +15659,12 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_create",
+        "_get_name",
+        "_get_supported_languages"
+      ]
     },
     "EditorToaster": {
       "name": "EditorToaster",
@@ -15371,7 +15708,12 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_customize_strings",
+        "_get_recognized_extensions",
+        "_parse_file"
+      ]
     },
     "EditorUndoRedoManager": {
       "name": "EditorUndoRedoManager",
@@ -15512,6 +15854,32 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_allow_amends",
+        "_checkout_branch",
+        "_commit",
+        "_create_branch",
+        "_create_remote",
+        "_discard_file",
+        "_fetch",
+        "_get_branch_list",
+        "_get_current_branch_name",
+        "_get_diff",
+        "_get_line_diff",
+        "_get_modified_files_data",
+        "_get_previous_commits",
+        "_get_remotes",
+        "_get_vcs_name",
+        "_initialize",
+        "_pull",
+        "_push",
+        "_remove_branch",
+        "_remove_remote",
+        "_set_credentials",
+        "_shut_down",
+        "_stage_file",
+        "_unstage_file"
       ]
     },
     "EncodedObjectAsID": {
@@ -15635,7 +16003,12 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_add_frame",
+        "_tick",
+        "_toggle"
+      ]
     },
     "Environment": {
       "name": "Environment",
@@ -18851,6 +19224,12 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_get_connection_line",
+        "_is_in_input_hotzone",
+        "_is_in_output_hotzone",
+        "_is_node_hover_valid"
       ]
     },
     "GraphElement": {
@@ -19050,7 +19429,10 @@
         }
       ],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_draw_port"
+      ]
     },
     "GridContainer": {
       "name": "GridContainer",
@@ -20285,7 +20667,11 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_recognized_extensions",
+        "_load_image"
+      ]
     },
     "ImageTexture": {
       "name": "ImageTexture",
@@ -23285,6 +23671,10 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_log_error",
+        "_log_message"
       ]
     },
     "LookAtModifier3D": {
@@ -23450,7 +23840,13 @@
         "NOTIFICATION_APPLICATION_PIP_MODE_ENTERED",
         "NOTIFICATION_APPLICATION_PIP_MODE_EXITED"
       ],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_finalize",
+        "_initialize",
+        "_physics_process",
+        "_process"
+      ]
     },
     "MarginContainer": {
       "name": "MarginContainer",
@@ -23534,7 +23930,13 @@
         "RENDER_PRIORITY_MAX",
         "RENDER_PRIORITY_MIN"
       ],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_can_do_next_pass",
+        "_can_use_render_priority",
+        "_get_shader_mode",
+        "_get_shader_rid"
+      ]
     },
     "MenuBar": {
       "name": "MenuBar",
@@ -23919,6 +24321,22 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_get_aabb",
+        "_get_blend_shape_count",
+        "_get_blend_shape_name",
+        "_get_surface_count",
+        "_set_blend_shape_name",
+        "_surface_get_array_index_len",
+        "_surface_get_array_len",
+        "_surface_get_arrays",
+        "_surface_get_blend_shape_arrays",
+        "_surface_get_format",
+        "_surface_get_lods",
+        "_surface_get_material",
+        "_surface_get_primitive_type",
+        "_surface_set_material"
       ]
     },
     "MeshConvexDecompositionSettings": {
@@ -24245,7 +24663,16 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_audio_mix_rate",
+        "_get_audio_speaker_mode",
+        "_get_supported_extensions",
+        "_handles_file",
+        "_write_begin",
+        "_write_end",
+        "_write_frame"
+      ]
     },
     "MultiMesh": {
       "name": "MultiMesh",
@@ -24469,7 +24896,18 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_multiplayer_peer",
+        "_get_peer_ids",
+        "_get_remote_sender_id",
+        "_get_unique_id",
+        "_object_configuration_add",
+        "_object_configuration_remove",
+        "_poll",
+        "_rpc",
+        "_set_multiplayer_peer"
+      ]
     },
     "MultiplayerPeer": {
       "name": "MultiplayerPeer",
@@ -24592,7 +25030,32 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_close",
+        "_disconnect_peer",
+        "_get_available_packet_count",
+        "_get_connection_status",
+        "_get_max_packet_size",
+        "_get_packet",
+        "_get_packet_channel",
+        "_get_packet_mode",
+        "_get_packet_peer",
+        "_get_packet_script",
+        "_get_transfer_channel",
+        "_get_transfer_mode",
+        "_get_unique_id",
+        "_is_refusing_new_connections",
+        "_is_server",
+        "_is_server_relay_supported",
+        "_poll",
+        "_put_packet",
+        "_put_packet_script",
+        "_set_refuse_new_connections",
+        "_set_target_peer",
+        "_set_transfer_channel",
+        "_set_transfer_mode"
+      ]
     },
     "Mutex": {
       "name": "Mutex",
@@ -26925,6 +27388,20 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_enter_tree",
+        "_exit_tree",
+        "_get_accessibility_configuration_warnings",
+        "_get_configuration_warnings",
+        "_get_focused_accessibility_element",
+        "_input",
+        "_physics_process",
+        "_process",
+        "_ready",
+        "_shortcut_input",
+        "_unhandled_input",
+        "_unhandled_key_input"
       ]
     },
     "Node2D": {
@@ -27261,6 +27738,20 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_get",
+        "_get_property_list",
+        "_init",
+        "_iter_get",
+        "_iter_init",
+        "_iter_next",
+        "_notification",
+        "_property_can_revert",
+        "_property_get_revert",
+        "_set",
+        "_to_string",
+        "_validate_property"
       ]
     },
     "Occluder3D": {
@@ -28243,7 +28734,13 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_available_packet_count",
+        "_get_max_packet_size",
+        "_get_packet",
+        "_put_packet"
+      ]
     },
     "PacketPeerStream": {
       "name": "PacketPeerStream",
@@ -29455,6 +29952,9 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_integrate_forces"
       ]
     },
     "PhysicalBoneSimulator3D": {
@@ -29696,7 +30196,57 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_add_constant_central_force",
+        "_add_constant_force",
+        "_add_constant_torque",
+        "_apply_central_force",
+        "_apply_central_impulse",
+        "_apply_force",
+        "_apply_impulse",
+        "_apply_torque",
+        "_apply_torque_impulse",
+        "_get_angular_velocity",
+        "_get_center_of_mass",
+        "_get_center_of_mass_local",
+        "_get_collision_layer",
+        "_get_collision_mask",
+        "_get_constant_force",
+        "_get_constant_torque",
+        "_get_contact_collider",
+        "_get_contact_collider_id",
+        "_get_contact_collider_object",
+        "_get_contact_collider_position",
+        "_get_contact_collider_shape",
+        "_get_contact_collider_velocity_at_position",
+        "_get_contact_count",
+        "_get_contact_impulse",
+        "_get_contact_local_normal",
+        "_get_contact_local_position",
+        "_get_contact_local_shape",
+        "_get_contact_local_velocity_at_position",
+        "_get_inverse_inertia",
+        "_get_inverse_mass",
+        "_get_linear_velocity",
+        "_get_space_state",
+        "_get_step",
+        "_get_total_angular_damp",
+        "_get_total_gravity",
+        "_get_total_linear_damp",
+        "_get_transform",
+        "_get_velocity_at_local_position",
+        "_integrate_forces",
+        "_is_sleeping",
+        "_set_angular_velocity",
+        "_set_collision_layer",
+        "_set_collision_mask",
+        "_set_constant_force",
+        "_set_constant_torque",
+        "_set_linear_velocity",
+        "_set_sleep_state",
+        "_set_transform"
+      ]
     },
     "PhysicsDirectBodyState3D": {
       "name": "PhysicsDirectBodyState3D",
@@ -29835,7 +30385,59 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_add_constant_central_force",
+        "_add_constant_force",
+        "_add_constant_torque",
+        "_apply_central_force",
+        "_apply_central_impulse",
+        "_apply_force",
+        "_apply_impulse",
+        "_apply_torque",
+        "_apply_torque_impulse",
+        "_get_angular_velocity",
+        "_get_center_of_mass",
+        "_get_center_of_mass_local",
+        "_get_collision_layer",
+        "_get_collision_mask",
+        "_get_constant_force",
+        "_get_constant_torque",
+        "_get_contact_collider",
+        "_get_contact_collider_id",
+        "_get_contact_collider_object",
+        "_get_contact_collider_position",
+        "_get_contact_collider_shape",
+        "_get_contact_collider_velocity_at_position",
+        "_get_contact_count",
+        "_get_contact_impulse",
+        "_get_contact_local_normal",
+        "_get_contact_local_position",
+        "_get_contact_local_shape",
+        "_get_contact_local_velocity_at_position",
+        "_get_inverse_inertia",
+        "_get_inverse_inertia_tensor",
+        "_get_inverse_mass",
+        "_get_linear_velocity",
+        "_get_principal_inertia_axes",
+        "_get_space_state",
+        "_get_step",
+        "_get_total_angular_damp",
+        "_get_total_gravity",
+        "_get_total_linear_damp",
+        "_get_transform",
+        "_get_velocity_at_local_position",
+        "_integrate_forces",
+        "_is_sleeping",
+        "_set_angular_velocity",
+        "_set_collision_layer",
+        "_set_collision_mask",
+        "_set_constant_force",
+        "_set_constant_torque",
+        "_set_linear_velocity",
+        "_set_sleep_state",
+        "_set_transform"
+      ]
     },
     "PhysicsDirectSpaceState2D": {
       "name": "PhysicsDirectSpaceState2D",
@@ -29870,7 +30472,15 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_cast_motion",
+        "_collide_shape",
+        "_intersect_point",
+        "_intersect_ray",
+        "_intersect_shape",
+        "_rest_info"
+      ]
     },
     "PhysicsDirectSpaceState3D": {
       "name": "PhysicsDirectSpaceState3D",
@@ -29906,7 +30516,16 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_cast_motion",
+        "_collide_shape",
+        "_get_closest_point_to_object_volume",
+        "_intersect_point",
+        "_intersect_ray",
+        "_intersect_shape",
+        "_rest_info"
+      ]
     },
     "PhysicsMaterial": {
       "name": "PhysicsMaterial",
@@ -30736,7 +31355,147 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_area_add_shape",
+        "_area_attach_canvas_instance_id",
+        "_area_attach_object_instance_id",
+        "_area_clear_shapes",
+        "_area_create",
+        "_area_get_canvas_instance_id",
+        "_area_get_collision_layer",
+        "_area_get_collision_mask",
+        "_area_get_object_instance_id",
+        "_area_get_param",
+        "_area_get_shape",
+        "_area_get_shape_count",
+        "_area_get_shape_transform",
+        "_area_get_space",
+        "_area_get_transform",
+        "_area_remove_shape",
+        "_area_set_area_monitor_callback",
+        "_area_set_collision_layer",
+        "_area_set_collision_mask",
+        "_area_set_monitor_callback",
+        "_area_set_monitorable",
+        "_area_set_param",
+        "_area_set_pickable",
+        "_area_set_shape",
+        "_area_set_shape_disabled",
+        "_area_set_shape_transform",
+        "_area_set_space",
+        "_area_set_transform",
+        "_body_add_collision_exception",
+        "_body_add_constant_central_force",
+        "_body_add_constant_force",
+        "_body_add_constant_torque",
+        "_body_add_shape",
+        "_body_apply_central_force",
+        "_body_apply_central_impulse",
+        "_body_apply_force",
+        "_body_apply_impulse",
+        "_body_apply_torque",
+        "_body_apply_torque_impulse",
+        "_body_attach_canvas_instance_id",
+        "_body_attach_object_instance_id",
+        "_body_clear_shapes",
+        "_body_collide_shape",
+        "_body_create",
+        "_body_get_canvas_instance_id",
+        "_body_get_collision_exceptions",
+        "_body_get_collision_layer",
+        "_body_get_collision_mask",
+        "_body_get_collision_priority",
+        "_body_get_constant_force",
+        "_body_get_constant_torque",
+        "_body_get_contacts_reported_depth_threshold",
+        "_body_get_continuous_collision_detection_mode",
+        "_body_get_direct_state",
+        "_body_get_max_contacts_reported",
+        "_body_get_mode",
+        "_body_get_object_instance_id",
+        "_body_get_param",
+        "_body_get_shape",
+        "_body_get_shape_count",
+        "_body_get_shape_transform",
+        "_body_get_space",
+        "_body_get_state",
+        "_body_is_omitting_force_integration",
+        "_body_remove_collision_exception",
+        "_body_remove_shape",
+        "_body_reset_mass_properties",
+        "_body_set_axis_velocity",
+        "_body_set_collision_layer",
+        "_body_set_collision_mask",
+        "_body_set_collision_priority",
+        "_body_set_constant_force",
+        "_body_set_constant_torque",
+        "_body_set_contacts_reported_depth_threshold",
+        "_body_set_continuous_collision_detection_mode",
+        "_body_set_force_integration_callback",
+        "_body_set_max_contacts_reported",
+        "_body_set_mode",
+        "_body_set_omit_force_integration",
+        "_body_set_param",
+        "_body_set_pickable",
+        "_body_set_shape",
+        "_body_set_shape_as_one_way_collision",
+        "_body_set_shape_disabled",
+        "_body_set_shape_transform",
+        "_body_set_space",
+        "_body_set_state",
+        "_body_set_state_sync_callback",
+        "_body_test_motion",
+        "_capsule_shape_create",
+        "_circle_shape_create",
+        "_concave_polygon_shape_create",
+        "_convex_polygon_shape_create",
+        "_damped_spring_joint_get_param",
+        "_damped_spring_joint_set_param",
+        "_end_sync",
+        "_finish",
+        "_flush_queries",
+        "_free_rid",
+        "_get_process_info",
+        "_init",
+        "_is_flushing_queries",
+        "_joint_clear",
+        "_joint_create",
+        "_joint_disable_collisions_between_bodies",
+        "_joint_get_param",
+        "_joint_get_type",
+        "_joint_is_disabled_collisions_between_bodies",
+        "_joint_make_damped_spring",
+        "_joint_make_groove",
+        "_joint_make_pin",
+        "_joint_set_param",
+        "_pin_joint_get_flag",
+        "_pin_joint_get_param",
+        "_pin_joint_set_flag",
+        "_pin_joint_set_param",
+        "_rectangle_shape_create",
+        "_segment_shape_create",
+        "_separation_ray_shape_create",
+        "_set_active",
+        "_shape_collide",
+        "_shape_get_custom_solver_bias",
+        "_shape_get_data",
+        "_shape_get_type",
+        "_shape_set_custom_solver_bias",
+        "_shape_set_data",
+        "_space_create",
+        "_space_get_contact_count",
+        "_space_get_contacts",
+        "_space_get_direct_state",
+        "_space_get_param",
+        "_space_is_active",
+        "_space_set_active",
+        "_space_set_debug_contacts",
+        "_space_set_param",
+        "_step",
+        "_sync",
+        "_world_boundary_shape_create"
+      ]
     },
     "PhysicsServer2DManager": {
       "name": "PhysicsServer2DManager",
@@ -31830,7 +32589,203 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_area_add_shape",
+        "_area_attach_object_instance_id",
+        "_area_clear_shapes",
+        "_area_create",
+        "_area_get_collision_layer",
+        "_area_get_collision_mask",
+        "_area_get_object_instance_id",
+        "_area_get_param",
+        "_area_get_shape",
+        "_area_get_shape_count",
+        "_area_get_shape_transform",
+        "_area_get_space",
+        "_area_get_transform",
+        "_area_remove_shape",
+        "_area_set_area_monitor_callback",
+        "_area_set_collision_layer",
+        "_area_set_collision_mask",
+        "_area_set_monitor_callback",
+        "_area_set_monitorable",
+        "_area_set_param",
+        "_area_set_ray_pickable",
+        "_area_set_shape",
+        "_area_set_shape_disabled",
+        "_area_set_shape_transform",
+        "_area_set_space",
+        "_area_set_transform",
+        "_body_add_collision_exception",
+        "_body_add_constant_central_force",
+        "_body_add_constant_force",
+        "_body_add_constant_torque",
+        "_body_add_shape",
+        "_body_apply_central_force",
+        "_body_apply_central_impulse",
+        "_body_apply_force",
+        "_body_apply_impulse",
+        "_body_apply_torque",
+        "_body_apply_torque_impulse",
+        "_body_attach_object_instance_id",
+        "_body_clear_shapes",
+        "_body_create",
+        "_body_get_collision_exceptions",
+        "_body_get_collision_layer",
+        "_body_get_collision_mask",
+        "_body_get_collision_priority",
+        "_body_get_constant_force",
+        "_body_get_constant_torque",
+        "_body_get_contacts_reported_depth_threshold",
+        "_body_get_direct_state",
+        "_body_get_max_contacts_reported",
+        "_body_get_mode",
+        "_body_get_object_instance_id",
+        "_body_get_param",
+        "_body_get_shape",
+        "_body_get_shape_count",
+        "_body_get_shape_transform",
+        "_body_get_space",
+        "_body_get_state",
+        "_body_get_user_flags",
+        "_body_is_axis_locked",
+        "_body_is_continuous_collision_detection_enabled",
+        "_body_is_omitting_force_integration",
+        "_body_remove_collision_exception",
+        "_body_remove_shape",
+        "_body_reset_mass_properties",
+        "_body_set_axis_lock",
+        "_body_set_axis_velocity",
+        "_body_set_collision_layer",
+        "_body_set_collision_mask",
+        "_body_set_collision_priority",
+        "_body_set_constant_force",
+        "_body_set_constant_torque",
+        "_body_set_contacts_reported_depth_threshold",
+        "_body_set_enable_continuous_collision_detection",
+        "_body_set_force_integration_callback",
+        "_body_set_max_contacts_reported",
+        "_body_set_mode",
+        "_body_set_omit_force_integration",
+        "_body_set_param",
+        "_body_set_ray_pickable",
+        "_body_set_shape",
+        "_body_set_shape_disabled",
+        "_body_set_shape_transform",
+        "_body_set_space",
+        "_body_set_state",
+        "_body_set_state_sync_callback",
+        "_body_set_user_flags",
+        "_body_test_motion",
+        "_box_shape_create",
+        "_capsule_shape_create",
+        "_concave_polygon_shape_create",
+        "_cone_twist_joint_get_param",
+        "_cone_twist_joint_set_param",
+        "_convex_polygon_shape_create",
+        "_custom_shape_create",
+        "_cylinder_shape_create",
+        "_end_sync",
+        "_finish",
+        "_flush_queries",
+        "_free_rid",
+        "_generic_6dof_joint_get_flag",
+        "_generic_6dof_joint_get_param",
+        "_generic_6dof_joint_set_flag",
+        "_generic_6dof_joint_set_param",
+        "_get_process_info",
+        "_heightmap_shape_create",
+        "_hinge_joint_get_flag",
+        "_hinge_joint_get_param",
+        "_hinge_joint_set_flag",
+        "_hinge_joint_set_param",
+        "_init",
+        "_is_flushing_queries",
+        "_joint_clear",
+        "_joint_create",
+        "_joint_disable_collisions_between_bodies",
+        "_joint_get_solver_priority",
+        "_joint_get_type",
+        "_joint_is_disabled_collisions_between_bodies",
+        "_joint_make_cone_twist",
+        "_joint_make_generic_6dof",
+        "_joint_make_hinge",
+        "_joint_make_hinge_simple",
+        "_joint_make_pin",
+        "_joint_make_slider",
+        "_joint_set_solver_priority",
+        "_pin_joint_get_local_a",
+        "_pin_joint_get_local_b",
+        "_pin_joint_get_param",
+        "_pin_joint_set_local_a",
+        "_pin_joint_set_local_b",
+        "_pin_joint_set_param",
+        "_separation_ray_shape_create",
+        "_set_active",
+        "_shape_get_custom_solver_bias",
+        "_shape_get_data",
+        "_shape_get_margin",
+        "_shape_get_type",
+        "_shape_set_custom_solver_bias",
+        "_shape_set_data",
+        "_shape_set_margin",
+        "_slider_joint_get_param",
+        "_slider_joint_set_param",
+        "_soft_body_add_collision_exception",
+        "_soft_body_apply_central_force",
+        "_soft_body_apply_central_impulse",
+        "_soft_body_apply_point_force",
+        "_soft_body_apply_point_impulse",
+        "_soft_body_create",
+        "_soft_body_get_bounds",
+        "_soft_body_get_collision_exceptions",
+        "_soft_body_get_collision_layer",
+        "_soft_body_get_collision_mask",
+        "_soft_body_get_damping_coefficient",
+        "_soft_body_get_drag_coefficient",
+        "_soft_body_get_linear_stiffness",
+        "_soft_body_get_point_global_position",
+        "_soft_body_get_pressure_coefficient",
+        "_soft_body_get_shrinking_factor",
+        "_soft_body_get_simulation_precision",
+        "_soft_body_get_space",
+        "_soft_body_get_state",
+        "_soft_body_get_total_mass",
+        "_soft_body_is_point_pinned",
+        "_soft_body_move_point",
+        "_soft_body_pin_point",
+        "_soft_body_remove_all_pinned_points",
+        "_soft_body_remove_collision_exception",
+        "_soft_body_set_collision_layer",
+        "_soft_body_set_collision_mask",
+        "_soft_body_set_damping_coefficient",
+        "_soft_body_set_drag_coefficient",
+        "_soft_body_set_linear_stiffness",
+        "_soft_body_set_mesh",
+        "_soft_body_set_pressure_coefficient",
+        "_soft_body_set_ray_pickable",
+        "_soft_body_set_shrinking_factor",
+        "_soft_body_set_simulation_precision",
+        "_soft_body_set_space",
+        "_soft_body_set_state",
+        "_soft_body_set_total_mass",
+        "_soft_body_set_transform",
+        "_soft_body_update_rendering_server",
+        "_space_create",
+        "_space_get_contact_count",
+        "_space_get_contacts",
+        "_space_get_direct_state",
+        "_space_get_param",
+        "_space_is_active",
+        "_space_set_active",
+        "_space_set_debug_contacts",
+        "_space_set_param",
+        "_sphere_shape_create",
+        "_step",
+        "_sync",
+        "_world_boundary_shape_create"
+      ]
     },
     "PhysicsServer3DManager": {
       "name": "PhysicsServer3DManager",
@@ -31860,7 +32815,12 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_set_aabb",
+        "_set_normal",
+        "_set_vertex"
+      ]
     },
     "PhysicsShapeQueryParameters2D": {
       "name": "PhysicsShapeQueryParameters2D",
@@ -32776,7 +33736,10 @@
       ],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_create_mesh_array"
+      ]
     },
     "PrismMesh": {
       "name": "PrismMesh",
@@ -34141,7 +35104,10 @@
         }
       ],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_value_changed"
+      ]
     },
     "RayCast2D": {
       "name": "RayCast2D",
@@ -35196,7 +36162,13 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_camera_attributes",
+        "_get_environment",
+        "_get_render_scene_buffers",
+        "_get_render_scene_data"
+      ]
     },
     "RenderDataRD": {
       "name": "RenderDataRD",
@@ -40904,7 +41876,14 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_configure",
+        "_set_anisotropic_filtering_level",
+        "_set_fsr_sharpness",
+        "_set_texture_mipmap_bias",
+        "_set_use_debanding"
+      ]
     },
     "RenderSceneBuffersRD": {
       "name": "RenderSceneBuffersRD",
@@ -40976,7 +41955,15 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_cam_projection",
+        "_get_cam_transform",
+        "_get_uniform_buffer",
+        "_get_view_count",
+        "_get_view_eye_offset",
+        "_get_view_projection"
+      ]
     },
     "RenderSceneDataRD": {
       "name": "RenderSceneDataRD",
@@ -41055,6 +42042,12 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_get_rid",
+        "_reset_state",
+        "_set_path_cache",
+        "_setup_local_to_scene"
       ]
     },
     "ResourceFormatLoader": {
@@ -41103,6 +42096,19 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_exists",
+        "_get_classes_used",
+        "_get_dependencies",
+        "_get_recognized_extensions",
+        "_get_resource_script_class",
+        "_get_resource_type",
+        "_get_resource_uid",
+        "_handles_type",
+        "_load",
+        "_recognize_path",
+        "_rename_dependencies"
       ]
     },
     "ResourceFormatSaver": {
@@ -41119,7 +42125,14 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_recognized_extensions",
+        "_recognize",
+        "_recognize_path",
+        "_save",
+        "_set_uid"
+      ]
     },
     "ResourceImporter": {
       "name": "ResourceImporter",
@@ -41145,6 +42158,9 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_get_build_dependencies"
       ]
     },
     "ResourceImporterBitMap": {
@@ -41701,7 +42717,10 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_process_custom_fx"
+      ]
     },
     "RichTextLabel": {
       "name": "RichTextLabel",
@@ -42261,6 +43280,9 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_integrate_forces"
       ]
     },
     "RigidBody3D": {
@@ -42461,6 +43483,9 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_integrate_forces"
       ]
     },
     "RootMotionView": {
@@ -42994,7 +44019,46 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_can_instantiate",
+        "_editor_can_reload_from_file",
+        "_get_base_script",
+        "_get_class_icon_path",
+        "_get_constants",
+        "_get_doc_class_name",
+        "_get_documentation",
+        "_get_global_name",
+        "_get_instance_base_type",
+        "_get_language",
+        "_get_member_line",
+        "_get_members",
+        "_get_method_info",
+        "_get_property_default_value",
+        "_get_rpc_config",
+        "_get_script_method_argument_count",
+        "_get_script_method_list",
+        "_get_script_property_list",
+        "_get_script_signal_list",
+        "_get_source_code",
+        "_has_method",
+        "_has_property_default_value",
+        "_has_script_signal",
+        "_has_source_code",
+        "_has_static_method",
+        "_inherits_script",
+        "_instance_create",
+        "_instance_has",
+        "_is_abstract",
+        "_is_placeholder_fallback_enabled",
+        "_is_tool",
+        "_is_valid",
+        "_placeholder_erased",
+        "_placeholder_instance_create",
+        "_reload",
+        "_set_source_code",
+        "_update_exports"
+      ]
     },
     "ScriptLanguage": {
       "name": "ScriptLanguage",
@@ -43227,6 +44291,68 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_add_global_constant",
+        "_add_named_global_constant",
+        "_auto_indent_code",
+        "_can_inherit_from_file",
+        "_can_make_function",
+        "_complete_code",
+        "_create_script",
+        "_debug_get_current_stack_info",
+        "_debug_get_error",
+        "_debug_get_globals",
+        "_debug_get_stack_level_count",
+        "_debug_get_stack_level_function",
+        "_debug_get_stack_level_instance",
+        "_debug_get_stack_level_line",
+        "_debug_get_stack_level_locals",
+        "_debug_get_stack_level_members",
+        "_debug_get_stack_level_source",
+        "_debug_parse_stack_level_expression",
+        "_find_function",
+        "_finish",
+        "_frame",
+        "_get_built_in_templates",
+        "_get_comment_delimiters",
+        "_get_doc_comment_delimiters",
+        "_get_extension",
+        "_get_global_class_name",
+        "_get_name",
+        "_get_public_annotations",
+        "_get_public_constants",
+        "_get_public_functions",
+        "_get_recognized_extensions",
+        "_get_reserved_words",
+        "_get_string_delimiters",
+        "_get_type",
+        "_handles_global_class_type",
+        "_has_named_classes",
+        "_init",
+        "_is_control_flow_keyword",
+        "_is_using_templates",
+        "_lookup_code",
+        "_make_function",
+        "_make_template",
+        "_open_in_external_editor",
+        "_overrides_external_editor",
+        "_preferred_file_name_casing",
+        "_profiling_get_accumulated_data",
+        "_profiling_get_frame_data",
+        "_profiling_set_save_native_calls",
+        "_profiling_start",
+        "_profiling_stop",
+        "_reload_all_scripts",
+        "_reload_scripts",
+        "_reload_tool_script",
+        "_remove_named_global_constant",
+        "_supports_builtin_mode",
+        "_supports_documentation",
+        "_thread_enter",
+        "_thread_exit",
+        "_validate",
+        "_validate_path"
       ]
     },
     "ScrollBar": {
@@ -43975,7 +45101,12 @@
       ],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_draw_editor_gizmo",
+        "_execute",
+        "_setup_modification"
+      ]
     },
     "SkeletonModification2DCCDIK": {
       "name": "SkeletonModification2DCCDIK",
@@ -44369,6 +45500,12 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_process_modification",
+        "_process_modification_with_delta",
+        "_skeleton_changed",
+        "_validate_bone_names"
       ]
     },
     "SkeletonProfile": {
@@ -45777,7 +46914,14 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_available_bytes",
+        "_get_data",
+        "_get_partial_data",
+        "_put_data",
+        "_put_partial_data"
+      ]
     },
     "StreamPeerGZIP": {
       "name": "StreamPeerGZIP",
@@ -46188,7 +47332,13 @@
       ],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_draw",
+        "_get_draw_rect",
+        "_get_minimum_size",
+        "_test_mask"
+      ]
     },
     "StyleBoxEmpty": {
       "name": "StyleBoxEmpty",
@@ -46464,7 +47614,10 @@
       ],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_propagate_input_event"
+      ]
     },
     "SurfaceTool": {
       "name": "SurfaceTool",
@@ -46581,7 +47734,12 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_clear_highlighting_cache",
+        "_get_line_syntax_highlighting",
+        "_update_cache"
+      ]
     },
     "SystemFont": {
       "name": "SystemFont",
@@ -47630,6 +48788,14 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_backspace",
+        "_copy",
+        "_cut",
+        "_handle_unicode_input",
+        "_paste",
+        "_paste_primary_clipboard"
       ]
     },
     "TextLine": {
@@ -48924,7 +50090,258 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_cleanup",
+        "_create_font",
+        "_create_font_linked_variation",
+        "_create_shaped_text",
+        "_draw_hex_code_box",
+        "_font_clear_glyphs",
+        "_font_clear_kerning_map",
+        "_font_clear_size_cache",
+        "_font_clear_system_fallback_cache",
+        "_font_clear_textures",
+        "_font_draw_glyph",
+        "_font_draw_glyph_outline",
+        "_font_get_antialiasing",
+        "_font_get_ascent",
+        "_font_get_baseline_offset",
+        "_font_get_char_from_glyph_index",
+        "_font_get_descent",
+        "_font_get_disable_embedded_bitmaps",
+        "_font_get_embolden",
+        "_font_get_face_count",
+        "_font_get_face_index",
+        "_font_get_fixed_size",
+        "_font_get_fixed_size_scale_mode",
+        "_font_get_generate_mipmaps",
+        "_font_get_global_oversampling",
+        "_font_get_glyph_advance",
+        "_font_get_glyph_contours",
+        "_font_get_glyph_index",
+        "_font_get_glyph_list",
+        "_font_get_glyph_offset",
+        "_font_get_glyph_size",
+        "_font_get_glyph_texture_idx",
+        "_font_get_glyph_texture_rid",
+        "_font_get_glyph_texture_size",
+        "_font_get_glyph_uv_rect",
+        "_font_get_hinting",
+        "_font_get_keep_rounding_remainders",
+        "_font_get_kerning",
+        "_font_get_kerning_list",
+        "_font_get_language_support_override",
+        "_font_get_language_support_overrides",
+        "_font_get_msdf_pixel_range",
+        "_font_get_msdf_size",
+        "_font_get_name",
+        "_font_get_opentype_feature_overrides",
+        "_font_get_ot_name_strings",
+        "_font_get_oversampling",
+        "_font_get_palette_colors",
+        "_font_get_palette_count",
+        "_font_get_palette_custom_colors",
+        "_font_get_palette_name",
+        "_font_get_scale",
+        "_font_get_script_support_override",
+        "_font_get_script_support_overrides",
+        "_font_get_size_cache_info",
+        "_font_get_size_cache_list",
+        "_font_get_spacing",
+        "_font_get_stretch",
+        "_font_get_style",
+        "_font_get_style_name",
+        "_font_get_subpixel_positioning",
+        "_font_get_supported_chars",
+        "_font_get_supported_glyphs",
+        "_font_get_texture_count",
+        "_font_get_texture_image",
+        "_font_get_texture_offsets",
+        "_font_get_transform",
+        "_font_get_underline_position",
+        "_font_get_underline_thickness",
+        "_font_get_used_palette",
+        "_font_get_variation_coordinates",
+        "_font_get_weight",
+        "_font_has_char",
+        "_font_is_allow_system_fallback",
+        "_font_is_force_autohinter",
+        "_font_is_language_supported",
+        "_font_is_modulate_color_glyphs",
+        "_font_is_multichannel_signed_distance_field",
+        "_font_is_script_supported",
+        "_font_remove_glyph",
+        "_font_remove_kerning",
+        "_font_remove_language_support_override",
+        "_font_remove_script_support_override",
+        "_font_remove_size_cache",
+        "_font_remove_texture",
+        "_font_render_glyph",
+        "_font_render_range",
+        "_font_set_allow_system_fallback",
+        "_font_set_antialiasing",
+        "_font_set_ascent",
+        "_font_set_baseline_offset",
+        "_font_set_data",
+        "_font_set_data_ptr",
+        "_font_set_descent",
+        "_font_set_disable_embedded_bitmaps",
+        "_font_set_embolden",
+        "_font_set_face_index",
+        "_font_set_fixed_size",
+        "_font_set_fixed_size_scale_mode",
+        "_font_set_force_autohinter",
+        "_font_set_generate_mipmaps",
+        "_font_set_global_oversampling",
+        "_font_set_glyph_advance",
+        "_font_set_glyph_offset",
+        "_font_set_glyph_size",
+        "_font_set_glyph_texture_idx",
+        "_font_set_glyph_uv_rect",
+        "_font_set_hinting",
+        "_font_set_keep_rounding_remainders",
+        "_font_set_kerning",
+        "_font_set_language_support_override",
+        "_font_set_modulate_color_glyphs",
+        "_font_set_msdf_pixel_range",
+        "_font_set_msdf_size",
+        "_font_set_multichannel_signed_distance_field",
+        "_font_set_name",
+        "_font_set_opentype_feature_overrides",
+        "_font_set_oversampling",
+        "_font_set_palette_custom_colors",
+        "_font_set_scale",
+        "_font_set_script_support_override",
+        "_font_set_spacing",
+        "_font_set_stretch",
+        "_font_set_style",
+        "_font_set_style_name",
+        "_font_set_subpixel_positioning",
+        "_font_set_texture_image",
+        "_font_set_texture_offsets",
+        "_font_set_transform",
+        "_font_set_underline_position",
+        "_font_set_underline_thickness",
+        "_font_set_used_palette",
+        "_font_set_variation_coordinates",
+        "_font_set_weight",
+        "_font_supported_feature_list",
+        "_font_supported_variation_list",
+        "_format_number",
+        "_free_rid",
+        "_get_features",
+        "_get_hex_code_box_size",
+        "_get_name",
+        "_get_support_data",
+        "_get_support_data_filename",
+        "_get_support_data_info",
+        "_has",
+        "_has_feature",
+        "_is_confusable",
+        "_is_locale_right_to_left",
+        "_is_locale_using_support_data",
+        "_is_valid_identifier",
+        "_is_valid_letter",
+        "_load_support_data",
+        "_name_to_tag",
+        "_parse_number",
+        "_parse_structured_text",
+        "_percent_sign",
+        "_reference_oversampling_level",
+        "_save_support_data",
+        "_shaped_get_run_count",
+        "_shaped_get_run_direction",
+        "_shaped_get_run_font_rid",
+        "_shaped_get_run_font_size",
+        "_shaped_get_run_glyph_range",
+        "_shaped_get_run_language",
+        "_shaped_get_run_object",
+        "_shaped_get_run_range",
+        "_shaped_get_run_text",
+        "_shaped_get_span_count",
+        "_shaped_get_span_embedded_object",
+        "_shaped_get_span_meta",
+        "_shaped_get_span_object",
+        "_shaped_get_span_text",
+        "_shaped_get_text",
+        "_shaped_set_span_update_font",
+        "_shaped_text_add_object",
+        "_shaped_text_add_string",
+        "_shaped_text_clear",
+        "_shaped_text_closest_character_pos",
+        "_shaped_text_draw",
+        "_shaped_text_draw_outline",
+        "_shaped_text_duplicate",
+        "_shaped_text_fit_to_width",
+        "_shaped_text_get_ascent",
+        "_shaped_text_get_carets",
+        "_shaped_text_get_character_breaks",
+        "_shaped_text_get_custom_ellipsis",
+        "_shaped_text_get_custom_punctuation",
+        "_shaped_text_get_descent",
+        "_shaped_text_get_direction",
+        "_shaped_text_get_dominant_direction_in_range",
+        "_shaped_text_get_ellipsis_glyph_count",
+        "_shaped_text_get_ellipsis_glyphs",
+        "_shaped_text_get_ellipsis_pos",
+        "_shaped_text_get_glyph_count",
+        "_shaped_text_get_glyphs",
+        "_shaped_text_get_grapheme_bounds",
+        "_shaped_text_get_inferred_direction",
+        "_shaped_text_get_line_breaks",
+        "_shaped_text_get_line_breaks_adv",
+        "_shaped_text_get_object_glyph",
+        "_shaped_text_get_object_range",
+        "_shaped_text_get_object_rect",
+        "_shaped_text_get_objects",
+        "_shaped_text_get_orientation",
+        "_shaped_text_get_parent",
+        "_shaped_text_get_preserve_control",
+        "_shaped_text_get_preserve_invalid",
+        "_shaped_text_get_range",
+        "_shaped_text_get_selection",
+        "_shaped_text_get_size",
+        "_shaped_text_get_spacing",
+        "_shaped_text_get_trim_pos",
+        "_shaped_text_get_underline_position",
+        "_shaped_text_get_underline_thickness",
+        "_shaped_text_get_width",
+        "_shaped_text_get_word_breaks",
+        "_shaped_text_has_object",
+        "_shaped_text_hit_test_grapheme",
+        "_shaped_text_hit_test_position",
+        "_shaped_text_is_ready",
+        "_shaped_text_next_character_pos",
+        "_shaped_text_next_grapheme_pos",
+        "_shaped_text_overrun_trim_to_width",
+        "_shaped_text_prev_character_pos",
+        "_shaped_text_prev_grapheme_pos",
+        "_shaped_text_resize_object",
+        "_shaped_text_set_bidi_override",
+        "_shaped_text_set_custom_ellipsis",
+        "_shaped_text_set_custom_punctuation",
+        "_shaped_text_set_direction",
+        "_shaped_text_set_orientation",
+        "_shaped_text_set_preserve_control",
+        "_shaped_text_set_preserve_invalid",
+        "_shaped_text_set_spacing",
+        "_shaped_text_shape",
+        "_shaped_text_sort_logical",
+        "_shaped_text_substr",
+        "_shaped_text_tab_align",
+        "_shaped_text_update_breaks",
+        "_shaped_text_update_justification_ops",
+        "_spoof_check",
+        "_string_get_character_breaks",
+        "_string_get_word_breaks",
+        "_string_to_lower",
+        "_string_to_title",
+        "_string_to_upper",
+        "_strip_diacritics",
+        "_tag_to_name",
+        "_unreference_oversampling_level"
+      ]
     },
     "TextServerManager": {
       "name": "TextServerManager",
@@ -49006,7 +50423,20 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_draw",
+        "_draw_rect",
+        "_draw_rect_region",
+        "_get_format",
+        "_get_height",
+        "_get_image",
+        "_get_mipmap_count",
+        "_get_width",
+        "_has_alpha",
+        "_has_mipmaps",
+        "_is_pixel_opaque"
+      ]
     },
     "Texture2DArray": {
       "name": "Texture2DArray",
@@ -49070,7 +50500,15 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_data",
+        "_get_depth",
+        "_get_format",
+        "_get_height",
+        "_get_width",
+        "_has_mipmaps"
+      ]
     },
     "Texture3DRD": {
       "name": "Texture3DRD",
@@ -49224,6 +50662,15 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_get_format",
+        "_get_height",
+        "_get_layer_data",
+        "_get_layered_type",
+        "_get_layers",
+        "_get_width",
+        "_has_mipmaps"
       ]
     },
     "TextureLayeredRD": {
@@ -49810,6 +51257,10 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_tile_data_runtime_update",
+        "_use_tile_data_runtime_update"
       ]
     },
     "TileMapLayer": {
@@ -49916,6 +51367,11 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_tile_data_runtime_update",
+        "_update_cells",
+        "_use_tile_data_runtime_update"
       ]
     },
     "TileMapPattern": {
@@ -50700,7 +52156,11 @@
       ],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_message",
+        "_get_plural_message"
+      ]
     },
     "TranslationDomain": {
       "name": "TranslationDomain",
@@ -52240,7 +53700,10 @@
       ],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_instantiate_playback"
+      ]
     },
     "VideoStreamPlayback": {
       "name": "VideoStreamPlayback",
@@ -52265,7 +53728,22 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_channels",
+        "_get_length",
+        "_get_mix_rate",
+        "_get_playback_position",
+        "_get_texture",
+        "_is_paused",
+        "_is_playing",
+        "_play",
+        "_seek",
+        "_set_audio_track",
+        "_set_paused",
+        "_stop",
+        "_update"
+      ]
     },
     "VideoStreamPlayer": {
       "name": "VideoStreamPlayer",
@@ -53259,7 +54737,10 @@
       ],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_get_aabb"
+      ]
     },
     "VoxelGI": {
       "name": "VoxelGI",
@@ -53898,6 +55379,9 @@
             }
           ]
         }
+      ],
+      "virtualMethods": [
+        "_get_contents_minimum_size"
       ]
     },
     "WorkerThreadPool": {
@@ -55770,7 +57254,41 @@
       "properties": [],
       "signals": [],
       "constants": [],
-      "enums": []
+      "enums": [],
+      "virtualMethods": [
+        "_end_frame",
+        "_get_anchor_detection_is_enabled",
+        "_get_camera_feed_id",
+        "_get_camera_transform",
+        "_get_capabilities",
+        "_get_color_texture",
+        "_get_depth_texture",
+        "_get_name",
+        "_get_play_area",
+        "_get_play_area_mode",
+        "_get_projection_for_view",
+        "_get_render_target_size",
+        "_get_suggested_pose_names",
+        "_get_suggested_tracker_names",
+        "_get_system_info",
+        "_get_tracking_status",
+        "_get_transform_for_view",
+        "_get_velocity_texture",
+        "_get_view_count",
+        "_get_vrs_texture",
+        "_get_vrs_texture_format",
+        "_initialize",
+        "_is_initialized",
+        "_post_draw_viewport",
+        "_pre_draw_viewport",
+        "_pre_render",
+        "_process",
+        "_set_anchor_detection_is_enabled",
+        "_set_play_area_mode",
+        "_supports_play_area_mode",
+        "_trigger_haptic_pulse",
+        "_uninitialize"
+      ]
     },
     "XRNode3D": {
       "name": "XRNode3D",

@@ -142,6 +142,14 @@ export function generateRegistryData(
       }
     }
 
+    // Virtuals are the members `super.<name>()` cannot reach — they have
+    // no engine implementation behind them. Taken straight from the XML
+    // qualifier rather than from a name shape: `_`-prefixed is a
+    // convention, not the rule Godot enforces.
+    const virtualMethods = cls.methods
+      .filter((m) => m.isVirtual)
+      .map((m) => m.name);
+
     // Compute variantConverts: types accepted by single-parameter "from" constructors
     const variantConverts: string[] = [];
     for (const ctor of cls.constructors) {
@@ -166,6 +174,7 @@ export function generateRegistryData(
       constants: cls.constants.filter((c) => !c.enumName).map((c) => c.name),
       enums: cls.enums,
       ...(variantConverts.length > 0 ? { variantConverts } : {}),
+      ...(virtualMethods.length > 0 ? { virtualMethods } : {}),
     };
   }
 

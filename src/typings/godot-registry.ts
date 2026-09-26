@@ -47,6 +47,16 @@ export interface GodotClassInfo {
    * Example: Vector2 has variantConverts = ["Vector2", "Vector2i"]
    */
   variantConverts?: string[];
+  /**
+   * Names of this class's methods documented `qualifiers="virtual"`.
+   *
+   * A virtual has no engine implementation to call, so it is the one
+   * kind of member `super.<name>()` cannot reach: Godot answers
+   * `Cannot call the parent class' virtual function "<name>()" because
+   * it hasn't been defined` unless an ancestor SCRIPT defines it.
+   * Regular engine methods are reachable through `super` as usual.
+   */
+  virtualMethods?: string[];
 }
 
 export interface GodotEnumInfo {
@@ -199,6 +209,18 @@ export class GodotClassRegistry {
   /** Check if className extends (directly or indirectly) parentName */
   isSubclassOf(className: string, parentName: string): boolean {
     return this.getInheritanceChain(className).includes(parentName);
+  }
+
+  /**
+   * True when `methodName` is documented virtual on `className` or on
+   * any of its ancestors — the one kind of member a script cannot
+   * reach through `super`, because no engine implementation stands
+   * behind it.
+   */
+  isVirtualMethod(className: string, methodName: string): boolean {
+    return this.getInheritanceChain(className).some((cn) =>
+      this.data.classes[cn]?.virtualMethods?.includes(methodName),
+    );
   }
 
   /** Check if a class exists in the registry */
