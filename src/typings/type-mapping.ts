@@ -78,6 +78,18 @@ export function sanitizeClassName(name: string): string {
   return CLASS_NAME_CONFLICTS.get(name) ?? name;
 }
 
+/**
+ * Inverse of {@link sanitizeClassName}: the Godot class name a TS class
+ * name stands for (`GodotObject` → `Object`), for lookups in the
+ * registry, which only knows Godot's own names.
+ */
+export function godotClassName(tsName: string): string {
+  for (const [godot, renamed] of CLASS_NAME_CONFLICTS) {
+    if (renamed === tsName) return godot;
+  }
+  return tsName;
+}
+
 // ─── Type mapping functions ──────────────────────────────────────
 
 /**

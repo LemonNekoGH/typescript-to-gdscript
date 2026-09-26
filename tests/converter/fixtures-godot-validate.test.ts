@@ -59,6 +59,18 @@ const SKIP = new Map<string, string>([
     'gd-eval-comments',
     'preloads a sibling .gd that does not exist in a one-file project',
   ],
+  [
+    'super-script-child',
+    'extends the sibling fixture `SuperScriptParent`, which a one-file project does not have',
+  ],
+  [
+    'super-preload-child',
+    '`extends "res://super-script-parent.gd"` points at a sibling fixture',
+  ],
+  [
+    'super-global-child',
+    'extends the sibling fixture `SuperScriptParent`, which a one-file project does not have',
+  ],
 ]);
 
 const FIXTURES = readdirSync(FIXTURES_DIR)

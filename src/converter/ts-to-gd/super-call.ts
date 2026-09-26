@@ -1,11 +1,12 @@
 import ts from 'typescript';
 import { isAmbient } from '../common/gd-names.ts';
+import { godotClassName } from '../../typings/type-mapping.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
 
 /**
  * What GDScript can do with a `super` call.
  *
- * `super` reaches a member only when a SCRIPT behind it implements one.
+ * `super` reaches a member only when something implements it.
  * Verified against Godot:
  *
  * - `super.get_child(0)` on a `Node` base — fine, the engine method has
@@ -32,14 +33,6 @@ function superMemberName(node: ts.CallExpression): string | null {
     return node.expression.name.text;
   }
   return null;
-}
-
-/** True for a bare `super(...)`, the form TypeScript forces on a derived constructor. */
-export function isBareSuperCall(node: ts.Node): node is ts.CallExpression {
-  return (
-    ts.isCallExpression(node) &&
-    node.expression.kind === ts.SyntaxKind.SuperKeyword
-  );
 }
 
 /**
@@ -79,7 +72,18 @@ function enclosingClass(node: ts.Node): ts.ClassLikeDeclaration | undefined {
   return undefined;
 }
 
-/** The class a heritage clause's expression resolves to, if it names one. */
+/**
+ * The class declaration an `extends` expression stands for, or
+ * undefined when that cannot be told.
+ *
+ * A NAME (identifier, dotted name, import alias) resolves through its
+ * symbol. Anything else — in this dialect, `preload("res://…")` —
+ * names a SCRIPT by its path, so only a resolution to the user's own
+ * TS class counts. An ambient answer there is a stand-in, not evidence
+ * about the base: `preload`'s fallback overload is typed `Resource`,
+ * which would otherwise pass for an engine base and let a script's
+ * constructor call be dropped.
+ */
 function baseClassOf(
   t: TransformerDelegate,
   cls: ts.ClassLikeDeclaration,
@@ -89,74 +93,116 @@ function baseClassOf(
   );
   const expr = clause?.types[0]?.expression;
   if (!expr) return undefined;
-  let symbol = t.ctx.checker.getSymbolAtLocation(expr);
-  if (symbol && symbol.flags & ts.SymbolFlags.Alias) {
-    symbol = t.ctx.checker.getAliasedSymbol(symbol);
+  const checker = t.ctx.checker;
+
+  if (ts.isIdentifier(expr) || ts.isPropertyAccessExpression(expr)) {
+    const nameNode = ts.isPropertyAccessExpression(expr) ? expr.name : expr;
+    let symbol = checker.getSymbolAtLocation(nameNode);
+    if (symbol && symbol.flags & ts.SymbolFlags.Alias) {
+      symbol = checker.getAliasedSymbol(symbol);
+    }
+    return symbol?.getDeclarations()?.find(ts.isClassLike);
   }
-  return symbol?.getDeclarations()?.find(ts.isClassLike);
+
+  const instance = checker
+    .getTypeAtLocation(expr)
+    .getConstructSignatures()[0]
+    ?.getReturnType();
+  const decl = instance?.getSymbol()?.getDeclarations()?.find(ts.isClassLike);
+  return decl && !isAmbient(decl) ? decl : undefined;
 }
 
 /**
- * True when some SCRIPT ancestor implements `member` — the condition
- * Godot actually checks. An ambient declaration is the engine's own
- * typings and stops the walk: past it there is no more script.
- *
- * `_init` is matched against a constructor, every other name against a
- * method. A property holding a lambda is deliberately not matched:
- * `super.field.call()` is not a thing in GDScript.
+ * The registry name of a Godot engine class declaration, or undefined
+ * when `decl` is not one. The typings rename a few classes that clash
+ * with JS globals (`Object` → `GodotObject`), so the TS name is mapped
+ * back before the registry is asked. Without a registry nothing can be
+ * proven to be an engine class.
  */
-function scriptAncestorImplements(
+function engineClassName(
+  t: TransformerDelegate,
+  decl: ts.ClassLikeDeclaration,
+): string | undefined {
+  if (!isAmbient(decl) || !decl.name) return undefined;
+  const name = godotClassName(decl.name.text);
+  return t.ctx.registry?.hasClass(name) ? name : undefined;
+}
+
+/**
+ * `_init` is matched against a constructor, every other name against a
+ * method — declarations included, so a `.d.ts` standing in for a script
+ * answers for it. A property holding a lambda is deliberately not
+ * matched: `super.field.call()` is not a thing in GDScript.
+ */
+function declaresMember(
+  decl: ts.ClassLikeDeclaration,
+  member: string,
+): boolean {
+  return decl.members.some((m) =>
+    member === '_init'
+      ? ts.isConstructorDeclaration(m)
+      : ts.isMethodDeclaration(m) &&
+        m.name.getText(decl.getSourceFile()) === member,
+  );
+}
+
+/**
+ * Where the member a `super` call names is implemented, as far as the
+ * converter can PROVE it — the only basis on which anything may be
+ * dropped or reported.
+ */
+type Implementer =
+  /** Some script ancestor declares it — resolved THROUGH ones that don't. */
+  | { kind: 'script' }
+  /** The chain reached this engine class with no script declaring it first. */
+  | { kind: 'engine'; name: string }
+  /** The chain could not be followed to either end. */
+  | { kind: 'unknown' };
+
+/**
+ * Walk the `extends` chain looking for whoever implements `member`.
+ *
+ * An ambient class that is NOT an engine class stands in for a script:
+ * the global wrapper the typings generator emits for every script class
+ * (`class Foo extends ScriptClass {}`, usable without an import), or an
+ * emitted declaration. It is read like any other script — it answers
+ * if it declares the member — and otherwise followed through to its own
+ * base. Stopping at it read every such base as "no constructor" and
+ * dropped the `super()` of a script whose constructor then silently
+ * never ran.
+ */
+function findImplementer(
   t: TransformerDelegate,
   cls: ts.ClassLikeDeclaration,
   member: string,
-): boolean {
+): Implementer {
   const seen = new Set<ts.ClassLikeDeclaration>();
   let base = baseClassOf(t, cls);
   while (base && !seen.has(base)) {
     seen.add(base);
-    if (isAmbient(base)) return false;
-    const found = base.members.some((m) =>
-      member === '_init'
-        ? ts.isConstructorDeclaration(m)
-        : ts.isMethodDeclaration(m) &&
-          m.name.getText(base!.getSourceFile()) === member,
-    );
-    if (found) return true;
+    const engine = engineClassName(t, base);
+    if (engine) return { kind: 'engine', name: engine };
+    if (declaresMember(base, member)) return { kind: 'script' };
     base = baseClassOf(t, base);
   }
-  return false;
-}
-
-/** The engine class at the end of the script chain, for the registry lookup. */
-function engineBaseName(
-  t: TransformerDelegate,
-  cls: ts.ClassLikeDeclaration,
-): string | undefined {
-  const seen = new Set<ts.ClassLikeDeclaration>();
-  let base = baseClassOf(t, cls);
-  while (base && !seen.has(base)) {
-    seen.add(base);
-    if (isAmbient(base)) return base.name?.text;
-    base = baseClassOf(t, base);
-  }
-  return undefined;
+  return { kind: 'unknown' };
 }
 
 /**
  * Decide what to emit for a `super` call, or null when this is not one.
  *
- * The bare `super()` TypeScript forces at the top of a derived
- * constructor is DROPPED when no script ancestor defines `_init`: there
- * is nothing to call, and Godot rejects the call outright. Dropping is
- * safe only in that case — GDScript does NOT run a parent `_init`
- * implicitly (verified: a child `_init` without `super()` leaves the
- * parent's body unrun), so a script ancestor's constructor must keep
- * its call. `super(args)` with nowhere to send the arguments is
- * reported rather than dropped.
+ * Only a PROVEN engine base changes anything. There the bare `super()`
+ * at the top of a derived constructor is dropped — nothing implements
+ * `_init`, and Godot rejects the call outright — and `super(args)` is
+ * reported, since dropping it would lose the arguments. Everywhere
+ * else the call is emitted as written: GDScript does NOT run a parent
+ * `_init` implicitly (verified: a child `_init` without `super()`
+ * leaves the parent's body unrun), so dropping on a guess could
+ * silently skip a constructor. Emitting when unsure costs at worst a
+ * Godot parse error, which is visible.
  *
- * An unreachable virtual is reported, not dropped: unlike `super()` the
- * user wrote it on purpose, and quietly removing it would change what
- * the program does.
+ * An unreachable engine virtual is reported, not dropped: unlike the
+ * bare `super()`, the user wrote it on purpose.
  */
 export function resolveSuperCall(
   t: TransformerDelegate,
@@ -167,7 +213,8 @@ export function resolveSuperCall(
 
   const cls = enclosingClass(node);
   if (!cls) return { kind: 'emit' };
-  if (scriptAncestorImplements(t, cls, member)) return { kind: 'emit' };
+  const implementer = findImplementer(t, cls, member);
+  if (implementer.kind !== 'engine') return { kind: 'emit' };
 
   if (member === '_init') {
     if (node.arguments.length > 0) {
@@ -175,28 +222,26 @@ export function resolveSuperCall(
         kind: 'unsupported',
         message:
           'No base class constructor to forward these arguments to — the ' +
-          'base resolves to a Godot engine class, whose `_init` is a ' +
-          'virtual with no implementation behind it. Drop the arguments, ' +
-          'or give the base class a constructor of its own.',
+          `base resolves to the Godot engine class \`${implementer.name}\`, ` +
+          'whose `_init` is a virtual with no implementation behind it. ' +
+          'Drop the arguments, or give the base class a constructor of ' +
+          'its own.',
       };
     }
     return { kind: 'drop' };
   }
 
-  // Past the script chain the registry decides: a regular engine method
-  // is reachable through `super`, a virtual is not.
-  const engineBase = engineBaseName(t, cls);
-  const registry = t.ctx.registry;
-  if (!engineBase || !registry) return { kind: 'emit' };
-  if (!registry.isVirtualMethod(engineBase, member)) return { kind: 'emit' };
-
+  // A regular engine method is reachable through `super`, a virtual is not.
+  if (!t.ctx.registry?.isVirtualMethod(implementer.name, member)) {
+    return { kind: 'emit' };
+  }
   return {
     kind: 'unsupported',
     message:
       `\`super.${member}()\` has nothing to call — \`${member}\` is a ` +
-      `virtual of \`${engineBase}\`, a slot the engine calls rather than ` +
-      'code it provides, and no ancestor script defines it. Godot rejects ' +
-      'the call. Drop it, or define ' +
-      `\`${member}\` on a base class of your own.`,
+      `virtual of \`${implementer.name}\`, a slot the engine calls rather ` +
+      'than code it provides, and no ancestor script defines it. Godot ' +
+      `rejects the call. Drop it, or define \`${member}\` on a base class ` +
+      'of your own.',
   };
 }

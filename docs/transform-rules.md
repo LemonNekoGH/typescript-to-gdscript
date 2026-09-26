@@ -842,7 +842,7 @@ GDScript has shorthand literal syntax for common node-tree and string types. The
 
 **`super()` is optional in a constructor.** TypeScript normally demands it, but that rule exists because a JavaScript object doesn't exist until the base constructor has run — GDScript's `_init` has no such rule, so the two codes that enforce it (`TS2377`, `TS17009`) are filtered by the CLI checker and the IDE plugin. Write `super()` when you mean to run the parent's `_init`; leave it out when you don't, and the `.gd` won't have it either.
 
-If you do write it, the `super()` at the top of a derived constructor is dropped when no base class of yours declares one — there is no parent `_init` to run, and Godot rejects the call. When a base class of yours _does_ declare a constructor the call is kept, because GDScript runs no parent `_init` on its own.
+If you do write it, a bare `super()` is dropped only when the base is provably a Godot engine class — there is no parent `_init` to run, and Godot rejects the call. Against a base class of yours the call is kept, because GDScript runs no parent `_init` on its own; when the converter can't tell what the base is, it keeps the call too.
 
 `super` may only stand in front of a call. `super.some_property` is reported — a property is one storage slot shared with the base class, so `this.some_property` already reads the same value.
 
