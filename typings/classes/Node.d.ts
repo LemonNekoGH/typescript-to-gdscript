@@ -252,7 +252,7 @@ declare class Node extends GodotObject {
    * The Tween will start automatically on the next process frame or physics frame (depending on {@link Tween.TweenProcessMode}). See {@link Tween.bind_node} for more info on Tweens bound to nodes.
    * **Note:** The method can still be used when the node is not inside {@link SceneTree}. It can fail in an unlikely case of using a custom {@link MainLoop}.
    */
-  create_tween(): Tween | null;
+  create_tween(): Tween;
   /**
    * Duplicates the node, returning a new node with all of its properties, signals, groups, and children copied from the original, recursively. The behavior can be tweaked through the `flags` (see {@link DuplicateFlags}). Internal nodes are not duplicated.
    * **Note:** For nodes with a {@link Script} attached, if {@link Object._init} has been defined with required parameters, the duplicated node will not have a {@link Script}.
