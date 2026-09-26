@@ -160,3 +160,20 @@ class GlobalFunctionsTest extends Node {
     let valid: boolean = is_instance_valid(this);
   }
 }
+
+// ─── NodePath lookups ───────────────────────────────────────
+
+class NodePathLookupTest extends Node {
+  test_nodepath() {
+    // Godot's own parameter type for these three. A `NodePath` value
+    // carries no literal for the scene-tree lookup to match, so the
+    // result is the untyped form.
+    let path: NodePath = NodePath('Child');
+    let node: Node | null = this.get_node(path);
+    let maybe: Node | null = this.get_node_or_null(path);
+    let exists: boolean = this.has_node(path);
+
+    // A string path still resolves through the literal overloads.
+    let byString: Node | null = this.get_node('Whatever/Deep');
+  }
+}
