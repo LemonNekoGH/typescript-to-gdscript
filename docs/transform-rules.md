@@ -836,6 +836,12 @@ GDScript has shorthand literal syntax for common node-tree and string types. The
 | `super()`        | `super.<method>()` | GD's bare `super()` calls the same-named method on the parent; the TS side names it explicitly. |
 | `super.method()` | `super.method()`   | Direct parent-method invocation, identical syntax.                                              |
 
+`super` reaches a member only when something actually implements it. A regular engine method (`super.get_child(0)`) is fine; an engine **virtual** (`_ready`, `_process`, `_init`, …) is only a slot the engine calls, so `super._ready()` is reported unless one of your own base classes defines `_ready`.
+
+The `super()` TypeScript makes you write at the top of a derived constructor is dropped when no base class of yours declares one — there is no parent `_init` to run, and Godot rejects the call. When a base class of yours _does_ declare a constructor the call is kept, because GDScript runs no parent `_init` on its own.
+
+`super` may only stand in front of a call. `super.some_property` is reported — a property is one storage slot shared with the base class, so `this.some_property` already reads the same value.
+
 ## GD → TS implicit `this.`
 
 GDScript reaches own/inherited members via a bare identifier (`speed`, `move_and_slide()`); TypeScript needs `this.`. When converting GD → TS, the converter resolves each bare identifier against:

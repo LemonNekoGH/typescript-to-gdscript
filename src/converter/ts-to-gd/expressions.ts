@@ -19,6 +19,7 @@ import { isCallableMemberCall, isCallableValueCall } from './callable-call.ts';
 import { effectiveParent } from './effective-parent.ts';
 import { emitLambda } from './lambda.ts';
 import { VOID_OPERATOR_ERROR } from './void-value.ts';
+import { checkSuperPropertyAccess, resolveSuperCall } from './super-call.ts';
 
 // ---- Main Expression Emitter ----
 
@@ -26,6 +27,11 @@ export function emitExpression(
   t: TransformerDelegate,
   node: ts.Expression,
 ): string {
+  // `super` is a name GDScript has too, in both the call and the
+  // receiver position. Whether the member behind it is REACHABLE is
+  // decided where the call is emitted (`resolveSuperCall`).
+  if (node.kind === ts.SyntaxKind.SuperKeyword) return 'super';
+
   // Identifiers
   if (ts.isIdentifier(node)) {
     const text = node.text;
@@ -428,6 +434,8 @@ export function emitPropertyAccess(
     );
   }
 
+  checkSuperPropertyAccess(t, node);
+
   checkPromiseMethodAccess(t, node);
   // Inside a get/set accessor body, `this.<accessorName>` refers to the
   // GDScript backing field, which must be emitted as a bare identifier
@@ -565,6 +573,16 @@ export function emitCallExpression(
       'Optional chaining (`?.`) is not supported in GDScript',
     );
   }
+
+  // A rejected construct emits its `# ERROR:` marker and nothing else,
+  // so `--emit-on-error` output still parses; `emitStatements` fills
+  // the emptied body with `pass`.
+  const superCall = resolveSuperCall(t, node);
+  if (superCall?.kind === 'unsupported') {
+    t.addDiagnostic(node, 'error', superCall.message);
+    return '';
+  }
+  if (superCall?.kind === 'drop') return '';
 
   checkPromiseUsedAsValue(t, node);
 
