@@ -50,20 +50,31 @@ interface PluginInit {
 }
 
 /**
- * Diagnostic codes emitted by the namespace+class merge pattern in
- * the generated `.gd.d.ts` files that never correspond to real user
- * mistakes. Always filtered for in-scope files.
+ * Diagnostic codes that never correspond to a real user mistake in
+ * this dialect. Always filtered for in-scope files.
+ *
+ * Emitted by the namespace+class merge pattern in the generated
+ * `.gd.d.ts` files:
  *   - TS2434 / TS2435 — "namespace must precede the class".
  *   - TS2449 — "class used before its declaration", when the
  *               typings module references the script class.
  *
- * Only codes the generated typings provoke belong here — a diagnostic
- * the user opted into is theirs to see. Keep in sync with
- * `NOISE_CODES` in `src/checker/ts-diagnostics.ts` (duplicated, not
- * shared, because that module value-imports `typescript` and the
- * plugin must only ever use the instance tsserver hands it).
+ * Enforcing a JavaScript runtime rule GDScript does not have:
+ *   - TS2377 — "derived constructors must contain a super call".
+ *   - TS17009 — "super must be called before accessing this".
+ *   Both exist because a JS object does not exist until the base
+ *   constructor has run. Nothing here runs as JavaScript, and
+ *   GDScript's `_init` has no such rule, so `super()` is optional.
+ *
+ * A diagnostic the user opted into is theirs to see — the codes above
+ * are unconditional, not a setting. Keep in sync with `NOISE_CODES`
+ * in `src/checker/ts-diagnostics.ts` (duplicated, not shared, because
+ * that module value-imports `typescript` and the plugin must only
+ * ever use the instance tsserver hands it).
  */
-export const ALWAYS_FILTERED_CODES = new Set<number>([2434, 2435, 2449]);
+export const ALWAYS_FILTERED_CODES = new Set<number>([
+  2434, 2435, 2449, 2377, 17009,
+]);
 
 function init({ typescript: ts }: PluginInit) {
   function create(info: tsModule.server.PluginCreateInfo): LS {

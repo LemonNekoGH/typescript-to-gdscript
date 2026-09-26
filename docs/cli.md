@@ -74,11 +74,11 @@ Options:
 
 After converting, `convert` runs a full three-source diagnostic check unless disabled:
 
-| Source     | Label             | Notes                                                                                        |
-| ---------- | ----------------- | -------------------------------------------------------------------------------------------- |
-| TypeScript | `[TS:severity]`   | Semantic + syntactic errors (requires `--tsconfig`; noise codes TS2434/2435/2449 suppressed) |
-| Converter  | `[CONV:severity]` | Errors and warnings from the TS→GD transformer                                               |
-| Godot      | `[GD:severity]`   | Full-project `godot --check-only` (requires `--godot-path` and `project.godot`)              |
+| Source     | Label             | Notes                                                                                                                              |
+| ---------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| TypeScript | `[TS:severity]`   | Semantic + syntactic errors (requires `--tsconfig`; noise codes TS2434/2435/2449 and the super-call codes TS2377/17009 suppressed) |
+| Converter  | `[CONV:severity]` | Errors and warnings from the TS→GD transformer                                                                                     |
+| Godot      | `[GD:severity]`   | Full-project `godot --check-only` (requires `--godot-path` and `project.godot`)                                                    |
 
 Extra flags:
 

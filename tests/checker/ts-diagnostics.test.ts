@@ -70,6 +70,39 @@ describe('collectTsDiagnostics', () => {
     }
   });
 
+  it('filters the super-call codes 2377 and 17009', () => {
+    // TS demands `super()` in every derived constructor because a JS
+    // object does not exist until the base constructor has run. This
+    // dialect never runs as JavaScript, and GDScript's `_init` has no
+    // such rule, so the requirement is inert here and the two codes it
+    // raises must not reach the user.
+    const tmp = mkdtempSync(join(tmpdir(), 'tstogd-super-test-'));
+    const tsFile = join(tmp, 'derived.ts');
+    writeFileSync(
+      tsFile,
+      [
+        'class Base { hp = 0; }',
+        'export class Derived extends Base {',
+        '  constructor(hp: number) {',
+        '    this.hp = hp;',
+        '  }',
+        '}',
+        '',
+      ].join('\n'),
+    );
+    try {
+      const program = createTsProgram({ rootDir: tmp, files: [tsFile] });
+      const diags = collectTsDiagnostics(program, tmp);
+      for (const code of [2377, 17009]) {
+        expect(diags.map((d) => d.message).join('\n')).not.toContain(
+          `TS${code}:`,
+        );
+      }
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   it('keeps the plugin filter in sync with the checker', () => {
     // The two sets are duplicated on purpose — the plugin may only use
     // the `typescript` instance tsserver hands it, so it cannot import

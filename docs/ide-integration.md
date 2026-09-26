@@ -71,9 +71,15 @@ Verify: the plugin logs `[tstogd-plugin] plugin loaded` on startup. WebStorm →
 
 1. **Inline diagnostics on the current buffer.** On every `getSemanticDiagnostics` query, the plugin runs `convertTsToGd` in-process using tsserver's own `ts.Program` (no fork, no IPC — just reuses the warm program + type checker). Converter diagnostics (conversion errors, type-errors, `||`/`&&` as value, `Promise` as value, etc.) appear as `ts.Diagnostic`s with `source: 'tstogd'` and codes in the `90000–90099` range.
 
-2. **Augmentation-noise filtering.** When you use the `export namespace Foo { ... }` + `export class Foo` pattern (the way enums and inner classes are expressed in TypeScript for this project), TypeScript generates a few spurious diagnostic codes from the namespace+class merge. The plugin silently drops these for all in-scope files so you never see them in the IDE:
+2. **Noise filtering.** A few TypeScript diagnostics cannot mean anything in this dialect. The plugin silently drops these for all in-scope files so you never see them in the IDE:
    - `TS2434` / `TS2435` — "Namespace must precede the class declaration"
    - `TS2449` — "Class used before its declaration"
+
+   The first three come from the `export namespace Foo { ... }` + `export class Foo` merge that expresses enums and inner classes here.
+   - `TS2377` — "Constructors for derived classes must contain a 'super' call"
+   - `TS17009` — "'super' must be called before accessing 'this'"
+
+   These two exist because a JavaScript object doesn't exist until the base constructor has run. Nothing here runs as JavaScript, and GDScript's `_init` has no such rule — `self` is live throughout, and the parent `_init` runs only if you call it. So **`super()` is optional in a constructor**; write it when you mean to run the parent's `_init`, leave it out when you don't. See [`super` calls](./transform-rules.md#super-calls).
 
    Nothing else is filtered. In particular `noFallthroughCasesInSwitch` (TS7029) is left alone: it fires on every case in this dialect, but it's a setting you chose, and the plugin doesn't overrule your compiler options. Turn it off — see [`switch` → `match`](./transform-rules.md#switch--match).
 
