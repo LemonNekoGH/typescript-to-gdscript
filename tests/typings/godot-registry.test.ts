@@ -84,6 +84,41 @@ describe('Godot Registry: XML Parsing', () => {
     expect(cls!.enums[0]!.values).toHaveLength(2);
   });
 
+  it('should not lose members and signals that carry extra attributes', () => {
+    // Both shapes below are ordinary in Godot's own XML, and both used to
+    // vanish: a self-closing `<member />` swallowed the member after it
+    // (the greedy attribute run let the `>body</member>` branch match
+    // across the next tag before the `/>` branch got a chance to
+    // backtrack), and a `<signal>` carrying any attribute besides `name`
+    // matched nothing at all.
+    const xml = `<?xml version="1.0" encoding="UTF-8" ?>
+<class name="TestClass" inherits="Node">
+  <members>
+    <member name="mouse_filter" type="int" setter="set_mouse_filter" getter="get_mouse_filter" overrides="Control" default="0" />
+    <member name="stretch_mode" type="int" setter="set_stretch_mode" getter="get_stretch_mode" enum="TextureRect.StretchMode" default="0">
+      The stretch mode.
+    </member>
+  </members>
+  <signals>
+    <signal name="plain">
+      <param index="0" name="value" type="int" />
+    </signal>
+    <signal name="retired" deprecated="Use [signal plain] instead.">
+      <param index="0" name="value" type="int" />
+    </signal>
+  </signals>
+</class>`;
+
+    const cls = parseClassXml(xml);
+    expect(cls).not.toBeNull();
+    expect(cls!.properties.map((p) => p.name)).toEqual([
+      'mouse_filter',
+      'stretch_mode',
+    ]);
+    expect(cls!.signals.map((s) => s.name)).toEqual(['plain', 'retired']);
+    expect(cls!.signals[1]!.parameters).toHaveLength(1);
+  });
+
   it('should parse @GlobalScope as global functions', () => {
     const xml = `<?xml version="1.0" encoding="UTF-8" ?>
 <class name="@GlobalScope">

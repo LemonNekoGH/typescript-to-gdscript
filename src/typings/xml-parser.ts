@@ -195,8 +195,14 @@ export function parseClassXml(xmlContent: string): GodotClassXml | null {
   }
 
   // Parse properties (members) -- may have inline text or child <description>
+  //
+  // The attribute run must stay LAZY. Greedy, it reaches the `>` that ends
+  // the tag, and the alternation is then tried from there: `\/>` fails and
+  // `>…</member>` succeeds by matching across the *next* `<member>`, which
+  // disappears into this one's body. Alternation is tried before the run
+  // gives the `/` back, so backtracking never rescues it.
   const propRegex =
-    /<member name="([^"]+)" type="([^"]+)"(?:\s+setter="([^"]*)")?(?:\s+getter="([^"]*)")?[^>]*(?:\/>|>([\s\S]*?)<\/member>)/g;
+    /<member name="([^"]+)" type="([^"]+)"(?:\s+setter="([^"]*)")?(?:\s+getter="([^"]*)")?[^>]*?(?:\/>|>([\s\S]*?)<\/member>)/g;
   while ((match = propRegex.exec(xmlContent)) !== null) {
     const propDesc = match[5]?.trim() || undefined;
     properties.push({
@@ -208,8 +214,10 @@ export function parseClassXml(xmlContent: string): GodotClassXml | null {
     });
   }
 
-  // Parse signals
-  const signalRegex = /<signal name="([^"]+)"(?:\s*\/|>([\s\S]*?)<\/signal)>/g;
+  // Parse signals -- `name` is not always the only attribute (`deprecated`,
+  // `experimental`), so the run after it has to be allowed and, as above,
+  // has to be lazy.
+  const signalRegex = /<signal name="([^"]+)"[^>]*?(?:\/>|>([\s\S]*?)<\/signal>)/g;
   while ((match = signalRegex.exec(xmlContent)) !== null) {
     const sigName = match[1]!;
     const body = match[2] ?? '';
