@@ -154,7 +154,7 @@ export function emitExpr(node: SyntaxNode, ctx: GdToTsContext): string {
   }
 
   if (node.type === SyntaxType.Array) {
-    const elements = node.namedChildren.map((e) => emitExpr(e, ctx)).join(', ');
+    const elements = emitCommaList(node.namedChildren, ctx);
     return `[${elements}]`;
   }
 
@@ -270,13 +270,39 @@ export function emitExpr(node: SyntaxNode, ctx: GdToTsContext): string {
 
 // ─── Call Expression ──────────────────────────────────────────
 
+/**
+ * Emit a comma-separated list, folding any interleaved comment onto the
+ * item it trails.
+ *
+ * GDScript lets a `#` comment sit between the arguments of a call, or
+ * the elements of an array literal, spread over several lines. The
+ * comment is a SIBLING of the values in the tree, so emitting the list
+ * position by position puts a block comment where TypeScript expects a
+ * value, and `f(a, <comment>, b)` does not parse. The comment trails
+ * the value before it, so that is where it goes.
+ *
+ * A comment with nothing before it — a list that opens with one — has
+ * no item to attach to and is dropped: there is no legal spot for it,
+ * and it carries no semantics.
+ */
+function emitCommaList(nodes: SyntaxNode[], ctx: GdToTsContext): string {
+  const items: string[] = [];
+  for (const child of nodes) {
+    const text = emitExpr(child, ctx);
+    if (child.type === SyntaxType.Comment) {
+      if (items.length > 0) items[items.length - 1] += ` ${text}`;
+      continue;
+    }
+    items.push(text);
+  }
+  return items.join(', ');
+}
+
 export function emitCall(node: SyntaxNode, ctx: GdToTsContext): string {
   // call node: first named child is callee, 'arguments' field has args
   const callee = node.namedChildren[0];
   const argsNode = node.childForFieldName('arguments');
-  const args = argsNode
-    ? argsNode.namedChildren.map((a) => emitExpr(a, ctx)).join(', ')
-    : '';
+  const args = argsNode ? emitCommaList(argsNode.namedChildren, ctx) : '';
 
   if (!callee) return `(${args})`;
 
@@ -385,9 +411,7 @@ export function emitAttribute(node: SyntaxNode, ctx: GdToTsContext): string {
         child.namedChildren.find((c) => c.type === SyntaxType.Identifier)
           ?.text ?? '';
       const argsNode = child.childForFieldName('arguments');
-      const args = argsNode
-        ? argsNode.namedChildren.map((a) => emitExpr(a, ctx)).join(', ')
-        : '';
+      const args = argsNode ? emitCommaList(argsNode.namedChildren, ctx) : '';
       // .new() -> new ClassName(). Resolve the receiver to the name that's
       // actually in scope in the emitted TS:
       //  - inner class / class enum → `ClassName.Inner` (lives in the paired
