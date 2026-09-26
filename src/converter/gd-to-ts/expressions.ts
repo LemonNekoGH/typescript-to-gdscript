@@ -552,6 +552,20 @@ export function emitBinaryOp(node: SyntaxNode, ctx: GdToTsContext): string {
     }
   }
 
+  // GD `x not in y` -> `!(x in y)`. Same shape as `is not` above: one
+  // operator spelled in two words, so tree-sitter hangs both on the
+  // node as anonymous children and the `op` field holds only `not`.
+  // Without this the `not` reads as the unary operator and the pair
+  // emits as `x ! y` — not valid TypeScript, and reported by nothing.
+  if (
+    opText === 'not' &&
+    node.children.some((c) => !c.isNamed && c.text === 'in')
+  ) {
+    const leftStr = left ? emitExpr(left, ctx) : '';
+    const rightStr = right ? emitExpr(right, ctx) : '';
+    return `!(${leftStr} in ${rightStr})`;
+  }
+
   // Fix tree-sitter-gdscript precedence bug: `not X op Y` is parsed as
   // `(not X) op Y` but GDScript evaluates it as `not (X op Y)`.
   // Lift the `not` to wrap the entire comparison.

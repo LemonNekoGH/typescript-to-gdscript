@@ -82,3 +82,11 @@ func test_remainder():
     var a: int = 10
     var b: int = 3
     var c = a % b
+
+# `x not in y` is one operator, not a `not` applied to `x`. tree-sitter
+# gives it the same shape as `is not`: the anonymous children carry both
+# words.
+func test_not_in(items: Array, key: String):
+    var absent: bool = key not in items
+    var present: bool = key in items
+    var lifted: bool = not key in items

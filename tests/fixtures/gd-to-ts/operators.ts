@@ -83,4 +83,15 @@ export class Operators extends Node {
     let b: int = 3;
     let c = a % b;
   }
+
+  // `x not in y` is one operator, not a `not` applied to `x`. tree-sitter
+  // gives it the same shape as `is not`: the anonymous children carry both
+  // words.
+
+  test_not_in(items: Array<any>, key: string) {
+    let absent: boolean = !(key in items);
+    let present: boolean = key in items;
+    let lifted: boolean = !(key in items);
+  }
 }
+
