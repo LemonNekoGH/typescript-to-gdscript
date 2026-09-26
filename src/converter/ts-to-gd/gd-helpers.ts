@@ -28,6 +28,34 @@ function parenthesizeIfReceiver(node: ts.Expression, text: string): string {
 }
 
 /**
+ * True when this expression emits GDScript with a bare infix operator
+ * at its top level, so splicing it into another operator's operand
+ * slot would let the two operators regroup.
+ *
+ * TS parenthesizes nothing for us here: an operand of `gd.ops.mul(a, b)`
+ * is a call ARGUMENT, so the source needs no parens and the AST carries
+ * no `ParenthesizedExpression` to preserve. That is why ordinary TS
+ * binary expressions are safe (their parens survive as nodes) and these
+ * are not.
+ *
+ * `gd.as` / `gd.is` count: verified against Godot, `as` takes everything
+ * to its LEFT as the value, so `v + vi as Vector2` evaluates
+ * `(v + vi) as Vector2`.
+ */
+function emitsBareInfix(node: ts.Expression): boolean {
+  if (ts.isBinaryExpression(node) || ts.isConditionalExpression(node))
+    return true;
+  if (!ts.isCallExpression(node)) return false;
+  const callee = node.expression;
+  return (
+    ts.isPropertyAccessExpression(callee) &&
+    ts.isIdentifier(callee.expression) &&
+    callee.expression.text === 'gd' &&
+    (callee.name.text === 'as' || callee.name.text === 'is')
+  );
+}
+
+/**
  * Handle `gd.as(value, Type)` -> `value as Type`.
  * Returns null if this is not a gd.as call.
  */
@@ -202,7 +230,10 @@ function emitOpsHelper(
   method: string,
   args: ts.NodeArray<ts.Expression>,
 ): string {
-  const operands = args.map((a) => t.emitExpression(a));
+  const operands = args.map((a) => {
+    const text = t.emitExpression(a);
+    return emitsBareInfix(a) ? `(${text})` : text;
+  });
 
   // Unary operators (1 arg)
   if (method === 'plus' && operands.length === 1) return `+${operands[0]}`;

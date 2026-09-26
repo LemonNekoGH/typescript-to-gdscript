@@ -49,6 +49,19 @@ export class MyClass extends Node {
     let vi4 = gd.ops.rem(vi1, 3);
   }
 
+  // `gd.ops` builds the operator expression itself, so an operand that is
+  // already infix has to be parenthesised — nothing in the TS source marks
+  // where it ends. Verified against Godot: `v * a + b` groups as `(v * a) + b`
+  // and `v * a if c else b` as `(v * a) if c else b`, both wrong.
+  test_ops_operand_precedence(cond: boolean) {
+    let v = Vector2(1, 2);
+    let vi = Vector2i(3, 4);
+    let binary = gd.ops.mul(v, 1.0 + 2.0);
+    let ternary = gd.ops.mul(v, cond ? 1.0 : 2.0);
+    let cast = gd.ops.add(v, gd.as(vi, Vector2));
+    let plain = gd.ops.mul(v, 2.0);
+  }
+
   test_array_concat() {
     let a1 = [0, 1];
     let a2 = ['a', 'b'];

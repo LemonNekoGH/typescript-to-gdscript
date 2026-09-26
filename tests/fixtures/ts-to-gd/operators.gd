@@ -46,6 +46,18 @@ func test_vector_math():
 	var vi3 = (vi1 % vi2)
 	var vi4 = (vi1 % 3)
 
+# `gd.ops` builds the operator expression itself, so an operand that is
+# already infix has to be parenthesised — nothing in the TS source marks
+# where it ends. Verified against Godot: `v * a + b` groups as `(v * a) + b`
+# and `v * a if c else b` as `(v * a) if c else b`, both wrong.
+func test_ops_operand_precedence(cond: bool):
+	var v = Vector2(1, 2)
+	var vi = Vector2i(3, 4)
+	var binary = (v * (1.0 + 2.0))
+	var ternary = (v * (1.0 if cond else 2.0))
+	var cast = (v + (vi as Vector2))
+	var plain = (v * 2.0)
+
 func test_array_concat():
 	var a1 = [0, 1]
 	var a2 = ["a", "b"]
@@ -55,4 +67,4 @@ func test_multipple_vector_math():
 	var v3 = ((self.v1 + self.v2) + self.v1)
 	var v4 = ((self.v1 * self.v2) - self.v1)
 	var v5 = ((self.v1 - (self.v2 * self.v2)) + (self.v1 / self.v2))
-	var v6 = ((self.v1 - 2 * 1) + (self.v1 / self.v2))
+	var v6 = ((self.v1 - (2 * 1)) + (self.v1 / self.v2))
