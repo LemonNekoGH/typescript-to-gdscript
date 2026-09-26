@@ -38,6 +38,22 @@ class SignalTypeTest extends Node {
     let fn = (a: float, b: Node) => {};
     let connected: boolean = this.damage_dealt.is_connected(fn);
     this.damage_dealt.disconnect(fn);
+
+    // `connect` takes Object.ConnectFlags and answers an Error code,
+    // as Godot's own signature does.
+    let err: int = this.damage_dealt.connect(fn, GodotObject.CONNECT_ONE_SHOT);
+    this.damage_dealt.connect(
+      fn,
+      GodotObject.CONNECT_DEFERRED | GodotObject.CONNECT_PERSIST,
+    );
+
+    // A bound callable keeps its (narrowed) function type, so it needs
+    // no widening to `Callable` to be accepted here.
+    let three = (a: float, b: Node, c: int) => {};
+    this.damage_dealt.connect(three.bind(1));
+
+    // @ts-expect-error — the callback's parameters are still checked
+    this.damage_dealt.connect((a: string) => {});
   }
 }
 

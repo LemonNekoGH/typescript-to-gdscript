@@ -3,15 +3,19 @@
 
 /**
  * Override: GodotSignal — typed connect, disconnect, emit for bare Signal variables.
- * For Signal<[...]> properties on classes, gd-helpers.d.ts already provides typed versions.
+ *
+ * The callback stays a concrete function type rather than widening to
+ * `Callable`: `type Callable = Function`, so a union with it accepts any
+ * function at all and the parameter list stops being checked. A bound
+ * callable does not need the widening — `CallableFunction.bind` returns
+ * a proper function type with the bound arguments removed.
  */
 declare class Signal<T extends any[] = any[]> {
   /**
-   * Connects this signal to the specified `callable`. Optional `flags` can be also added to configure the connection's behavior (see {@link Object.ConnectFlags} constants). You can provide additional arguments to the connected `callable` by using {@link Callable.bind}.
-   * A signal can only be connected once to the same {@link Callable}. If the signal is already connected, this method returns {@link ERR_INVALID_PARAMETER} and generates an error, unless the signal is connected with {@link Object.CONNECT_REFERENCE_COUNTED}. To prevent this, use {@link is_connected} first to check for existing connections.
-   * **Note:** If the `callable`'s object is freed, the connection will be lost.
-   */
-  connect(callable: (...args: T) => void): void;
+  * `flags` takes `Object.ConnectFlags` values (`CONNECT_ONE_SHOT`,
+  * `CONNECT_DEFERRED`, …). Returns an `Error` code, as Godot does.
+  */
+  connect(callable: (...args: T) => void, flags?: int): int;
   /**
    * Disconnects this signal from the specified {@link Callable}. If the connection does not exist, generates an error. Use {@link is_connected} to make sure that the connection exists.
    */
