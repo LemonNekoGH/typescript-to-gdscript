@@ -5,6 +5,29 @@ import { sanitizeFunctionName } from '../../typings/class-generator.ts';
 // ---- gd.as / gd.is ----
 
 /**
+ * Parenthesize an infix operator expression standing where GDScript
+ * would read the operator as part of its right operand.
+ *
+ * `as` and `is` bind looser than `.`, `()` and `[]`, so a cast used as
+ * the RECEIVER of one of those parses as `value as (Type.member)` —
+ * Godot answers `Could not find type "texture" in "Sprite2D"` or
+ * `Cannot call on an expression`. Only the receiver position is
+ * affected: as an argument, an array element, or either side of a
+ * comparison or arithmetic operator the bare form is what Godot
+ * expects, so parenthesizing everywhere would only add noise.
+ */
+function parenthesizeIfReceiver(node: ts.Expression, text: string): string {
+  const parent = node.parent;
+  const isReceiver =
+    !!parent &&
+    (ts.isPropertyAccessExpression(parent) ||
+      ts.isElementAccessExpression(parent) ||
+      ts.isCallExpression(parent)) &&
+    parent.expression === node;
+  return isReceiver ? `(${text})` : text;
+}
+
+/**
  * Handle `gd.as(value, Type)` -> `value as Type`.
  * Returns null if this is not a gd.as call.
  */
@@ -19,7 +42,7 @@ export function tryEmitGdAs(
   if (node.arguments.length >= 2) {
     const value = t.emitExpression(node.arguments[0]!);
     const type = t.emitExpression(node.arguments[1]!);
-    return `${value} as ${type}`;
+    return parenthesizeIfReceiver(node, `${value} as ${type}`);
   }
   return null;
 }
@@ -39,7 +62,7 @@ export function tryEmitGdIs(
   if (node.arguments.length >= 2) {
     const value = t.emitExpression(node.arguments[0]!);
     const type = t.emitExpression(node.arguments[1]!);
-    return `${value} is ${type}`;
+    return parenthesizeIfReceiver(node, `${value} is ${type}`);
   }
   return null;
 }
