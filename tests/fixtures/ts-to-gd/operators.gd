@@ -50,12 +50,14 @@ func test_vector_math():
 # already infix has to be parenthesised — nothing in the TS source marks
 # where it ends. Verified against Godot: `v * a + b` groups as `(v * a) + b`
 # and `v * a if c else b` as `(v * a) if c else b`, both wrong.
-func test_ops_operand_precedence(cond: bool):
+func test_ops_operand_precedence(cond: bool, n):
 	var v = Vector2(1, 2)
 	var vi = Vector2i(3, 4)
 	var binary = (v * (1.0 + 2.0))
 	var ternary = (v * (1.0 if cond else 2.0))
 	var cast = (v + (vi as Vector2))
+	# A `!` is erased, so it hides nothing: the cast inside still regroups.
+	var asserted = (v * (n as float))
 	var plain = (v * 2.0)
 
 func test_array_concat():

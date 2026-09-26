@@ -53,12 +53,14 @@ export class MyClass extends Node {
   // already infix has to be parenthesised — nothing in the TS source marks
   // where it ends. Verified against Godot: `v * a + b` groups as `(v * a) + b`
   // and `v * a if c else b` as `(v * a) if c else b`, both wrong.
-  test_ops_operand_precedence(cond: boolean) {
+  test_ops_operand_precedence(cond: boolean, n: unknown) {
     let v = Vector2(1, 2);
     let vi = Vector2i(3, 4);
     let binary = gd.ops.mul(v, 1.0 + 2.0);
     let ternary = gd.ops.mul(v, cond ? 1.0 : 2.0);
     let cast = gd.ops.add(v, gd.as(vi, Vector2));
+    // A `!` is erased, so it hides nothing: the cast inside still regroups.
+    let asserted = gd.ops.mul(v, gd.as(n, float)!);
     let plain = gd.ops.mul(v, 2.0);
   }
 

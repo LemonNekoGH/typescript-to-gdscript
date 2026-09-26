@@ -39,3 +39,18 @@ export function effectiveNode(node: ts.Node): ts.Node {
 export function effectiveParent(node: ts.Node): ts.Node | undefined {
   return effectiveNode(node).parent;
 }
+
+/**
+ * True when source parentheses stand between `node` and the position
+ * {@link effectiveNode} reports. The emitter writes those parentheses
+ * back out, so in the output the node is already grouped — a caller
+ * about to add its own would only double them.
+ */
+export function isSourceGrouped(node: ts.Node): boolean {
+  let current = node;
+  while (current.parent && isErased(current.parent)) {
+    if (ts.isParenthesizedExpression(current.parent)) return true;
+    current = current.parent;
+  }
+  return false;
+}
