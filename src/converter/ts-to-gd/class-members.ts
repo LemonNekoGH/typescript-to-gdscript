@@ -155,6 +155,7 @@ export function visitPropertyDeclaration(
   const staticPrefix = isStatic ? 'static ' : '';
   let decl = `${staticPrefix}var ${name}`;
   if (gdType) decl += `: ${gdType}`;
+  else if (needsVariantForExport(decorators, node)) decl += `: Variant`;
 
   if (
     node.initializer &&
@@ -320,6 +321,32 @@ export function visitMethodDeclaration(
 }
 
 // ── Decorators ───────────────────────────────────────────────
+
+/**
+ * True when an omitted type would leave a `var` that Godot refuses to
+ * parse rather than one it simply leaves untyped.
+ *
+ * Exactly one annotation needs the type spelled out: bare `@export`.
+ * With no type and no initializer Godot answers `Cannot use simple
+ * "@export" annotation with variable without type or initializer,
+ * since type can't be inferred`. Everything else is fine untyped —
+ * verified against Godot for `@export_range`, `@export_enum`,
+ * `@export_file`, `@export_node_path`, `@export_storage` and
+ * `@onready`, each of which carries its own type or needs no type at
+ * all.
+ *
+ * `Variant` is what an untyped GDScript variable already is (Godot's
+ * own error text for `@export_multiline var x` names the type as
+ * "Variant"), so filling it in changes nothing about the program and
+ * is not the kind of guess {@link ../../AGENTS.md} rule 11 warns
+ * against — it is the only spelling that keeps the file loadable.
+ */
+function needsVariantForExport(
+  decorators: readonly string[],
+  node: ts.PropertyDeclaration,
+): boolean {
+  return !node.initializer && decorators.includes('@export');
+}
 
 export function getDecorators(
   node: ts.HasDecorators,

@@ -689,6 +689,8 @@ export class Player extends Node {
 }
 ```
 
+A type the converter cannot prove is left off the GDScript `var`, which is always safe — except under a bare `@export`, where Godot needs the type spelled out. There the converter fills in `Variant`, which is what an untyped GDScript variable already is. An `@export` with an initializer, and the typed forms like `@export_range`, need nothing.
+
 ### Why `@exports` (plural)?
 
 `export` is a TypeScript reserved word — `@export` is a parse error. The converter accepts **`@exports`** (plural) as an alias and emits GDScript `@export`. All other annotations use their normal Godot names (no plural).
