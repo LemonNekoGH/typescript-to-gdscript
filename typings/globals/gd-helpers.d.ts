@@ -182,9 +182,25 @@ declare const gd: {
     value: U['prototype'][typeof __variant_converts],
     type: U,
   ): U['prototype'];
+  /**
+   * Cast to a scalar, mirroring the `is` overloads below. The result is
+   * the scalar type rather than a narrowing of the source: `int` and
+   * `float` are both aliases of `number` in these typings, so the cast
+   * cannot be expressed as a narrowing the way a class type can.
+   */
+  as(value: unknown, type: typeof int): int;
+  as(value: unknown, type: typeof float): float;
+  as(value: unknown, type: typeof bool): boolean;
+  as(value: unknown, type: typeof StringName): StringName;
+  /**
+   * Cast to a class. `abstract new` rather than `new` so the target may
+   * be an abstract class — `gd.as(node, SomeAbstractBase)` is an
+   * ordinary GDScript cast, and a concrete constructor satisfies
+   * `abstract new` too.
+   */
   as<T, U>(
     value: T,
-    type: new (...args: any[]) => U,
+    type: abstract new (...args: any[]) => U,
   ): T extends U ? U : U | null;
 
   /** GDScript `is` check for primitive types (int, float, bool, String). Use `instanceof` for class types. */

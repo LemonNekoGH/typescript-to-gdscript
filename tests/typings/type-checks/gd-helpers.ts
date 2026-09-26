@@ -45,6 +45,21 @@ class AsTest extends Node {
     let exact: Sprite2D = result;
   }
 
+  // Scalar casts, mirroring the `gd.is` overload set. `x as int` and
+  // friends are ordinary GDScript casts.
+  test_as_scalar(value: unknown) {
+    let i: int = gd.as(value, int);
+    let f: float = gd.as(value, float);
+    let b: boolean = gd.as(value, bool);
+    let sn: StringName = gd.as(value, StringName);
+  }
+
+  // An abstract class is a legal cast target — `abstract new` accepts
+  // it, and a concrete constructor as well.
+  test_as_abstract(node: Node) {
+    let base: AbstractBase | null = gd.as(node, AbstractBase);
+  }
+
   test_as_variant_converts() {
     // Variant conversion: Vector2 ↔ Vector2i via single-param "from" constructors
     let v2: Vector2 = Vector2(1, 2);
@@ -238,4 +253,9 @@ class TypeofTest extends Node {
   compare(op: Variant.Operator): boolean {
     return op === Variant.Operator.OP_EQUAL;
   }
+}
+
+// A base of the user's own, abstract on the TS side.
+abstract class AbstractBase extends Node {
+  abstract step(): void;
 }
