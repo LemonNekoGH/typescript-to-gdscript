@@ -445,6 +445,7 @@ export function emitLocalVariable(
   node: SyntaxNode,
   ctx: GdToTsContext,
   indent: string,
+  keyword: 'let' | 'const' = 'let',
 ): string {
   const name = node.childForFieldName('name')?.text ?? '';
   const typeNode = node.childForFieldName('type');
@@ -468,7 +469,7 @@ export function emitLocalVariable(
   // `emitExpr` re-applies the same deterministic escape at each reference).
   const tsName = escapeTsBindingName(name);
 
-  return `${indent}let ${tsName}${typeAnnotation}${init};`;
+  return `${indent}${keyword} ${tsName}${typeAnnotation}${init};`;
 }
 
 // ─── Type Annotations ─────────────────────────────────────────

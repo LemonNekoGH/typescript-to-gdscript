@@ -96,6 +96,15 @@ export function emitBody(
       continue;
     }
 
+    // A GDScript `const` inside a function body is a local binding, not
+    // a class member — the class-scope emitter only ever sees the
+    // file/class-level ones. It carries the same name/type/value fields
+    // as a `var`, so it goes through the same emitter under `const`.
+    if (child.type === SyntaxType.ConstStatement) {
+      lines.push(emitLocalVariable(child, ctx, indent, 'const'));
+      continue;
+    }
+
     if (child.type === SyntaxType.IfStatement) {
       lines.push(emitIfStatement(child, ctx, depth));
       continue;
