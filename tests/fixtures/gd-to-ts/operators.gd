@@ -90,3 +90,4 @@ func test_not_in(items: Array, key: String):
     var absent: bool = key not in items
     var present: bool = key in items
     var lifted: bool = not key in items
+    var double_not: bool = not key not in items

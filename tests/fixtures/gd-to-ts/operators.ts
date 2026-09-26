@@ -92,6 +92,6 @@ export class Operators extends Node {
     let absent: boolean = !(key in items);
     let present: boolean = key in items;
     let lifted: boolean = !(key in items);
+    let double_not: boolean = !!(key in items);
   }
 }
-

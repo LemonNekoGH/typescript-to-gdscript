@@ -557,13 +557,22 @@ export function emitBinaryOp(node: SyntaxNode, ctx: GdToTsContext): string {
   // node as anonymous children and the `op` field holds only `not`.
   // Without this the `not` reads as the unary operator and the pair
   // emits as `x ! y` — not valid TypeScript, and reported by nothing.
+  //
+  // A leading `not` (`not x not in y`) gets the same lift the branch
+  // below gives `not X op Y`: tree-sitter hangs it on `x`, but GDScript
+  // reads `not (x not in y)` — verified, `true` for x = 1, y = [1].
   if (
     opText === 'not' &&
     node.children.some((c) => !c.isNamed && c.text === 'in')
   ) {
-    const leftStr = left ? emitExpr(left, ctx) : '';
+    const lifted =
+      left?.type === SyntaxType.UnaryOperator &&
+      left.children.find((c) => !c.isNamed)?.text === 'not';
+    const operand = lifted ? left.namedChildren[0] : left;
+    const leftStr = operand ? emitExpr(operand, ctx) : '';
     const rightStr = right ? emitExpr(right, ctx) : '';
-    return `!(${leftStr} in ${rightStr})`;
+    const notIn = `!(${leftStr} in ${rightStr})`;
+    return lifted ? `!${notIn}` : notIn;
   }
 
   // Fix tree-sitter-gdscript precedence bug: `not X op Y` is parsed as
