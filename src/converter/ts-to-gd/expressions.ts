@@ -19,7 +19,7 @@ import { isCallableMemberCall, isCallableValueCall } from './callable-call.ts';
 import { effectiveParent } from './effective-parent.ts';
 import { emitLambda } from './lambda.ts';
 import { VOID_OPERATOR_ERROR } from './void-value.ts';
-import { checkSuperPropertyAccess, resolveSuperCall } from './super-call.ts';
+import { resolveSuperCall } from './super-call.ts';
 
 // ---- Main Expression Emitter ----
 
@@ -28,8 +28,9 @@ export function emitExpression(
   node: ts.Expression,
 ): string {
   // `super` is a name GDScript has too, in both the call and the
-  // receiver position. Whether the member behind it is REACHABLE is
-  // decided where the call is emitted (`resolveSuperCall`).
+  // receiver position. Whether the member behind it is reachable is
+  // Godot's to report at parse time; only a bare `super()` is decided
+  // here, where the call is emitted (`resolveSuperCall`).
   if (node.kind === ts.SyntaxKind.SuperKeyword) return 'super';
 
   // Identifiers
@@ -433,8 +434,6 @@ export function emitPropertyAccess(
       'Optional chaining (`?.`) is not supported in GDScript',
     );
   }
-
-  checkSuperPropertyAccess(t, node);
 
   checkPromiseMethodAccess(t, node);
   // Inside a get/set accessor body, `this.<accessorName>` refers to the

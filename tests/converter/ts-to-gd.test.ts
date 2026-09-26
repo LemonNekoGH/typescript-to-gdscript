@@ -72,10 +72,7 @@ const fixtureFiles = readdirSync(FIXTURES_DIR)
  * they pin what the `--emit-on-error` output looks like. Every other
  * fixture must convert without an error or a warning.
  */
-const FIXTURES_EXPECTING_DIAGNOSTICS = new Set([
-  'unsupported-body',
-  'super-unsupported',
-]);
+const FIXTURES_EXPECTING_DIAGNOSTICS = new Set(['unsupported-body']);
 
 describe('TS to GD: Fixture-based tests', () => {
   for (const fixtureName of fixtureFiles) {

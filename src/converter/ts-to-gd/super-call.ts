@@ -4,64 +4,26 @@ import { godotClassName } from '../../typings/type-mapping.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
 
 /**
- * What GDScript can do with a `super` call.
+ * What to emit for a bare `super(...)` call.
  *
- * `super` reaches a member only when something implements it.
- * Verified against Godot:
+ * `super` is emitted as written everywhere, and whether the member
+ * behind it is reachable is left to Godot. `super.<name>()` reaches
+ * only something that implements `<name>` — a regular engine method
+ * does, an engine virtual does not ("Cannot call the parent class'
+ * virtual function"), a script ancestor that declares it does — and
+ * `super.<property>` is never valid ("Expected "(" after function
+ * name"). Godot reports both at parse time, so a converter rule would
+ * only duplicate that check (AGENTS.md rule 11).
  *
- * - `super.get_child(0)` on a `Node` base — fine, the engine method has
- *   an implementation.
- * - `super._ready()` on a `Node` base — `Cannot call the parent class'
- *   virtual function "_ready()" because it hasn't been defined`. A
- *   virtual is a slot the engine calls, not code it provides.
- * - `super()` (i.e. `super._init()`) on a `Node` base — the same error.
- * - Either one against a script ancestor that defines the member —
- *   fine, and it resolves THROUGH intermediate scripts that do not.
+ * The bare `super()` is the one case decided here, because it can
+ * reach the `.gd` without the user meaning anything by it: it is what
+ * a TypeScript constructor used to require, and what a habit or a
+ * migrated file still carries.
  */
 export type SuperCall =
   | { kind: 'emit' }
   | { kind: 'drop' }
   | { kind: 'unsupported'; message: string };
-
-/** The member a `super` call names — `super(...)` means `_init`. */
-function superMemberName(node: ts.CallExpression): string | null {
-  if (node.expression.kind === ts.SyntaxKind.SuperKeyword) return '_init';
-  if (
-    ts.isPropertyAccessExpression(node.expression) &&
-    node.expression.expression.kind === ts.SyntaxKind.SuperKeyword
-  ) {
-    return node.expression.name.text;
-  }
-  return null;
-}
-
-/**
- * Report `super.<name>` used as anything but a call target.
- *
- * GDScript's `super` is followed by a call and nothing else — a plain
- * `super.name` is `Expected "(" after function name`, whatever the
- * member is. There is nothing to emit instead: a property is one
- * storage slot shared with the parent, so `self.<name>` already reads
- * what `super.<name>` would in TypeScript.
- */
-export function checkSuperPropertyAccess(
-  t: TransformerDelegate,
-  node: ts.PropertyAccessExpression,
-): void {
-  if (node.expression.kind !== ts.SyntaxKind.SuperKeyword) return;
-  const parent = node.parent;
-  const isCallTarget =
-    !!parent && ts.isCallExpression(parent) && parent.expression === node;
-  if (isCallTarget) return;
-  t.addDiagnostic(
-    node,
-    'error',
-    `GDScript allows \`super\` only in front of a CALL, so ` +
-      `\`super.${node.name.text}\` has no GDScript spelling. A property ` +
-      `is one storage slot shared with the base class — write ` +
-      `\`this.${node.name.text}\` to read the same value.`,
-  );
-}
 
 function enclosingClass(node: ts.Node): ts.ClassLikeDeclaration | undefined {
   let current: ts.Node | undefined = node;
@@ -129,119 +91,82 @@ function engineClassName(
 }
 
 /**
- * `_init` is matched against a constructor, every other name against a
- * method — declarations included, so a `.d.ts` standing in for a script
- * answers for it. A property holding a lambda is deliberately not
- * matched: `super.field.call()` is not a thing in GDScript.
- */
-function declaresMember(
-  decl: ts.ClassLikeDeclaration,
-  member: string,
-): boolean {
-  return decl.members.some((m) =>
-    member === '_init'
-      ? ts.isConstructorDeclaration(m)
-      : ts.isMethodDeclaration(m) &&
-        m.name.getText(decl.getSourceFile()) === member,
-  );
-}
-
-/**
- * Where the member a `super` call names is implemented, as far as the
- * converter can PROVE it — the only basis on which anything may be
+ * Who implements the `_init` a bare `super()` calls, as far as the
+ * converter can PROVE it — the only basis on which the call may be
  * dropped or reported.
  */
-type Implementer =
-  /** Some script ancestor declares it — resolved THROUGH ones that don't. */
+type ConstructorOwner =
+  /** A script ancestor declares a constructor — resolved THROUGH ones that don't. */
   | { kind: 'script' }
-  /** The chain reached this engine class with no script declaring it first. */
+  /** The chain reached this engine class with no script constructor first. */
   | { kind: 'engine'; name: string }
   /** The chain could not be followed to either end. */
   | { kind: 'unknown' };
 
 /**
- * Walk the `extends` chain looking for whoever implements `member`.
+ * Walk the `extends` chain looking for a constructor.
  *
  * An ambient class that is NOT an engine class stands in for a script:
  * the global wrapper the typings generator emits for every script class
  * (`class Foo extends ScriptClass {}`, usable without an import), or an
  * emitted declaration. It is read like any other script — it answers
- * if it declares the member — and otherwise followed through to its own
- * base. Stopping at it read every such base as "no constructor" and
+ * if it declares a constructor — and otherwise followed through to its
+ * own base. Stopping at it read every such base as "no constructor" and
  * dropped the `super()` of a script whose constructor then silently
  * never ran.
  */
-function findImplementer(
+function findConstructorOwner(
   t: TransformerDelegate,
   cls: ts.ClassLikeDeclaration,
-  member: string,
-): Implementer {
+): ConstructorOwner {
   const seen = new Set<ts.ClassLikeDeclaration>();
   let base = baseClassOf(t, cls);
   while (base && !seen.has(base)) {
     seen.add(base);
     const engine = engineClassName(t, base);
     if (engine) return { kind: 'engine', name: engine };
-    if (declaresMember(base, member)) return { kind: 'script' };
+    if (base.members.some(ts.isConstructorDeclaration)) {
+      return { kind: 'script' };
+    }
     base = baseClassOf(t, base);
   }
   return { kind: 'unknown' };
 }
 
 /**
- * Decide what to emit for a `super` call, or null when this is not one.
+ * Decide what to emit for a bare `super(...)`, or null for anything
+ * else — every other use of `super` is emitted as written.
  *
  * Only a PROVEN engine base changes anything. There the bare `super()`
- * at the top of a derived constructor is dropped — nothing implements
- * `_init`, and Godot rejects the call outright — and `super(args)` is
- * reported, since dropping it would lose the arguments. Everywhere
- * else the call is emitted as written: GDScript does NOT run a parent
- * `_init` implicitly (verified: a child `_init` without `super()`
- * leaves the parent's body unrun), so dropping on a guess could
- * silently skip a constructor. Emitting when unsure costs at worst a
- * Godot parse error, which is visible.
- *
- * An unreachable engine virtual is reported, not dropped: unlike the
- * bare `super()`, the user wrote it on purpose.
+ * is dropped — nothing implements `_init`, and Godot rejects the call
+ * outright — and `super(args)` is reported, since dropping it would
+ * lose the arguments. Everywhere else the call is emitted as written:
+ * GDScript does NOT run a parent `_init` implicitly (verified: a child
+ * `_init` without `super()` leaves the parent's body unrun), so
+ * dropping on a guess could silently skip a constructor. Emitting when
+ * unsure costs at worst a Godot parse error, which is visible.
  */
 export function resolveSuperCall(
   t: TransformerDelegate,
   node: ts.CallExpression,
 ): SuperCall | null {
-  const member = superMemberName(node);
-  if (member === null) return null;
+  if (node.expression.kind !== ts.SyntaxKind.SuperKeyword) return null;
 
   const cls = enclosingClass(node);
   if (!cls) return { kind: 'emit' };
-  const implementer = findImplementer(t, cls, member);
-  if (implementer.kind !== 'engine') return { kind: 'emit' };
+  const owner = findConstructorOwner(t, cls);
+  if (owner.kind !== 'engine') return { kind: 'emit' };
 
-  if (member === '_init') {
-    if (node.arguments.length > 0) {
-      return {
-        kind: 'unsupported',
-        message:
-          'No base class constructor to forward these arguments to — the ' +
-          `base resolves to the Godot engine class \`${implementer.name}\`, ` +
-          'whose `_init` is a virtual with no implementation behind it. ' +
-          'Drop the arguments, or give the base class a constructor of ' +
-          'its own.',
-      };
-    }
-    return { kind: 'drop' };
+  if (node.arguments.length > 0) {
+    return {
+      kind: 'unsupported',
+      message:
+        'No base class constructor to forward these arguments to — the ' +
+        `base resolves to the Godot engine class \`${owner.name}\`, ` +
+        'whose `_init` is a virtual with no implementation behind it. ' +
+        'Drop the arguments, or give the base class a constructor of ' +
+        'its own.',
+    };
   }
-
-  // A regular engine method is reachable through `super`, a virtual is not.
-  if (!t.ctx.registry?.isVirtualMethod(implementer.name, member)) {
-    return { kind: 'emit' };
-  }
-  return {
-    kind: 'unsupported',
-    message:
-      `\`super.${member}()\` has nothing to call — \`${member}\` is a ` +
-      `virtual of \`${implementer.name}\`, a slot the engine calls rather ` +
-      'than code it provides, and no ancestor script defines it. Godot ' +
-      `rejects the call. Drop it, or define \`${member}\` on a base class ` +
-      'of your own.',
-  };
+  return { kind: 'drop' };
 }

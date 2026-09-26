@@ -838,13 +838,11 @@ GDScript has shorthand literal syntax for common node-tree and string types. The
 | `super()`        | `super.<method>()` | GD's bare `super()` calls the same-named method on the parent; the TS side names it explicitly. |
 | `super.method()` | `super.method()`   | Direct parent-method invocation, identical syntax.                                              |
 
-`super` reaches a member only when something actually implements it. A regular engine method (`super.get_child(0)`) is fine; an engine **virtual** (`_ready`, `_process`, `_init`, …) is only a slot the engine calls, so `super._ready()` is reported unless one of your own base classes defines `_ready`.
-
 **`super()` is optional in a constructor.** TypeScript normally demands it, but that rule exists because a JavaScript object doesn't exist until the base constructor has run — GDScript's `_init` has no such rule, so the two codes that enforce it (`TS2377`, `TS17009`) are filtered by the CLI checker and the IDE plugin. Write `super()` when you mean to run the parent's `_init`; leave it out when you don't, and the `.gd` won't have it either.
 
 If you do write it, a bare `super()` is dropped only when the base is provably a Godot engine class — there is no parent `_init` to run, and Godot rejects the call. Against a base class of yours the call is kept, because GDScript runs no parent `_init` on its own; when the converter can't tell what the base is, it keeps the call too.
 
-`super` may only stand in front of a call. `super.some_property` is reported — a property is one storage slot shared with the base class, so `this.some_property` already reads the same value.
+Other uses of `super` are emitted as written, and Godot reports what it can't reach: an engine **virtual** has no implementation to call (`super._ready()` works only if a base class of yours defines `_ready`), and `super` may only stand in front of a call (`super.some_property` — write `this.some_property`, it's the same storage).
 
 ## GD → TS implicit `this.`
 
