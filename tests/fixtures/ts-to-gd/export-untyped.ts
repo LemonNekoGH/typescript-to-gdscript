@@ -10,7 +10,7 @@ export class ExportUntyped extends Node {
   // simple "@export" annotation with variable without type or
   // initializer`. `Variant` is what an untyped GDScript variable
   // already is, so it changes nothing but makes the file load.
-  @exports unprovable: UnknownAddonThing;
+  @exports unprovable!: UnknownAddonThing;
 
   // An initializer gives Godot a type to infer, so nothing is added.
   @exports with_initializer = 1;
@@ -20,9 +20,9 @@ export class ExportUntyped extends Node {
 
   // The typed export annotations carry the type themselves and accept
   // an untyped variable, so they are left alone.
-  @export_range(0, 10) ranged: UnknownAddonThing;
-  @export_node_path('Node2D') path_export: UnknownAddonThing;
+  @export_range(0, 10) ranged!: UnknownAddonThing;
+  @export_node_path('Node2D') path_export!: UnknownAddonThing;
 
   // Without `@export` a bare `var` is perfectly valid.
-  plain: UnknownAddonThing;
+  plain!: UnknownAddonThing;
 }
