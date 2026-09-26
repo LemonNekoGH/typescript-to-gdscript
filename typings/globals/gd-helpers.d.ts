@@ -183,10 +183,13 @@ declare const gd: {
     type: U,
   ): U['prototype'];
   /**
-   * Cast to a scalar, mirroring the `is` overloads below. The result is
-   * the scalar type rather than a narrowing of the source: `int` and
-   * `float` are both aliases of `number` in these typings, so the cast
-   * cannot be expressed as a narrowing the way a class type can.
+   * Cast to a scalar. The result is the scalar type rather than a
+   * narrowing of the source: `int` and `float` are both aliases of
+   * `number` in these typings, so the cast cannot be expressed as a
+   * narrowing the way a class type can. For the same reason
+   * `gd.as(x, float)` binds to the `int` overload on the TS side —
+   * harmless, since both return `number`; the emitted GDScript names
+   * the type the source wrote.
    */
   as(value: unknown, type: typeof int): int;
   as(value: unknown, type: typeof float): float;

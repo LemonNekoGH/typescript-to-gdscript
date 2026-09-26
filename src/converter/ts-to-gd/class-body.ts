@@ -1,7 +1,7 @@
 /**
  * Script-class body emission for TS→GD conversion.
  *
- * `emitClassHeader` writes `extends Base` / `class_name Foo` / the
+ * `emitClassHeader` writes `class_name Foo` / `extends Base` / the
  * `const X = preload(...)` lines for imports, then flags any class
  * field/method whose name collides with an imported local or a
  * file-scope lift. Returns the resolved class name so the caller can

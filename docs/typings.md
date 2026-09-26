@@ -121,6 +121,8 @@ UIDs are read from Godot's own metadata — the `.tscn`/`.tres` header, the `.gd
 
 - **Typed `get_node_or_null()`**: same as `get_node()` but always includes `| null`
 
+- **`NodePath` values**: `get_node`, `get_node_or_null` and `has_node` also accept a `NodePath`, as Godot's own signatures do. A path held in a variable carries no literal to look up, so the result is untyped (`Node | null`).
+
 - **Absolute `/root/` paths**: type-inferred from the root scene tree
 
   ```typescript

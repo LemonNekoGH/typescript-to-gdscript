@@ -21,7 +21,10 @@ Emitting and connecting:
 ```typescript
 this.health_changed.emit(old, new);
 this.health_changed.connect(this._on_health_changed);
+this.health_changed.connect(this._on_health_changed, GodotObject.CONNECT_ONE_SHOT);
 ```
+
+`connect` takes optional `ConnectFlags` and returns Godot's error code, as the engine's own signature does. The callback's parameters are still checked against the signal; a callable made with `bind()` keeps its narrowed type, so it needs no cast.
 
 ## Cast functions and primitive helpers
 
@@ -96,7 +99,12 @@ let v2i: Vector2i = gd.as(v2, Vector2i); // Vector2 → Vector2i
 // Array conversion (PackedColorArray ↔ Array, etc.)
 let packed: PackedColorArray = PackedColorArray();
 let arr: Array<Color> = gd.as(packed, Array); // element type inferred from iterator
+
+// Scalar cast
+let ratio = count / gd.as(total, float); // count / (total as float)
 ```
+
+The target can be a scalar (`int`, `float`, `bool`, `StringName`) or an abstract class of your own. The converter adds parentheses wherever GDScript would otherwise read the cast differently — `as` binds looser than almost everything, so `count / total as float` would cast the quotient.
 
 Variant conversion is enabled via `[__variant_converts]` symbol on each value-type interface. The symbol's type is a union of types that the target's constructor accepts as single "from" parameters. For `Array`-like conversions, the element type is inferred via `[Symbol.iterator]: IterableIterator<T>` on the source interface.
 
