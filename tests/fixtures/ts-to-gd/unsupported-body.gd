@@ -1,6 +1,13 @@
 class_name UnsupportedBody
 extends Node
 
+# A parameter property is rejected, but the parameter itself is fine:
+# it stays in the signature, and the marker goes inside the body,
+# where the missing assignment belongs. The body still needs `pass`.
+func _init(speed: int):
+	# ERROR: GDScript has no parameter properties — declare `speed` as a class field and assign it in the constructor (`this.speed = speed;`).
+	pass
+
 # Two kinds of statement produce no GDScript, and a body has to
 # handle both. A REJECTED one emits only an `# ERROR:` marker, and a
 # comment does not fill an indented block — so the body still needs

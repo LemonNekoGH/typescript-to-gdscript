@@ -244,6 +244,30 @@ export function visitAccessorPair(
 
 // ── Constructor → _init ──────────────────────────────────────
 
+/**
+ * Reject a TypeScript parameter property (`constructor(public x: int)`).
+ *
+ * GDScript has no such construct, and the dialect does not desugar TS
+ * syntax GDScript lacks — destructuring is rejected the same way, even
+ * though it too spells out mechanically. Converting it silently would
+ * also be wrong: the parameter used to go out as a plain `_init`
+ * argument, with no field and no assignment, and every later
+ * `self.<name>` then failed in Godot far from the cause.
+ */
+function reportParameterProperty(
+  param: ts.ParameterDeclaration,
+  t: TransformerDelegate,
+): void {
+  const name = param.name.getText(t.ctx.sourceFile);
+  t.addDiagnostic(
+    param,
+    'error',
+    `GDScript has no parameter properties — declare \`${name}\` as a ` +
+      `class field and assign it in the constructor (\`this.${name} = ` +
+      `${name};\`).`,
+  );
+}
+
 export function visitConstructor(
   node: ts.ConstructorDeclaration,
   t: TransformerDelegate,
@@ -252,6 +276,14 @@ export function visitConstructor(
   const params = t.emitParameters(node.parameters);
   t.emitter.writeLine(`func _init(${params}):`, pos.line, pos.col);
   t.emitter.indent();
+  // Reported after `indent()` so each marker lands inside the body, next
+  // to the statements the user has to add. The parameter itself stays in
+  // the signature — only its property half has no GDScript form.
+  for (const param of node.parameters) {
+    if (ts.isParameterPropertyDeclaration(param, node)) {
+      reportParameterProperty(param, t);
+    }
+  }
   if (node.body) {
     t.visitBlock(node.body);
   } else {

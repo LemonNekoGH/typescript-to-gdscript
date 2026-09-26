@@ -1,0 +1,12 @@
+[
+  {
+    "message": "GDScript has no parameter properties",
+    "severity": "error",
+    "line": 5
+  },
+  {
+    "message": "GDScript has no parameter properties",
+    "severity": "error",
+    "line": 6
+  }
+]
