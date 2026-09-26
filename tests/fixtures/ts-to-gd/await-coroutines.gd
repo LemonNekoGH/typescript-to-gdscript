@@ -1,5 +1,5 @@
-extends Node
 class_name MyClass
+extends Node
 
 func do_something():
 	print("Start")

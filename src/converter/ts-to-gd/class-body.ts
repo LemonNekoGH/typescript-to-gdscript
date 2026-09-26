@@ -77,6 +77,27 @@ export function emitClassHeader(
     t.emitter.writeLine('@abstract', pos.line, pos.col);
   }
 
+  // `class_name` comes BEFORE `extends`, the order Godot's own
+  // GDScript style guide prescribes (`@tool`/`@icon` → `class_name` →
+  // `extends` → doc comment). Godot accepts either order.
+  //
+  // class_name emission rules under the naming convention:
+  //   - `_FilenameInUpperCamel`  → anonymous; do NOT emit `class_name`
+  //   - everything else          → emit `class_name <name>` verbatim
+  //
+  // `G_` is the one-way escape applied during GD→TS conversion as a
+  // fallback for the rare GD `class_name _Foo` that would otherwise
+  // collide with the anonymous-class convention on the TS side. It
+  // is NOT undone on TS→GD — once the user has `G_Foo` in their TS
+  // source, that becomes the canonical name everywhere (the emitted
+  // GD has `class_name G_Foo`). Treating it as a normal identifier
+  // keeps the round-trip predictable: whatever TS shows is what the
+  // user reads in the .gd file too.
+  const className = node.name?.getText(t.ctx.sourceFile) ?? '';
+  if (className && !isAnonymousClassName(className)) {
+    t.emitter.writeLine(`class_name ${className}`, pos.line, pos.col);
+  }
+
   // extends — rewritten to `extends "res://…"` when the base type
   // resolves to an imported anonymous class (which has no
   // `class_name`, so a string-literal path is the only valid form).
@@ -129,23 +150,6 @@ export function emitClassHeader(
       'Class has no `extends` clause. GDScript defaults to `RefCounted` — ' +
         'declare `extends RefCounted` explicitly.',
     );
-  }
-
-  // class_name emission rules under the naming convention:
-  //   - `_FilenameInUpperCamel`  → anonymous; do NOT emit `class_name`
-  //   - everything else          → emit `class_name <name>` verbatim
-  //
-  // `G_` is the one-way escape applied during GD→TS conversion as a
-  // fallback for the rare GD `class_name _Foo` that would otherwise
-  // collide with the anonymous-class convention on the TS side. It
-  // is NOT undone on TS→GD — once the user has `G_Foo` in their TS
-  // source, that becomes the canonical name everywhere (the emitted
-  // GD has `class_name G_Foo`). Treating it as a normal identifier
-  // keeps the round-trip predictable: whatever TS shows is what the
-  // user reads in the .gd file too.
-  const className = node.name?.getText(t.ctx.sourceFile) ?? '';
-  if (className && !isAnonymousClassName(className)) {
-    t.emitter.writeLine(`class_name ${className}`, pos.line, pos.col);
   }
 
   // `const X = preload("res://…")` lines for renamed and anonymous

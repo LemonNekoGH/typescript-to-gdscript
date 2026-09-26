@@ -1,6 +1,6 @@
 @tool
-extends Node2D
 class_name MyClass
+extends Node2D
 
 const v = 0
 

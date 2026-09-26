@@ -1,5 +1,5 @@
-extends Node
 class_name MyClass
+extends Node
 
 # Variable declarations with types
 var speed: float = 10.5

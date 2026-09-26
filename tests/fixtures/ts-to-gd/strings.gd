@@ -1,5 +1,5 @@
-extends Node
 class_name MyClass
+extends Node
 
 func test_strings():
 	var simple: String = "Hello, World!"

@@ -1,5 +1,5 @@
-extends Node
 class_name MyClass
+extends Node
 
 var KIND_A: int = 1
 

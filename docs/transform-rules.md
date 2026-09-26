@@ -204,8 +204,8 @@ export abstract class Player extends CharacterBody2D {
 @tool
 @icon("res://player.svg")
 @abstract
-extends CharacterBody2D
 class_name Player
+extends CharacterBody2D
 
 const _Hud = preload("res://hud.gd")
 
@@ -581,8 +581,8 @@ export class MyClass extends Node {
 ```
 
 ```gdscript
-extends Node
 class_name MyClass
+extends Node
 
 enum Direction { UP, DOWN, LEFT, RIGHT }
 
@@ -632,8 +632,8 @@ export class MyClass extends Node {
 ```
 
 ```gdscript
-extends Node
 class_name MyClass
+extends Node
 
 const MAX = 100
 
@@ -701,7 +701,7 @@ The same collision shows up among Godot's global _functions_, and is resolved th
 
 ### Class-level annotations
 
-`@tool`, `@icon(...)`, and `@abstract` apply to the class. The converter emits them above `extends` / `class_name`, matching GDScript convention. `abstract class Foo` (the TS keyword) is auto-translated to `@abstract` — you don't need to write the decorator yourself for abstractness:
+`@tool`, `@icon(...)`, and `@abstract` apply to the class. The converter emits them above `class_name` / `extends`, following Godot's style guide, which orders the header `@tool` / `@icon` → `class_name` → `extends`. `abstract class Foo` (the TS keyword) is auto-translated to `@abstract` — you don't need to write the decorator yourself for abstractness:
 
 ```typescript
 @tool
@@ -715,8 +715,8 @@ export abstract class EdgeAnnotations extends Node {
 @tool
 @icon("res://icon.svg")
 @abstract
-extends Node
 class_name EdgeAnnotations
+extends Node
 
 @abstract
 func process_item(item: String) -> String:

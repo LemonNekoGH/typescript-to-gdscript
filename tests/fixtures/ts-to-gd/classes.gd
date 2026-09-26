@@ -1,5 +1,5 @@
-extends RefCounted
 class_name Animal
+extends RefCounted
 
 var name: String = ""
 var sound: String = ""

@@ -272,8 +272,8 @@ export class Player extends CharacterBody2D {
 <summary>Result gdscript:</summary>
 
 ```gdscript
-extends CharacterBody2D
 class_name Player
+extends CharacterBody2D
 
 const MAX_HP = 100
 

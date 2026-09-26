@@ -1,5 +1,5 @@
-extends Node
 class_name Merged
+extends Node
 
 const FIRST = 1
 

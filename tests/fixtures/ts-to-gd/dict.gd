@@ -1,5 +1,5 @@
-extends Node
 class_name MyClass
+extends Node
 
 func test_dict():
 	var key1 = "key"

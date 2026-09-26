@@ -1,5 +1,5 @@
-extends Node
 class_name ConstClass
+extends Node
 
 const MAX_HP = 100
 

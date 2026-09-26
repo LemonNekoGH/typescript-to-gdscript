@@ -1,5 +1,5 @@
-extends Node
 class_name MyClass
+extends Node
 
 func test_lambda():
 	var double = func(x: int) -> int: return x * 2

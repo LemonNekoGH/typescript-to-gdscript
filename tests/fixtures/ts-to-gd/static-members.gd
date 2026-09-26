@@ -1,5 +1,5 @@
-extends Node
 class_name MyClass
+extends Node
 
 static var MAX_SPEED: float = 200.0
 static var instance_count: int = 0

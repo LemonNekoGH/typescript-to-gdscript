@@ -1,5 +1,5 @@
-extends Node
 class_name MyClass
+extends Node
 
 func test_if():
 	var x: int = 5

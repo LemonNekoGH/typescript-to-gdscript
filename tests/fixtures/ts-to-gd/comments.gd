@@ -1,5 +1,5 @@
-extends Node
 class_name MyClass
+extends Node
 
 # This is a single line comment
 var speed: float = 10.0

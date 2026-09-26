@@ -1,5 +1,5 @@
-extends Node
 class_name MyClass
+extends Node
 
 func test_arrays():
 	var numbers = [1, 2, 3, 4, 5]

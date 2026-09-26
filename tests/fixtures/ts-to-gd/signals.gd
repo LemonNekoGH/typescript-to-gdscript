@@ -1,5 +1,5 @@
-extends Node
 class_name MyClass
+extends Node
 
 signal health_changed(from: int, to: int)
 signal mana_changed(arg1: int, arg2: int)

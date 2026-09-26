@@ -1,5 +1,5 @@
-extends Node
 class_name Foo
+extends Node
 
 const MAX_HEALTH = 100
 

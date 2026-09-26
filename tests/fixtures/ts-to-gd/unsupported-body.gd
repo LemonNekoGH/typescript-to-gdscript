@@ -1,5 +1,5 @@
-extends Node
 class_name UnsupportedBody
+extends Node
 
 # Two kinds of statement produce no GDScript, and a body has to
 # handle both. A REJECTED one emits only an `# ERROR:` marker, and a

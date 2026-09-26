@@ -1,5 +1,5 @@
-extends Node
 class_name Match
+extends Node
 
 var x
 var TYPE_FLOAT = "float"

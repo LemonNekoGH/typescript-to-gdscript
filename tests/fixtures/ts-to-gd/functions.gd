@@ -1,5 +1,5 @@
-extends Node
 class_name MyClass
+extends Node
 
 # Method with no return
 func say_hello():

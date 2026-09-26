@@ -1,5 +1,5 @@
-extends Node
 class_name Order
+extends Node
 
 enum Enum1 { TEST }
 

@@ -1,5 +1,5 @@
-extends Node
 class_name MyClass
+extends Node
 
 func describe(value) -> String:
 	var kind: Variant.Type = typeof(value)

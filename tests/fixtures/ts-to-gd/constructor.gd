@@ -1,5 +1,5 @@
-extends RefCounted
 class_name MyClass
+extends RefCounted
 
 var value: int = 0
 var label: String = ""

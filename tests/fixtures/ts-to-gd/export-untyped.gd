@@ -1,5 +1,5 @@
-extends Node
 class_name ExportUntyped
+extends Node
 
 # Bare `@export` is the one annotation that needs the type spelled
 # out: with no type AND no initializer Godot answers `Cannot use
@@ -22,4 +22,3 @@ var ranged
 var path_export
 # Without `@export` a bare `var` is perfectly valid.
 var plain
-

@@ -1,5 +1,5 @@
-extends Node
 class_name MatchDefaultNotLast
+extends Node
 
 # `default` becomes `_`, which matches everything, so in GDScript it
 # has to come last or nothing below it can run. TypeScript reaches
@@ -40,4 +40,3 @@ func with_comment(value: int):
 		# about the fallback
 		_:
 			print("other")
-

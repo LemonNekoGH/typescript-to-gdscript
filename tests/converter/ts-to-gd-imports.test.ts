@@ -105,7 +105,7 @@ describe('TS→GD imports — happy path', () => {
     );
     const result = project.convert('main.ts');
     expect(normalize(result.code)).toBe(
-      normalize('extends Node\nclass_name Main\n\nvar fooRef: Foo = null\n'),
+      normalize('class_name Main\nextends Node\n\nvar fooRef: Foo = null\n'),
     );
   });
 
@@ -118,7 +118,7 @@ describe('TS→GD imports — happy path', () => {
     const result = project.convert('main.ts');
     expect(normalize(result.code)).toBe(
       normalize(
-        'extends Node\nclass_name Main\n\nconst Alias = preload("res://foo.gd")\n\nvar ref: Alias = null\n',
+        'class_name Main\nextends Node\n\nconst Alias = preload("res://foo.gd")\n\nvar ref: Alias = null\n',
       ),
     );
   });
@@ -141,8 +141,8 @@ describe('TS→GD imports — happy path', () => {
     expect(normalize(result.code)).toBe(
       normalize(
         [
-          'extends Node',
           'class_name Main',
+          'extends Node',
           '',
           'const _Anonym = preload("res://anonym.gd")',
           'const Renamed = preload("res://anonym.gd")',
@@ -163,7 +163,7 @@ describe('TS→GD imports — happy path', () => {
     const result = project.convert('derived.ts');
     expect(normalize(result.code)).toBe(
       normalize(
-        'extends "res://base.gd"\nclass_name Derived\n\nconst _Base = preload("res://base.gd")\n',
+        'class_name Derived\nextends "res://base.gd"\n\nconst _Base = preload("res://base.gd")\n',
       ),
     );
   });
@@ -243,7 +243,7 @@ describe('TS→GD imports — happy path', () => {
     );
     const result = project.convert('main.ts');
     expect(normalize(result.code)).toBe(
-      normalize('extends Node\nclass_name Main\n\nvar ref: _Foo = null\n'),
+      normalize('class_name Main\nextends Node\n\nvar ref: _Foo = null\n'),
     );
     expect(
       result.diagnostics.find((d) => d.severity === 'error'),
@@ -269,8 +269,8 @@ describe('TS→GD imports — happy path', () => {
     expect(normalize(result.code)).toBe(
       normalize(
         [
-          'extends Node',
           'class_name Main',
+          'extends Node',
           '',
           'const _Bar = preload("res://bar.gd")',
           '',

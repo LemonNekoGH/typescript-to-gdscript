@@ -1,5 +1,5 @@
-extends Node2D
 class_name SuperCalls
+extends Node2D
 
 # TypeScript forces `super()` on a derived constructor. GDScript
 # rejects it against an engine base — `_init` is a virtual, a slot
@@ -12,4 +12,3 @@ func _init():
 # `super` reaches it.
 func engine_method() -> Node:
 	return super.get_child(0)
-

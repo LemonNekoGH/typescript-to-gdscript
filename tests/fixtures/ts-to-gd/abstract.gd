@@ -1,6 +1,6 @@
 @abstract
-extends Node
 class_name AbstractBase
+extends Node
 
 @abstract
 class InnerAbstract:

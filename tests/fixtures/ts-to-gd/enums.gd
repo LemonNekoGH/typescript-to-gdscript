@@ -1,5 +1,5 @@
-extends Node
 class_name MyClass
+extends Node
 
 enum Direction { UP, DOWN, LEFT, RIGHT }
 
