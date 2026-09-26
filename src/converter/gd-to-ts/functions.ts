@@ -183,6 +183,22 @@ export function collectParamNames(
   }
 }
 
+/**
+ * The parameter's declared type node, or undefined when it has none.
+ *
+ * `func f(x := 1)` parses as a typed parameter whose type node is the
+ * walrus itself, so reading the node's text yields `:=` and the emitted
+ * signature becomes `x: := | null = 1`. There is no declared type here
+ * — TypeScript infers one from the default, exactly as GDScript does —
+ * and `emitTypeAnnotation` already treats `InferredType` this way for
+ * locals and members.
+ */
+function declaredTypeNode(param: SyntaxNode): SyntaxNode | null {
+  const typeNode = param.childForFieldName('type');
+  if (!typeNode || typeNode.type === SyntaxType.InferredType) return null;
+  return typeNode;
+}
+
 export function emitParams(paramsNode: SyntaxNode, ctx: GdToTsContext): string {
   // Look up signal handler info for the current method (if any)
   const handlerInfo = ctx.currentMethodName
@@ -212,7 +228,7 @@ export function emitParams(paramsNode: SyntaxNode, ctx: GdToTsContext): string {
         child.namedChildren.find((c) => c.type === SyntaxType.Identifier)
           ?.text ?? '',
       );
-      const typeNode = child.childForFieldName('type');
+      const typeNode = declaredTypeNode(child);
       const rawType = typeNode?.text ?? '';
       const baseType = escapeSelfClassType(
         qualifyClassType(rawType, ctx.classTypeNames, ctx.className) ??
@@ -243,7 +259,7 @@ export function emitParams(paramsNode: SyntaxNode, ctx: GdToTsContext): string {
         child.namedChildren.find((c) => c.type === SyntaxType.Identifier)
           ?.text ?? '',
       );
-      const typeNode = child.childForFieldName('type');
+      const typeNode = declaredTypeNode(child);
       const value = child.childForFieldName('value');
       const rawType = typeNode?.text ?? '';
       const baseType = escapeSelfClassType(
