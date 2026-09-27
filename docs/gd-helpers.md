@@ -21,7 +21,7 @@ Emitting and connecting:
 ```typescript
 this.health_changed.emit(old, new);
 this.health_changed.connect(this._on_health_changed);
-this.health_changed.connect(this._on_health_changed, GodotObject.CONNECT_ONE_SHOT);
+this.health_changed.connect(this._on_health_changed, Object.CONNECT_ONE_SHOT);
 ```
 
 `connect` takes optional `ConnectFlags` and returns Godot's error code, as the engine's own signature does. The callback's parameters are still checked against the signal; a callable made with `bind()` keeps its narrowed type, so it needs no cast.

@@ -1,5 +1,9 @@
 import ts from 'typescript';
 import type { GodotClassRegistry } from '../../typings/godot-registry.ts';
+import {
+  CLASS_NAME_CONFLICTS,
+  godotClassName,
+} from '../../typings/type-mapping.ts';
 
 /**
  * True when nothing in the converted program declares the binding — it
@@ -43,4 +47,30 @@ export function isGdTypeName(
       registry.isConstructor(name) ||
       registry.isGlobalEnum(name))
   );
+}
+
+/**
+ * GDScript's name for an engine class the typings renamed to dodge a JS
+ * global — `GodotObject` is `Object` (`CLASS_NAME_CONFLICTS`). Returns
+ * `name` unchanged for anything else, including a class of the user's
+ * own that happens to share the renamed spelling: only a name that
+ * resolves to the typings' declaration is the engine's.
+ */
+export function gdClassSpelling(
+  name: string,
+  declarations: readonly ts.Declaration[],
+): string {
+  if (declarations.length === 0 || isUserDeclared(declarations)) return name;
+  return godotClassName(name);
+}
+
+/**
+ * True for a name the typings gave AWAY — `Object` — because TypeScript
+ * already owns it. In TS it keeps TS's meaning (the type is the
+ * plain-object interface, the value is aliased to the engine class), so
+ * as a TYPE it is no GDScript type and must not be matched against the
+ * registry, where `Object` is the engine class.
+ */
+export function isRenamedAwayClassName(name: string): boolean {
+  return CLASS_NAME_CONFLICTS.has(name);
 }

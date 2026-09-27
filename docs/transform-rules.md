@@ -369,6 +369,10 @@ Lowercase TypeScript primitive names map to GDScript's PascalCase value-type nam
 
 `int`, `float`, and `bool` are also **cast functions**: `int(x)`, `float(x)`, `bool(x)`, `String(x)` all transpile verbatim.
 
+### `Object` and `GodotObject`
+
+TypeScript already owns the name `Object`, so the typings call Godot's base class `GodotObject`. Write `GodotObject` as a type (`node: GodotObject`); it goes out as `Object`. As a value, `Object` is the engine class in TS too, so `Object.CONNECT_ONE_SHOT` reads the same in both languages. TypeScript's own `Object` type is the plain-object interface, which has no GDScript type, so an annotation with it is dropped.
+
 ## Type annotations — what gets emitted
 
 A type annotation (`x: T`, `func f() -> T`, `var x: T`) is only emitted when `T` is something GDScript actually has. The converter classifies the referenced type and **drops the annotation** (emitting the bare, untyped `var x` / `func f(x)` form) for anything without a GD equivalent:

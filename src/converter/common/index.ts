@@ -2,7 +2,12 @@ import ts from 'typescript';
 
 import type { GodotClassRegistry } from '../../typings/godot-registry.ts';
 import type { ResolvedExternalPackage } from '../../external-packages/index.ts';
-import { isGdTypeName, isUserDeclared } from './gd-names.ts';
+import {
+  gdClassSpelling,
+  isGdTypeName,
+  isRenamedAwayClassName,
+  isUserDeclared,
+} from './gd-names.ts';
 
 /**
  * Pre-derived lookup sets for `in`-operator diagnostics and variant/class type
@@ -417,8 +422,15 @@ function classifyTypeReferenceName(
   // the dialect spells several of them as aliases (`type bool = boolean`,
   // `type Callable = Function`) that rule would otherwise drop. Skipped
   // when the name is the user's own, so their `type Color` still drops.
-  if (!isUserDeclared(declarations) && isGdTypeName(name, registry)) {
-    return name;
+  //
+  // The typings rename a few engine classes that clash with JS globals:
+  // `GodotObject` is GDScript's `Object`, while TS's own `Object` type is
+  // the plain-object interface — no GDScript type at all, even though the
+  // registry knows the name.
+  if (!isUserDeclared(declarations)) {
+    if (isRenamedAwayClassName(name)) return null;
+    const gdName = gdClassSpelling(name, declarations);
+    if (isGdTypeName(gdName, registry)) return gdName;
   }
 
   // Type aliases have no GDScript equivalent → omit.
@@ -430,7 +442,7 @@ function classifyTypeReferenceName(
       (d) => ts.isClassDeclaration(d) || ts.isEnumDeclaration(d),
     )
   ) {
-    return name;
+    return gdClassSpelling(name, declarations);
   }
 
   // Whatever is left is a non-class type (interface, `object`-like, namespace),

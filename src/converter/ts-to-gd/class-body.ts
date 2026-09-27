@@ -21,6 +21,8 @@
  */
 
 import ts from 'typescript';
+import { gdClassSpelling } from '../common/gd-names.ts';
+import { declarationsOf } from './callable-call.ts';
 import { isAnonymousClassName } from '../common/index.ts';
 import type { ImportEntry } from './imports.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
@@ -132,7 +134,9 @@ export function emitClassHeader(
           const path = (expr.arguments[0] as ts.StringLiteralLike).text;
           extendsClause = `extends "${path}"`;
         } else {
-          const baseText = expr.getText(t.ctx.sourceFile);
+          const baseText = ts.isIdentifier(expr)
+            ? gdClassSpelling(expr.text, declarationsOf(t, expr))
+            : expr.getText(t.ctx.sourceFile);
           const importedAnon = ctx.importMap.get(baseText);
           extendsClause =
             importedAnon && importedAnon.isAnonymous

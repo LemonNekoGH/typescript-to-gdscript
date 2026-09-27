@@ -15,7 +15,13 @@ import {
   resolveOwnClassRef,
 } from './own-class-ref.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
-import { isCallableMemberCall, isCallableValueCall } from './callable-call.ts';
+import {
+  declarationsOf,
+  isCallableMemberCall,
+  isCallableValueCall,
+} from './callable-call.ts';
+import { gdClassSpelling } from '../common/gd-names.ts';
+import { godotClassName } from '../../typings/type-mapping.ts';
 import { effectiveParent } from './effective-parent.ts';
 import { emitLambda } from './lambda.ts';
 import { VOID_OPERATOR_ERROR } from './void-value.ts';
@@ -43,7 +49,11 @@ export function emitExpression(
     if (text === 'null') return 'null';
     if (text === 'true') return 'true';
     if (text === 'false') return 'false';
-    return text;
+    // `GodotObject` is GDScript's `Object`. Only a name the typings
+    // actually renamed is worth asking the checker about.
+    return godotClassName(text) === text
+      ? text
+      : gdClassSpelling(text, declarationsOf(t, node));
   }
 
   // this -> self. Inside a `static` member there is no `self` in

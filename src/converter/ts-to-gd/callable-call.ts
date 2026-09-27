@@ -30,7 +30,7 @@ function isNamedCallTarget(callee: ts.Expression): boolean {
  * another file is judged by its declaration rather than by the import
  * specifier standing in for it.
  */
-function declarationsOf(
+export function declarationsOf(
   t: TransformerDelegate,
   callee: ts.Expression,
 ): readonly ts.Declaration[] {
