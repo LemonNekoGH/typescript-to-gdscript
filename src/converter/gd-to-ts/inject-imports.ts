@@ -22,10 +22,16 @@ import type { UserClassInfo } from './context.ts';
 import { parseGdClassInfo } from './index.ts';
 import type { GodotClassRegistry } from '../../typings/godot-registry.ts';
 
-/** TS error code for "Cannot find name 'X'." */
-const TS_CANNOT_FIND_NAME = 2304;
-/** TS error code for "Cannot find namespace 'X'." */
-const TS_CANNOT_FIND_NAMESPACE = 2503;
+/**
+ * TS error codes for a name that does not resolve: "Cannot find name
+ * 'X'." (2304) and "Cannot find namespace 'X'." (2503), plus the
+ * "Did you mean 'Y'?" forms TypeScript switches to whenever a similar
+ * name is in scope (2552 and 2833). The class being converted is often
+ * that similar name — `class Enemy2 extends Enemy` reports 2552, not
+ * 2304 — so listening for the plain forms only left every such base
+ * without its import.
+ */
+const TS_MISSING_NAME_CODES = new Set([2304, 2503, 2552, 2833]);
 
 export interface ConvertedFile {
   /** Absolute on-disk path of the generated `.ts` file. */
@@ -142,9 +148,7 @@ function collectMissingClassNames(
 ): Set<string> {
   const out = new Set<string>();
   for (const d of diags) {
-    if (d.code !== TS_CANNOT_FIND_NAME && d.code !== TS_CANNOT_FIND_NAMESPACE) {
-      continue;
-    }
+    if (!TS_MISSING_NAME_CODES.has(d.code)) continue;
     const message = ts.flattenDiagnosticMessageText(d.messageText, '\n');
     // TS phrases both diagnostics as `Cannot find name 'X'.` /
     // `Cannot find namespace 'X'.`. Pull the quoted identifier.

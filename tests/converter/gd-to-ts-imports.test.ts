@@ -105,6 +105,19 @@ describe('GD→TS auto-imports (convert + inject pipeline)', () => {
     );
   });
 
+  it('imports a base whose name TypeScript thinks is a typo for the class', () => {
+    // With a similar name in scope — here the class itself — TypeScript
+    // reports TS2552 ("Cannot find name 'Enemy'. Did you mean 'Enemy2'?")
+    // instead of TS2304. It is the same missing name either way.
+    const r = runPipeline([
+      { relPath: 'enemy.gd', source: 'class_name Enemy\nextends Node\n' },
+      { relPath: 'enemy2.gd', source: 'class_name Enemy2\nextends Enemy\n' },
+    ]);
+    expect(r.read('enemy2.gd')).toMatch(
+      /^import \{ Enemy \} from "\.\/enemy";\n\nexport class Enemy2 extends Enemy/,
+    );
+  });
+
   it('emits ONE import line per class even when referenced multiple times', () => {
     const r = runPipeline([
       {
