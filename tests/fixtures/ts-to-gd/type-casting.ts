@@ -39,5 +39,9 @@ export class MyClass extends Node {
     }
     let flipped = !gd.is(value, int);
     let picked = gd.is(c ? a : b, float);
+    // `!` goes out as `not` and a template as a `+` chain — both bind
+    // looser than `is`, which would otherwise test only their last piece.
+    let negated = gd.is(!c, bool);
+    let text = gd.is(`a = ${a}`, String);
   }
 }

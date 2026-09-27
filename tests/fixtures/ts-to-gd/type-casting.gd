@@ -35,3 +35,7 @@ func test_is_grouping(value, c: bool, a: int, b: float):
 		print("int")
 	var flipped = not value is int
 	var picked = (a if c else b) is float
+	# `!` goes out as `not` and a template as a `+` chain — both bind
+	# looser than `is`, which would otherwise test only their last piece.
+	var negated = (not c) is bool
+	var text = ("a = " + str(a)) is String
