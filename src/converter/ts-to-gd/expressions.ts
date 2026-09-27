@@ -25,6 +25,11 @@ import { effectiveParent } from './effective-parent.ts';
 import { emitLambda } from './lambda.ts';
 import { VOID_OPERATOR_ERROR } from './void-value.ts';
 import { resolveSuperCall } from './super-call.ts';
+import {
+  binaryOperator,
+  emitIncrement,
+  unaryOperator,
+} from './operator-tokens.ts';
 
 // ---- Main Expression Emitter ----
 
@@ -144,22 +149,16 @@ export function emitExpression(
     return emitBinaryExpression(t, node);
   }
 
+  // `++` / `--`, either side
+  if (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) {
+    const increment = emitIncrement(t, node);
+    if (increment !== null) return increment;
+  }
+
   // Prefix unary
   if (ts.isPrefixUnaryExpression(node)) {
     const operand = t.emitExpression(node.operand);
-    const op = unaryOperator(node.operator);
-    return `${op}${operand}`;
-  }
-
-  // Postfix unary (i++ / i--)
-  if (ts.isPostfixUnaryExpression(node)) {
-    const operand = t.emitExpression(node.operand);
-    if (node.operator === ts.SyntaxKind.PlusPlusToken) {
-      return `${operand} += 1`;
-    }
-    if (node.operator === ts.SyntaxKind.MinusMinusToken) {
-      return `${operand} -= 1`;
-    }
+    return `${unaryOperator(node.operator)}${operand}`;
   }
 
   // Parenthesized
@@ -829,7 +828,22 @@ export function emitBinaryExpression(
   }
   const left = t.emitExpression(node.left);
   const right = t.emitExpression(node.right);
-  const op = binaryOperator(node.operatorToken.kind);
+  const kind = node.operatorToken.kind;
+  const op = binaryOperator(kind);
+  if (op === null) {
+    // `??` and `??=` are reported above, with their own message.
+    if (
+      kind !== ts.SyntaxKind.QuestionQuestionToken &&
+      kind !== ts.SyntaxKind.QuestionQuestionEqualsToken
+    ) {
+      t.addDiagnostic(
+        node,
+        'error',
+        `The \`${ts.tokenToString(kind)}\` operator has no GDScript equivalent`,
+      );
+    }
+    return `${left} ${ts.tokenToString(kind)} ${right}`;
+  }
   return `${left} ${op} ${right}`;
 }
 
@@ -870,86 +884,6 @@ function checkInOperatorRhs(
 }
 
 // ---- Operator Mapping ----
-
-export function binaryOperator(kind: ts.SyntaxKind): string {
-  switch (kind) {
-    case ts.SyntaxKind.PlusToken:
-      return '+';
-    case ts.SyntaxKind.MinusToken:
-      return '-';
-    case ts.SyntaxKind.AsteriskToken:
-      return '*';
-    case ts.SyntaxKind.SlashToken:
-      return '/';
-    case ts.SyntaxKind.PercentToken:
-      return '%';
-    case ts.SyntaxKind.AsteriskAsteriskToken:
-      return '**';
-    case ts.SyntaxKind.EqualsEqualsEqualsToken:
-      return '==';
-    case ts.SyntaxKind.ExclamationEqualsEqualsToken:
-      return '!=';
-    case ts.SyntaxKind.EqualsEqualsToken:
-      return '==';
-    case ts.SyntaxKind.ExclamationEqualsToken:
-      return '!=';
-    case ts.SyntaxKind.LessThanToken:
-      return '<';
-    case ts.SyntaxKind.LessThanEqualsToken:
-      return '<=';
-    case ts.SyntaxKind.GreaterThanToken:
-      return '>';
-    case ts.SyntaxKind.GreaterThanEqualsToken:
-      return '>=';
-    case ts.SyntaxKind.AmpersandAmpersandToken:
-      return 'and';
-    case ts.SyntaxKind.BarBarToken:
-      return 'or';
-    case ts.SyntaxKind.EqualsToken:
-      return '=';
-    case ts.SyntaxKind.PlusEqualsToken:
-      return '+=';
-    case ts.SyntaxKind.MinusEqualsToken:
-      return '-=';
-    case ts.SyntaxKind.AsteriskEqualsToken:
-      return '*=';
-    case ts.SyntaxKind.SlashEqualsToken:
-      return '/=';
-    case ts.SyntaxKind.PercentEqualsToken:
-      return '%=';
-    case ts.SyntaxKind.AmpersandToken:
-      return '&';
-    case ts.SyntaxKind.BarToken:
-      return '|';
-    case ts.SyntaxKind.CaretToken:
-      return '^';
-    case ts.SyntaxKind.LessThanLessThanToken:
-      return '<<';
-    case ts.SyntaxKind.GreaterThanGreaterThanToken:
-      return '>>';
-    case ts.SyntaxKind.InKeyword:
-      return 'in';
-    case ts.SyntaxKind.InstanceOfKeyword:
-      return 'is';
-    default:
-      return '??';
-  }
-}
-
-export function unaryOperator(op: ts.PrefixUnaryOperator): string {
-  switch (op) {
-    case ts.SyntaxKind.ExclamationToken:
-      return 'not ';
-    case ts.SyntaxKind.MinusToken:
-      return '-';
-    case ts.SyntaxKind.PlusToken:
-      return '+';
-    case ts.SyntaxKind.TildeToken:
-      return '~';
-    default:
-      return '';
-  }
-}
 
 // ---- String Literals ----
 

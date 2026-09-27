@@ -69,6 +69,23 @@ export class MyClass extends Node {
     let flipped_length = gd.ops.minus(v).length();
   }
 
+  // Every compound assignment GDScript has, and `++` / `--` wherever the
+  // value is discarded — prefix included, which used to lose its step.
+  test_compound_assignment(): void {
+    let k: int = 3;
+    k |= 8;
+    k &= 10;
+    k ^= 1;
+    k <<= 2;
+    k >>= 1;
+    k **= 2;
+    ++k;
+    --k;
+    for (let i = 0; i < 3; ++i) {
+      print(i);
+    }
+  }
+
   test_array_concat() {
     let a1 = [0, 1];
     let a2 = ['a', 'b'];

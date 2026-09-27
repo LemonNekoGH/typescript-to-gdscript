@@ -1,0 +1,32 @@
+[
+  {
+    "message": "The `>>>` operator has no GDScript equivalent",
+    "severity": "error",
+    "line": 7
+  },
+  {
+    "message": "The `&&=` operator has no GDScript equivalent",
+    "severity": "error",
+    "line": 8
+  },
+  {
+    "message": "The `||=` operator has no GDScript equivalent",
+    "severity": "error",
+    "line": 9
+  },
+  {
+    "message": "The `,` operator has no GDScript equivalent",
+    "severity": "error",
+    "line": 10
+  },
+  {
+    "message": "`++` used as a value has no GDScript equivalent",
+    "severity": "error",
+    "line": 12
+  },
+  {
+    "message": "`--` used as a value has no GDScript equivalent",
+    "severity": "error",
+    "line": 13
+  }
+]

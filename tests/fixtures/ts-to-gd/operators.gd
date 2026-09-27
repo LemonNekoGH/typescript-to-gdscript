@@ -65,6 +65,23 @@ func test_ops_operand_precedence(cond: bool, n):
 	# A unary result is grouped too: bare, `-v.length()` negates the length.
 	var flipped_length = (-v).length()
 
+# Every compound assignment GDScript has, and `++` / `--` wherever the
+# value is discarded — prefix included, which used to lose its step.
+func test_compound_assignment() -> void:
+	var k: int = 3
+	k |= 8
+	k &= 10
+	k ^= 1
+	k <<= 2
+	k >>= 1
+	k **= 2
+	k += 1
+	k -= 1
+	var i = 0
+	while i < 3:
+		print(i)
+		i += 1
+
 func test_array_concat():
 	var a1 = [0, 1]
 	var a2 = ["a", "b"]
