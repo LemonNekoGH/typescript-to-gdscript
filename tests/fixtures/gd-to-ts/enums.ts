@@ -14,7 +14,7 @@ export class Enums extends Node {
   static UNIT_ENEMY: int = 1;
   static UNIT_ALLY: int = 2;
 
-  _ready() {
+  pick() {
     return bool(Enums.Direction.UP || Enums.Status.IDLE || Enums.UNIT_NEUTRAL);
   }
 

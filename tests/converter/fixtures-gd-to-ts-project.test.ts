@@ -20,12 +20,13 @@
  * a lambda turn untyped, and `lam.call(x)` returns `unknown`.
  *
  * The fixture sources are real GDScript for the same reason: output can
- * only be judged against valid input. Scripts whose node paths type only
+ * only be judged against valid input. The second test holds them to it
+ * — Godot itself checks every source. Scripts whose node paths type only
  * through a scene (`$Label` is a `Node` until a scene says `Label`) have
  * a minimal `.tscn` next to them, which the pipeline turns into scene
  * typings exactly as it would in a project.
  */
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { execFile } from 'child_process';
 import {
   copyFileSync,
@@ -38,6 +39,8 @@ import { basename, join, resolve } from 'path';
 import { tmpdir } from 'os';
 import { collectTsDiagnostics } from '../../src/checker/ts-diagnostics.js';
 import { createTsProgram } from '../../src/parser/typescript/index.js';
+import { validateGdFiles } from '../../src/godot-validate/index.js';
+import { resolveGodotPath } from '../../src/config/index.js';
 
 const REPO = resolve(__dirname, '../..');
 const FIXTURES_DIR = join(REPO, 'tests', 'fixtures', 'gd-to-ts');
@@ -56,11 +59,55 @@ const EXPECTED: Record<string, string[]> = {
   'self2.ts': ["TS2304: Cannot find name 'get_joint_bone'"],
 };
 
+/** The same, for Godot's verdict on the fixture sources. */
+const EXPECTED_GODOT: Record<string, string[]> = {
+  // The GDScript half of the `self2` entry above.
+  'self2.gd': ['Function "get_joint_bone()" not found'],
+};
+
 const PROJECT = mkdtempSync(join(tmpdir(), 'tstogd-gdtots-project-'));
+const sources: string[] = [];
+
+beforeAll(() => {
+  for (const file of readdirSync(FIXTURES_DIR)) {
+    if (!file.endsWith('.gd') && !file.endsWith('.tscn')) continue;
+    copyFileSync(join(FIXTURES_DIR, file), join(PROJECT, file));
+    if (file.endsWith('.gd')) sources.push(join(PROJECT, file));
+  }
+  writeFileSync(
+    join(PROJECT, 'project.godot'),
+    'config_version=5\n\n[application]\nconfig/name="fixtures"\n',
+  );
+});
 
 afterAll(() => {
   rmSync(PROJECT, { recursive: true, force: true });
 });
+
+/**
+ * Take each expected message out of `found` (by file and substring), then
+ * require that nothing is left — a fixture's deliberate error must still
+ * happen, and nothing else may.
+ */
+function expectExactly(
+  found: { file: string; text: string }[],
+  expected: Record<string, string[]>,
+  label: string,
+): void {
+  const unmatched = [...found];
+  for (const [file, messages] of Object.entries(expected)) {
+    for (const message of messages) {
+      const i = unmatched.findIndex(
+        (d) => d.file === file && d.text.includes(message),
+      );
+      expect(i, `expected in ${file}: ${message}`).toBeGreaterThan(-1);
+      unmatched.splice(i, 1);
+    }
+  }
+  expect(unmatched.map((d) => `  ${d.file} ${d.text}`).join('\n'), label).toBe(
+    '',
+  );
+}
 
 function runCli(args: string[]): Promise<{ code: number; output: string }> {
   return new Promise((res) => {
@@ -79,16 +126,6 @@ function runCli(args: string[]): Promise<{ code: number; output: string }> {
 
 describe('GD → TS: the converted fixture project type-checks', () => {
   it('has no TypeScript diagnostics beyond the expected ones', async () => {
-    const sources: string[] = [];
-    for (const file of readdirSync(FIXTURES_DIR)) {
-      if (!file.endsWith('.gd') && !file.endsWith('.tscn')) continue;
-      copyFileSync(join(FIXTURES_DIR, file), join(PROJECT, file));
-      if (file.endsWith('.gd')) sources.push(join(PROJECT, file));
-    }
-    writeFileSync(
-      join(PROJECT, 'project.godot'),
-      'config_version=5\n\n[application]\nconfig/name="fixtures"\n',
-    );
     // The pipeline picks this up from the root, as it would a project's
     // own — its TS helpers type-check with it too.
     writeFileSync(
@@ -127,25 +164,41 @@ describe('GD → TS: the converted fixture project type-checks', () => {
       files: [],
       tsConfigPath: join(PROJECT, 'tsconfig.json'),
     });
-    const unmatched = collectTsDiagnostics(program, join(PROJECT, 'ts')).map(
+    const found = collectTsDiagnostics(program, join(PROJECT, 'ts')).map(
       (d) => ({
         file: basename(d.file),
         text: `${d.line}:${d.column} ${d.message}`,
       }),
     );
-
-    for (const [file, messages] of Object.entries(EXPECTED)) {
-      for (const message of messages) {
-        const i = unmatched.findIndex(
-          (d) => d.file === file && d.text.includes(message),
-        );
-        expect(i, `expected in ${file}: ${message}`).toBeGreaterThan(-1);
-        unmatched.splice(i, 1);
-      }
-    }
-    expect(
-      unmatched.map((d) => `  ${d.file} ${d.text}`).join('\n'),
+    expectExactly(
+      found,
+      EXPECTED,
       'TypeScript diagnostics in the converted project',
-    ).toBe('');
+    );
+  }, 180_000);
+
+  it('converts sources Godot accepts', async () => {
+    const godotPath = resolveGodotPath();
+    // Without the import pass Godot knows no `class_name`, and every
+    // script that names another one fails.
+    await new Promise<void>((res, rej) =>
+      execFile(
+        godotPath,
+        ['--headless', '--path', PROJECT, '--import'],
+        { timeout: 120_000 },
+        (err) => (err ? rej(err) : res()),
+      ),
+    );
+    const result = await validateGdFiles({
+      gdFiles: sources,
+      projectRoot: PROJECT,
+      godotPath,
+    });
+    expect(result.godotAvailable).toBe(true);
+    const found = result.diagnostics.map((d) => ({
+      file: basename(d.file),
+      text: `${d.line}: ${d.message}`,
+    }));
+    expectExactly(found, EXPECTED_GODOT, 'Godot errors in the fixture sources');
   }, 180_000);
 });

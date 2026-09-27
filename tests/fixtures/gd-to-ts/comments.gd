@@ -29,7 +29,7 @@ func _ready():
   """
 	if health > 0:
 # Comment with bad align
-  	print("done")
+		print("done")
 	if health == 0:
 		"""
 		Multiline block

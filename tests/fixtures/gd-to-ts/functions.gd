@@ -27,5 +27,5 @@ func optional_args(a: int = 0, b = null, c = '', d: Node = null):
 
 # `param := value` declares no type — GDScript infers one from the
 # default, and so does TypeScript.
-func inferred_args(a := 1, b := 'x', c := null, d: int = 2):
+func inferred_args(a := 1, b := 'x', c := 2.5, d: int = 2):
 	pass

@@ -3,8 +3,7 @@ extends Node
 class_name AbstractBase
 
 @abstract
-func process_item(item: String) -> String:
-	pass
+func process_item(item: String) -> String
 
 func concrete_method():
 	return 42
@@ -12,5 +11,4 @@ func concrete_method():
 @abstract
 class InnerAbstract:
 	@abstract
-	func do_something() -> void:
-		pass
+	func do_something() -> void

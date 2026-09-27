@@ -3,7 +3,7 @@ class_name Variables
 
 var health: int = 100
 var speed: float = 10.5
-var name: String = "Player"
+var player_name: String = "Player"
 var alive: bool = true
 var position_2d: Vector2 = Vector2(0, 0)
 static var count: int = 0

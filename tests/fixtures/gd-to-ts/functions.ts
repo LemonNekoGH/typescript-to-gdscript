@@ -30,7 +30,6 @@ export class Functions extends RefCounted {
   // `param := value` declares no type — GDScript infers one from the
   // default, and so does TypeScript.
 
-  inferred_args(a = 1, b = 'x', c: unknown = null, d: int = 2) {
+  inferred_args(a = 1, b = 'x', c = 2.5, d: int = 2) {
   }
 }
-
