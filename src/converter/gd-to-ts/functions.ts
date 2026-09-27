@@ -216,7 +216,7 @@ export function emitParams(paramsNode: SyntaxNode, ctx: GdToTsContext): string {
         const sigParam = handlerInfo.params[paramIndex]!;
         const tsType = widenInType(
           sigParam.gdType,
-          gdTypeToTs(sigParam.gdType),
+          gdTypeToTs(sigParam.gdType, ctx.registry),
           ctx,
         );
         params.push(tsType ? `${pname}: ${tsType}` : pname);
@@ -233,7 +233,7 @@ export function emitParams(paramsNode: SyntaxNode, ctx: GdToTsContext): string {
       const rawType = typeNode?.text ?? '';
       const baseType = escapeSelfClassType(
         qualifyClassType(rawType, ctx.classTypeNames, ctx.className) ??
-          (typeNode ? gdTypeToTs(rawType) : null),
+          (typeNode ? gdTypeToTs(rawType, ctx.registry) : null),
         ctx,
       );
       const tsType = widenInType(rawType, baseType, ctx);
@@ -265,7 +265,7 @@ export function emitParams(paramsNode: SyntaxNode, ctx: GdToTsContext): string {
       const rawType = typeNode?.text ?? '';
       const baseType = escapeSelfClassType(
         qualifyClassType(rawType, ctx.classTypeNames, ctx.className) ??
-          (typeNode ? gdTypeToTs(rawType) : null),
+          (typeNode ? gdTypeToTs(rawType, ctx.registry) : null),
         ctx,
       );
       const valueText = value?.text?.trim() ?? '';
@@ -298,7 +298,7 @@ export function emitParams(paramsNode: SyntaxNode, ctx: GdToTsContext): string {
         );
         const typeNode = inner.childForFieldName('type');
         const rawType = typeNode?.text ?? '';
-        const tsType = gdTypeToTs(rawType);
+        const tsType = gdTypeToTs(rawType, ctx.registry);
         // GDScript varargs always collect into an Array. The mapped TS type
         // for `Array` is already `Array<unknown>`, so use it directly.
         // For any other type, it's already an array-like form.
@@ -330,14 +330,14 @@ export function emitReturnType(
     const inner = typeNode.namedChildren[0]?.text ?? typeNode.text;
     tsType = escapeSelfClassType(
       qualifyClassType(inner, ctx.classTypeNames, ctx.className) ??
-        gdTypeToTs(inner),
+        gdTypeToTs(inner, ctx.registry),
       ctx,
     );
   } else {
     const raw = typeNode.text;
     tsType = escapeSelfClassType(
       qualifyClassType(raw, ctx.classTypeNames, ctx.className) ??
-        gdTypeToTs(raw),
+        gdTypeToTs(raw, ctx.registry),
       ctx,
     );
   }

@@ -87,7 +87,7 @@ export function emitSignalParamTypes(
       const typeNode = child.childForFieldName('type');
       const rawType = typeNode?.text ?? '';
       const baseType = typeNode
-        ? escapeSelfClassType(gdTypeToTs(rawType), ctx)
+        ? escapeSelfClassType(gdTypeToTs(rawType, ctx.registry), ctx)
         : 'any';
       const widened = widenInType(rawType, baseType, ctx);
       types.push(widened ?? 'any');
@@ -258,7 +258,7 @@ function emitSetgetVariable(
   if (typeNode) {
     const typeText = extractGdTypeName(typeNode) ?? 'Variant';
     tsType =
-      escapeSelfClassType(gdTypeToTs(typeText), ctx) ??
+      escapeSelfClassType(gdTypeToTs(typeText, ctx.registry), ctx) ??
       (ctx.unsafeUseAny ? 'any' : 'unknown');
   } else if (valueNode) {
     const typeofExpr = tryEmitTypeofValue(valueNode, ctx);
@@ -492,13 +492,13 @@ export function emitTypeAnnotation(
       ctx.className,
     );
     if (qualified) return `: ${qualified}`;
-    const tsType = escapeSelfClassType(gdTypeToTs(inner), ctx);
+    const tsType = escapeSelfClassType(gdTypeToTs(inner, ctx.registry), ctx);
     return tsType ? `: ${tsType}` : '';
   }
   const raw = typeNode.text;
   const qualified = qualifyClassType(raw, ctx.classTypeNames, ctx.className);
   if (qualified) return `: ${qualified}`;
-  const tsType = escapeSelfClassType(gdTypeToTs(raw), ctx);
+  const tsType = escapeSelfClassType(gdTypeToTs(raw, ctx.registry), ctx);
   return tsType ? `: ${tsType}` : '';
 }
 

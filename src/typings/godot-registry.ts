@@ -205,6 +205,15 @@ export class GodotClassRegistry {
     return this.getInheritanceChain(className).includes(parentName);
   }
 
+  /**
+   * True when `enumName` is an enum `className` declares or inherits —
+   * the `ProcessMode` of `Node.ProcessMode`.
+   */
+  isClassEnum(className: string, enumName: string): boolean {
+    return this.getInheritanceChain(className).some((cn) =>
+      this.data.classes[cn]?.enums.some((e) => e.name === enumName),
+    );
+  }
 
   /** Check if a class exists in the registry */
   hasClass(className: string): boolean {

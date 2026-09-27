@@ -631,6 +631,8 @@ let kind: Variant.Type = gd.typeof(value);
 
 Going the other way, a bare global enum constant is qualified: GDScript `TYPE_INT` comes back as `Variant.Type.TYPE_INT`, and `KEY_A` as `Key.KEY_A`.
 
+An enum that belongs to an engine class is different: the typings declare only its values, as `int` statics (`Node.PROCESS_MODE_INHERIT`), and no type. So a GDScript annotation naming one (`var mode: Node.ProcessMode`) comes back as `int`, the type those values have. An inherited value read bare (`PROCESS_MODE_INHERIT`) comes back as `this.PROCESS_MODE_INHERIT`.
+
 ## Inner classes (via namespace merging)
 
 GDScript nested classes are modelled using TypeScript's [declaration merging](https://www.typescriptlang.org/docs/handbook/declaration-merging.html). A `namespace ClassName { ... }` block paired with `class ClassName { ... }` adds the namespace's `export`ed members as static / nested members on the class side:

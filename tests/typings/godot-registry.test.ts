@@ -355,6 +355,15 @@ describe('Godot Registry: GodotClassRegistry', () => {
     expect(members.has('ProcessMode')).toBe(false);
   });
 
+  it('knows the enums a class declares or inherits', () => {
+    const reg = createTestRegistry();
+    expect(reg.isClassEnum('Node', 'ProcessMode')).toBe(true);
+    expect(reg.isClassEnum('Node2D', 'ProcessMode')).toBe(true);
+    expect(reg.isClassEnum('Object', 'ProcessMode')).toBe(false);
+    expect(reg.isClassEnum('Node', 'Missing')).toBe(false);
+    expect(reg.isClassEnum('Unknown', 'ProcessMode')).toBe(false);
+  });
+
   it('should cache getAllMembers results', () => {
     const reg = createTestRegistry();
     const first = reg.getAllMembers('Node2D');

@@ -204,7 +204,10 @@ export function escapeSelfClassType(
   return selfClassNameIfMatches(tsType, ctx) ?? tsType;
 }
 
-export function gdTypeToTs(gdType: string): string | null {
+export function gdTypeToTs(
+  gdType: string,
+  registry?: GodotClassRegistry,
+): string | null {
   switch (gdType) {
     case 'int':
       return 'int';
@@ -230,17 +233,24 @@ export function gdTypeToTs(gdType: string): string | null {
       // Array[T] -> Array<T>
       if (gdType.startsWith('Array[')) {
         const inner = gdType.slice(6, -1);
-        const tsInner = gdTypeToTs(inner);
+        const tsInner = gdTypeToTs(inner, registry);
         return `Array<${tsInner ?? inner}>`;
       }
       // Dictionary[K, V] -> Dictionary<K, V>
       if (gdType.startsWith('Dictionary[')) {
         const inner = gdType.slice(11, -1);
         const [key, value] = splitTopLevelTypeArgs(inner);
-        const tsKey = key ? (gdTypeToTs(key) ?? key) : 'unknown';
-        const tsValue = value ? (gdTypeToTs(value) ?? value) : 'unknown';
+        const tsKey = key ? (gdTypeToTs(key, registry) ?? key) : 'unknown';
+        const tsValue = value
+          ? (gdTypeToTs(value, registry) ?? value)
+          : 'unknown';
         return `Dictionary<${tsKey}, ${tsValue}>`;
       }
+      // An engine class's enum (`Node.ProcessMode`): the typings declare
+      // it only through its values (`static readonly
+      // PROCESS_MODE_INHERIT: int`), never as a type, so the type is what
+      // those values are. `Node.ProcessMode` itself is no TS type (TS2702).
+      if (isEngineClassEnum(gdType, registry)) return 'int';
       // Class type or unknown — keep as-is, except an engine class the
       // typings renamed to dodge a JS global: GDScript's `Object` is TS's
       // `GodotObject`, and TS's own `Object` type is the plain-object
@@ -270,4 +280,14 @@ export function splitTopLevelTypeArgs(inner: string): string[] {
   }
   if (current.trim()) args.push(current.trim());
   return args;
+}
+
+/** True for `Class.Enum` naming an enum of an engine class. */
+function isEngineClassEnum(
+  gdType: string,
+  registry: GodotClassRegistry | undefined,
+): boolean {
+  const dot = gdType.indexOf('.');
+  if (dot <= 0 || !registry) return false;
+  return registry.isClassEnum(gdType.slice(0, dot), gdType.slice(dot + 1));
 }
