@@ -305,8 +305,7 @@ describe('ts-plugin: persistent cache write-through', () => {
   // for the write to settle. Poll the filesystem briefly rather than
   // sleeping a fixed amount — fast on SSDs, bounded on slow CI. The
   // bound is generous because it only matters when the write is slow:
-  // under the full suite, with other files running `tsc`, Godot and the
-  // CLI alongside, 2000 ms regularly ran out on a write that landed.
+  // on a loaded machine 2000 ms ran out on a write that did land.
   async function waitForCacheJson(
     rootDir: string,
     timeoutMs = 10_000,
