@@ -348,6 +348,11 @@ describe('Godot Registry: GodotClassRegistry', () => {
 
     // Constants
     expect(members.has('NOTIFICATION_POSTINITIALIZE')).toBe(true);
+
+    // Enum values — bare in GDScript, like constants. The enum's own
+    // name is a type, not a member.
+    expect(members.has('PROCESS_MODE_INHERIT')).toBe(true);
+    expect(members.has('ProcessMode')).toBe(false);
   });
 
   it('should cache getAllMembers results', () => {

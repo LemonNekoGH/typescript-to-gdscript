@@ -868,7 +868,7 @@ Other uses of `super` are emitted as written, and Godot reports what it can't re
 GDScript reaches own/inherited members via a bare identifier (`speed`, `move_and_slide()`); TypeScript needs `this.`. When converting GD → TS, the converter resolves each bare identifier against:
 
 1. The class's own members (fields, methods, signals, constants).
-2. The inherited member list from the registered base class (Godot built-ins or a user `class_name` chain).
+2. The inherited member list from the registered base class (Godot built-ins or a user `class_name` chain). For an engine base this includes its constants and enum values: `CONNECT_ONE_SHOT` becomes `this.CONNECT_ONE_SHOT`, which TypeScript reads through the generated typings' statics and which converts back to `self.CONNECT_ONE_SHOT` (the class name inside a `static func`).
 
 If the name matches a member, `this.` is prefixed. Globals (Godot global functions like `print`, `tanh`, `move_toward`; autoload singletons like `TextServerManager`) stay bare. Unknown identifiers are also left bare — usually a sign of a missing typings file.
 

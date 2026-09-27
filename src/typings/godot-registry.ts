@@ -108,7 +108,8 @@ export class GodotClassRegistry {
 
   /**
    * Get all member names (own + inherited) for a class.
-   * Includes methods, properties, signals, and constants.
+   * Includes methods, properties, signals, constants, and enum values —
+   * GDScript reads an inherited `CONNECT_ONE_SHOT` bare, like a constant.
    */
   getAllMembers(className: string): Set<string> {
     const cached = this.allMembersCache.get(className);
@@ -124,6 +125,9 @@ export class GodotClassRegistry {
       for (const p of cls.properties) members.add(p);
       for (const s of cls.signals) members.add(s.name);
       for (const c of cls.constants) members.add(c);
+      for (const e of cls.enums) {
+        for (const v of e.values) members.add(v.name);
+      }
     }
 
     this.allMembersCache.set(className, members);
