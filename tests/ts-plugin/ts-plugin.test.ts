@@ -303,10 +303,13 @@ describe('ts-plugin: persistent cache write-through', () => {
   // to avoid blocking the tsserver event loop. Tests that inspect
   // cache.json right after `getSemanticDiagnostics` must therefore wait
   // for the write to settle. Poll the filesystem briefly rather than
-  // sleeping a fixed amount — fast on SSDs, bounded on slow CI.
+  // sleeping a fixed amount — fast on SSDs, bounded on slow CI. The
+  // bound is generous because it only matters when the write is slow:
+  // under the full suite, with other files running `tsc`, Godot and the
+  // CLI alongside, 2000 ms regularly ran out on a write that landed.
   async function waitForCacheJson(
     rootDir: string,
-    timeoutMs = 2000,
+    timeoutMs = 10_000,
   ): Promise<string> {
     const start = Date.now();
     for (;;) {
