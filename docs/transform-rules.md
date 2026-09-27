@@ -538,7 +538,7 @@ func call(fn: Callable):
     self.handlers[0].call()
 ```
 
-Direct method calls (`this.method()`) are not rewritten — a method is a name GDScript can call. Neither are engine globals: a value-type constructor (`Vector2(x, y)`, `Color(r, g, b)`) and a global function (`randf()`) name something Godot already answers to, so they keep their plain parentheses. A Callable held behind a `get` accessor is still a value, so `this.handler()` becomes `self.handler.call()`. Property access on a Callable (`fn.bind(...)`, `fn.call_deferred(...)`) is preserved verbatim. A callee that is not a name at all — `(x as any)()`, `d["fn"]()` — always goes through `.call()`: calling something that isn't a name is calling a value, and there is no other reading.
+Direct method calls (`this.method()`) are not rewritten — a method is a name GDScript can call. Neither are engine globals: a value-type constructor (`Vector2(x, y)`, `Color(r, g, b)`) and a global function (`randf()`) name something Godot already answers to, so they keep their plain parentheses. A Callable held behind a `get` accessor is still a value, so `this.handler()` becomes `self.handler.call()`. Property access on a Callable (`fn.bind(...)`, `fn.call_deferred(...)`) is preserved verbatim. With no standard TS lib loaded, these are Godot's methods, not JavaScript's: `fn.call(x)` passes `x` as an argument, and on a function-typed value it is checked against the function's own signature, as long as `strictBindCallApply` is on (see [configuration](configuration.md)). A callee that is not a name at all — `(x as any)()`, `d["fn"]()` — always goes through `.call()`: calling something that isn't a name is calling a value, and there is no other reading.
 
 ## `this` / `self`
 

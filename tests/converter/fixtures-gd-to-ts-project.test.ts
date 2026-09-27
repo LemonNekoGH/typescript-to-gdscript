@@ -15,6 +15,9 @@
  * a conversion TypeScript cannot make sense of at all — the
  * `constructor(...)` without `super()` that TS rejected on every
  * converted class, or a base class left without its import.
+ * `strictBindCallApply` stays on, as docs/configuration.md asks of a
+ * non-strict project: without it the typings' Godot `call` / `bind` on
+ * a lambda turn untyped, and `lam.call(x)` returns `unknown`.
  *
  * The fixture sources are real GDScript for the same reason: output can
  * only be judged against valid input. Scripts whose node paths type only
@@ -98,6 +101,7 @@ describe('GD → TS: the converted fixture project type-checks', () => {
           allowImportingTsExtensions: true,
           noLib: true,
           strict: false,
+          strictBindCallApply: true,
           noEmit: true,
           skipLibCheck: true,
           types: [],
