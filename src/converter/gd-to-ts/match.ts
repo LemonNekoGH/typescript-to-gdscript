@@ -20,7 +20,7 @@ import { firstSyntaxChild, syntaxChildren } from './syntax-children.ts';
 function isSimpleMatchStatement(bodyNode: SyntaxNode): boolean {
   for (const section of bodyNode.namedChildren) {
     if (section.type !== SyntaxType.PatternSection) continue;
-    const patterns = section.namedChildren.filter(
+    const patterns = syntaxChildren(section).filter(
       (c) => c.type !== SyntaxType.Body && c.type !== SyntaxType.PatternGuard,
     );
     const hasGuard = section.namedChildren.some(
@@ -102,7 +102,7 @@ function emitSimpleMatchAsSwitch(
 
     for (const section of sections) {
       const body = section.childForFieldName('body');
-      const patterns = section.namedChildren.filter(
+      const patterns = syntaxChildren(section).filter(
         (c) => c.type !== SyntaxType.Body && c.type !== SyntaxType.PatternGuard,
       );
 
@@ -161,7 +161,7 @@ export function emitMatchStatement(
 
       const body = section.childForFieldName('body');
       // Patterns are all named children except body and pattern_guard
-      const patterns = section.namedChildren.filter(
+      const patterns = syntaxChildren(section).filter(
         (c) => c.type !== SyntaxType.Body && c.type !== SyntaxType.PatternGuard,
       );
       const guard = section.namedChildren.find(

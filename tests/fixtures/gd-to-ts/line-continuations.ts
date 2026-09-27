@@ -1,12 +1,21 @@
-export class LineContinuations extends Node {
+export namespace LineContinuations {
+  export class Inner extends RefCounted {
+    count = 0;
+  }
+}
+
+export class LineContinuations extends LineContinuationsBase {
   // A `\` continuation, or a comment inside brackets, may sit between any two
   // tokens. The value after it is what matters.
+  items: Array<any> = [1, 2];
 
   after_keywords(a: int, b: int, ok: boolean): int {
     let negated = !ok;
     let minus = -a;
     let grouped = (a + b);
-    print(negated, minus, grouped);
+    let lifted_in = !!(a in this.items);
+    let lifted_eq = !(a === b);
+    print(negated, minus, grouped, lifted_in, lifted_eq);
     return a + b;
   }
 
@@ -15,8 +24,11 @@ export class LineContinuations extends Node {
     let node_name = n.name;
     let first = items[0];
     let child = n.get_children()[0];
+    let member_item = this.items[0];
+    // Inherited through a base class in another file.
+    let where = this.position;
     let listed = [1, 2];
-    print(count, node_name, first, child, listed);
+    print(count, node_name, first, child, listed, member_item, where);
   }
 
   with_comments(a: int, items: Array<any>): int {
@@ -38,6 +50,12 @@ export class LineContinuations extends Node {
           return str(rest);
         },
       }),
+      {
+        matchMany: [3, 4],
+        do: () => {
+          return 'three or four';
+        },
+      },
       (n) => ({
         match: n,
         when: gd.is(n, int),
@@ -46,6 +64,15 @@ export class LineContinuations extends Node {
         },
       }),
     ]);
+    return 'other';
+  }
+
+  in_simple_match(x: int): string {
+    switch (x) {
+      case 1:
+      case 2:
+        return 'one or two';
+    }
     return 'other';
   }
 }

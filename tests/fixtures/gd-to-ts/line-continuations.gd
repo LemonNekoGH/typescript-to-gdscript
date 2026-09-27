@@ -1,9 +1,15 @@
 extends \
-	Node
+	LineContinuationsBase
 class_name LineContinuations
 
 # A `\` continuation, or a comment inside brackets, may sit between any two
 # tokens. The value after it is what matters.
+
+class Inner extends \
+		RefCounted:
+	var count = 0
+
+var items: Array = [1, 2]
 
 
 func after_keywords(a: int, b: int, ok: bool) -> int:
@@ -13,7 +19,11 @@ func after_keywords(a: int, b: int, ok: bool) -> int:
 		a
 	var grouped = (\
 		a + b)
-	print(negated, minus, grouped)
+	var lifted_in = not \
+		a not in self.items
+	var lifted_eq = not \
+		a == b
+	print(negated, minus, grouped, lifted_in, lifted_eq)
 	return \
 		a + b
 
@@ -27,10 +37,14 @@ func in_chains(n: Node, items: Array) -> void:
 		0]
 	var child = n.get_children()[\
 		0]
+	var member_item = self.items[\
+		0]
+	# Inherited through a base class in another file.
+	var where = position
 	var listed = [\
 		1, 2]
 	print(\
-		count, node_name, first, child, listed)
+		count, node_name, first, child, listed, member_item, where)
 
 
 func with_comments(a: int, items: Array) -> int:
@@ -56,7 +70,18 @@ func in_match(x: Variant) -> String:
 				1, var \
 				rest]:
 			return str(rest)
+		3, \
+				4:
+			return 'three or four'
 		var n when \
 				n is int:
 			return 'int'
+	return 'other'
+
+
+func in_simple_match(x: int) -> String:
+	match x:
+		1, \
+				2:
+			return 'one or two'
 	return 'other'
