@@ -163,17 +163,26 @@ export function emitExpr(node: SyntaxNode, ctx: GdToTsContext): string {
     const pairNodes = node.namedChildren.filter(
       (c) => c.type === SyntaxType.Pair,
     );
+    // A Lua-style pair (`{a = 1}`) NAMES its key: GDScript reads it as the
+    // StringName `&"a"` (verified at runtime), never as the variable `a`,
+    // so it goes out exactly as `{&"a": 1}` would.
+    const isLuaPair = (p: SyntaxNode) =>
+      p.children.some((c) => !c.isNamed && c.type === '=');
+    const emitKey = (p: SyntaxNode) => {
+      const key = p.childForFieldName('left');
+      if (!key) return '';
+      return isLuaPair(p) ? `StringName('${key.text}')` : emitExpr(key, ctx);
+    };
     // Check if any key is an identifier (variable reference, not string/number literal)
     const hasIdentifierKey = pairNodes.some((p) => {
       const key = p.childForFieldName('left');
-      return key && key.type === SyntaxType.Identifier;
+      return key && key.type === SyntaxType.Identifier && !isLuaPair(p);
     });
     if (hasIdentifierKey) {
       // Use gd.dict() format for dicts with variable keys
       const entries = pairNodes.map((p) => {
-        const key = p.childForFieldName('left');
         const value = p.childForFieldName('value');
-        const keyStr = key ? emitExpr(key, ctx) : '';
+        const keyStr = emitKey(p);
         const valStr = value ? emitExpr(value, ctx) : '';
         return `[${keyStr}, ${valStr}]`;
       });
@@ -194,11 +203,12 @@ export function emitExpr(node: SyntaxNode, ctx: GdToTsContext): string {
       const pairs = pairNodes.map((p) => {
         const key = p.childForFieldName('left');
         const value = p.childForFieldName('value');
-        const keyStr = key ? emitExpr(key, ctx) : '';
+        const keyStr = emitKey(p);
         const valStr = value ? emitExpr(value, ctx) : '';
         // Wrap non-literal keys in [...]
         const isLiteral =
           key &&
+          !isLuaPair(p) &&
           (key.type === SyntaxType.String ||
             key.type === SyntaxType.Integer ||
             key.type === SyntaxType.Float);

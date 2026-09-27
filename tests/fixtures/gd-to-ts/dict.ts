@@ -21,5 +21,12 @@ export class MyClass extends Node {
       [s2.left(2)]: "value",
       [s2.left(2) + s1.left(1)]: "value",
     };
+    // A Lua-style key is a name, not a variable: `key1` here is the
+    // StringName &"key1", whatever the variable key1 holds.
+    let lua = {
+      [StringName('key1')]: "value",
+      [StringName('hp')]: 3,
+    };
+    print(dict, dict2, dict3, lua);
   }
 }

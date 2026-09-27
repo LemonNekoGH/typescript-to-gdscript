@@ -27,3 +27,8 @@ func test_dict():
 		s2.left(2): "value",
 		s2.left(2) + s1.left(1): "value",
 	}
+
+	# A Lua-style key is a name, not a variable: `key1` here is the
+	# StringName &"key1", whatever the variable key1 holds.
+	var lua = {key1 = "value", hp = 3}
+	print(dict, dict2, dict3, lua)
