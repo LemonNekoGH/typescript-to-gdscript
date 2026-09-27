@@ -8,6 +8,7 @@ import {
 } from './members.ts';
 import { escapeTsBindingName } from './identifiers.ts';
 import { emitMatchStatement } from './match.ts';
+import { firstSyntaxChild } from './syntax-children.ts';
 
 // ─── Break Resolution ────────────────────────────────────────────
 
@@ -84,7 +85,7 @@ export function emitBody(
     }
 
     if (child.type === SyntaxType.ReturnStatement) {
-      const value = child.namedChildren[0];
+      const value = firstSyntaxChild(child);
       lines.push(
         value ? `${indent}return ${emitExpr(value, ctx)};` : `${indent}return;`,
       );

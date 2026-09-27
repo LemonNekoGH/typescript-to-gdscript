@@ -8,6 +8,7 @@ import { SyntaxType, type SyntaxNode } from '../../parser/gdscript/types.ts';
 import type { GdToTsContext } from './context.ts';
 import { emitExpr } from './expressions.ts';
 import { emitBody } from './statements.ts';
+import { firstSyntaxChild, syntaxChildren } from './syntax-children.ts';
 
 /**
  * Check whether a match statement can be expressed as a plain TS `switch`:
@@ -198,7 +199,7 @@ export function emitMatchStatement(
         result += `${i1}(${bindings.join(', ')}) => ({\n`;
         result += `${i2}match: ${patternStr},\n`;
         if (hasGuard) {
-          const guardExpr = guard!.namedChildren[0];
+          const guardExpr = firstSyntaxChild(guard!);
           const guardStr = guardExpr ? emitExpr(guardExpr, ctx) : 'true';
           result += `${i2}when: ${guardStr},\n`;
         }
@@ -228,7 +229,7 @@ export function emitMatchStatement(
 /** Collect all pattern_binding identifier names from a pattern tree */
 function collectBindings(node: SyntaxNode, bindings: string[]): void {
   if (node.type === SyntaxType.PatternBinding) {
-    const ident = node.namedChildren[0];
+    const ident = firstSyntaxChild(node);
     if (ident) bindings.push(ident.text);
     return;
   }
@@ -246,7 +247,7 @@ function emitMatchPattern(node: SyntaxNode, ctx: GdToTsContext): string {
 
   // Binding: var name → just the name (it becomes an arrow param)
   if (node.type === SyntaxType.PatternBinding) {
-    const ident = node.namedChildren[0];
+    const ident = firstSyntaxChild(node);
     return ident ? ident.text : 'undefined';
   }
 
@@ -254,7 +255,7 @@ function emitMatchPattern(node: SyntaxNode, ctx: GdToTsContext): string {
   if (node.type === SyntaxType.Array) {
     const elements: string[] = [];
     let hasOpenEnding = false;
-    for (const child of node.namedChildren) {
+    for (const child of syntaxChildren(node)) {
       if (child.type === SyntaxType.PatternOpenEnding) {
         hasOpenEnding = true;
         continue;

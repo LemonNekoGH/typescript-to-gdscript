@@ -9,6 +9,7 @@ import {
 } from './context.ts';
 import { extractGdTypeName, inferExprTypeStatic } from './type-inference.ts';
 import { emitSourceFile } from './source-emitter.ts';
+import { firstSyntaxChild } from './syntax-children.ts';
 
 // Re-export public types
 export type { GdToTsContext } from './context.ts';
@@ -139,7 +140,7 @@ export function parseGdClassInfo(
 
   for (const child of root.namedChildren) {
     if (child.type === SyntaxType.ExtendsStatement) {
-      const typeNode = child.namedChildren[0];
+      const typeNode = firstSyntaxChild(child);
       if (typeNode) {
         extendsClass =
           typeNode.type === SyntaxType.Type

@@ -13,6 +13,7 @@ import { emitBody } from './statements.ts';
 import { emitExpr } from './expressions.ts';
 import { isReferenceType } from '../common/index.ts';
 import { escapeTsBindingName } from './identifiers.ts';
+import { firstSyntaxChild } from './syntax-children.ts';
 
 /**
  * Widen a TS type for an IN position (function parameter, setter value,
@@ -371,12 +372,12 @@ export function emitLambda(node: SyntaxNode, ctx: GdToTsContext): string {
   // Check if body is a single return expression
   if (bodyNode && bodyNode.namedChildren.length === 1) {
     const stmt = bodyNode.namedChildren[0]!;
-    if (
-      stmt.type === SyntaxType.ReturnStatement &&
-      stmt.namedChildren.length > 0
-    ) {
-      const expr = stmt.namedChildren[0]!;
-      result = `${asyncPrefix}(${params})${returnType} => ${emitExpr(expr, ctx)}`;
+    const returned =
+      stmt.type === SyntaxType.ReturnStatement
+        ? firstSyntaxChild(stmt)
+        : undefined;
+    if (returned) {
+      result = `${asyncPrefix}(${params})${returnType} => ${emitExpr(returned, ctx)}`;
     } else if (
       stmt.type === SyntaxType.ExpressionStatement &&
       stmt.namedChildren.length > 0

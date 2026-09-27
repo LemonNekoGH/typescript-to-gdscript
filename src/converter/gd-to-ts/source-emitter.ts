@@ -49,6 +49,7 @@ import {
   emitFileScopeClass,
   formatExtendsForTs,
 } from './file-scope-emitter.ts';
+import { firstSyntaxChild } from './syntax-children.ts';
 
 // ─── Source File ─────────────────────────────────────────────
 
@@ -220,7 +221,7 @@ function scanScriptClassHeader(root: SyntaxNode): ScriptClassHeader {
   for (let i = 0; i < root.namedChildren.length; i++) {
     const child = root.namedChildren[i]!;
     if (child.type === SyntaxType.ExtendsStatement) {
-      const typeNode = child.namedChildren[0];
+      const typeNode = firstSyntaxChild(child);
       if (typeNode) {
         extendsClass =
           typeNode.type === SyntaxType.Type

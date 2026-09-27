@@ -12,6 +12,7 @@ import {
 import { emitLambda } from './functions.ts';
 import { escapeTsBindingName } from './identifiers.ts';
 import { sanitizeFunctionName } from '../../typings/class-generator.ts';
+import { firstSyntaxChild, syntaxChildren } from './syntax-children.ts';
 
 // ─── Expressions ──────────────────────────────────────────────
 
@@ -228,12 +229,12 @@ export function emitExpr(node: SyntaxNode, ctx: GdToTsContext): string {
   }
 
   if (node.type === SyntaxType.AwaitExpression) {
-    const expr = node.namedChildren[0];
+    const expr = firstSyntaxChild(node);
     return `await ${expr ? emitExpr(expr, ctx) : ''}`;
   }
 
   if (node.type === SyntaxType.ParenthesizedExpression) {
-    const inner = node.namedChildren[0];
+    const inner = firstSyntaxChild(node);
     return inner ? `(${emitExpr(inner, ctx)})` : '()';
   }
 
@@ -241,7 +242,7 @@ export function emitExpr(node: SyntaxNode, ctx: GdToTsContext): string {
     // obj[key]
     const obj = node.namedChildren[0];
     const argsNode = node.childForFieldName('arguments');
-    const key = argsNode?.namedChildren[0];
+    const key = argsNode && firstSyntaxChild(argsNode);
     return `${obj ? emitExpr(obj, ctx) : ''}[${key ? emitExpr(key, ctx) : ''}]`;
   }
 
@@ -283,11 +284,13 @@ export function emitExpr(node: SyntaxNode, ctx: GdToTsContext): string {
  *
  * A comment with nothing before it — a list that opens with one — has
  * no item to attach to and is dropped: there is no legal spot for it,
- * and it carries no semantics.
+ * and it carries no semantics. A `\` line continuation carries nothing
+ * at all and is always dropped.
  */
 function emitCommaList(nodes: SyntaxNode[], ctx: GdToTsContext): string {
   const items: string[] = [];
   for (const child of nodes) {
+    if (child.type === SyntaxType.LineContinuation) continue;
     const text = emitExpr(child, ctx);
     if (child.type === SyntaxType.Comment) {
       if (items.length > 0) items[items.length - 1] += ` ${text}`;
@@ -366,7 +369,7 @@ export function emitCall(node: SyntaxNode, ctx: GdToTsContext): string {
 
 export function emitAttribute(node: SyntaxNode, ctx: GdToTsContext): string {
   // attribute node children: [object, ".", name] or [object, ".", attribute_call]
-  const children = node.namedChildren;
+  const children = syntaxChildren(node);
   if (children.length === 0) return node.text;
 
   const parts: string[] = [];
@@ -434,7 +437,7 @@ export function emitAttribute(node: SyntaxNode, ctx: GdToTsContext): string {
         child.namedChildren.find((c) => c.type === SyntaxType.Identifier)
           ?.text ?? '';
       const argsNode = child.childForFieldName('arguments');
-      const key = argsNode?.namedChildren[0];
+      const key = argsNode && firstSyntaxChild(argsNode);
       parts.push(`${attrName}[${key ? emitExpr(key, ctx) : ''}]`);
     } else if (child.type === SyntaxType.Identifier) {
       // The first chain element is the base expression — a bare local var /
@@ -568,7 +571,7 @@ export function emitBinaryOp(node: SyntaxNode, ctx: GdToTsContext): string {
     const lifted =
       left?.type === SyntaxType.UnaryOperator &&
       left.children.find((c) => !c.isNamed)?.text === 'not';
-    const operand = lifted ? left.namedChildren[0] : left;
+    const operand = lifted ? firstSyntaxChild(left) : left;
     const leftStr = operand ? emitExpr(operand, ctx) : '';
     const rightStr = right ? emitExpr(right, ctx) : '';
     const notIn = `!(${leftStr} in ${rightStr})`;
@@ -585,7 +588,7 @@ export function emitBinaryOp(node: SyntaxNode, ctx: GdToTsContext): string {
   ) {
     const unaryOp = left.children.find((c) => !c.isNamed)?.text;
     if (unaryOp === 'not') {
-      const innerLeft = left.namedChildren[0];
+      const innerLeft = firstSyntaxChild(left);
       const innerLeftStr = innerLeft ? emitExpr(innerLeft, ctx) : '';
       const rightStr = right ? emitExpr(right, ctx) : '';
       // Rebuild the comparison without `not`, then wrap with `!(...)`
@@ -729,7 +732,7 @@ function isGdBoolExpression(node: SyntaxNode): boolean {
 }
 
 export function emitUnaryOp(node: SyntaxNode, ctx: GdToTsContext): string {
-  const operand = node.namedChildren[0];
+  const operand = firstSyntaxChild(node);
   const op = node.children.find((c) => !c.isNamed)?.text ?? '';
   const tsOp = op === 'not' ? '!' : op;
   const operandStr = operand ? emitExpr(operand, ctx) : '';

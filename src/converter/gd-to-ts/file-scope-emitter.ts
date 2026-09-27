@@ -26,6 +26,7 @@ import {
   getAnnotations,
 } from './members.ts';
 import { emitExpr } from './expressions.ts';
+import { firstSyntaxChild } from './syntax-children.ts';
 
 // ─── extends helpers ─────────────────────────────────────────────
 
@@ -120,7 +121,7 @@ export function emitFileScopeClass(
   let extendsClass = '';
   for (const child of node.namedChildren) {
     if (child.type === SyntaxType.ExtendsStatement) {
-      const typeNode = child.namedChildren[0];
+      const typeNode = firstSyntaxChild(child);
       if (typeNode) {
         extendsClass =
           typeNode.type === SyntaxType.Type
