@@ -65,6 +65,8 @@ export class MyClass extends Node {
     // A `!` is erased, so it hides nothing: the cast inside still regroups.
     let asserted = gd.ops.mul(v, gd.as(n, float)!);
     let plain = gd.ops.mul(v, 2.0);
+    // A unary result is grouped too: bare, `-v.length()` negates the length.
+    let flipped_length = gd.ops.minus(v).length();
   }
 
   test_array_concat() {

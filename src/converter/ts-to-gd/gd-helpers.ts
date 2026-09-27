@@ -140,9 +140,11 @@ function emitOpsHelper(
 ): string {
   const operands = args.map((a) => emitOperand(t, a));
 
-  // Unary operators (1 arg)
-  if (method === 'plus' && operands.length === 1) return `+${operands[0]}`;
-  if (method === 'minus' && operands.length === 1) return `-${operands[0]}`;
+  // Unary operators (1 arg), grouped like the binary ones below: a bare
+  // `-v` in receiver position reads `-(v.length())`, and as the value of
+  // an `is` reads `-(v is T)`.
+  if (method === 'plus' && operands.length === 1) return `(+${operands[0]})`;
+  if (method === 'minus' && operands.length === 1) return `(-${operands[0]})`;
 
   // Binary operators (2 args)
   const binaryOpMap: Record<string, string> = {

@@ -43,5 +43,10 @@ export class MyClass extends Node {
     // looser than `is`, which would otherwise test only their last piece.
     let negated = gd.is(!c, bool);
     let text = gd.is(`a = ${a}`, String);
+    // `-`, `+` and `~` bind looser than `is` as well.
+    let negative = gd.is(-a, int);
+    // A lambda's body runs to the end of the line, so a bare one would
+    // swallow the operator after it.
+    let wrapped = gd.as(() => a, Callable);
   }
 }

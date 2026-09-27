@@ -62,6 +62,8 @@ func test_ops_operand_precedence(cond: bool, n):
 	# A `!` is erased, so it hides nothing: the cast inside still regroups.
 	var asserted = (v * (n as float))
 	var plain = (v * 2.0)
+	# A unary result is grouped too: bare, `-v.length()` negates the length.
+	var flipped_length = (-v).length()
 
 func test_array_concat():
 	var a1 = [0, 1]

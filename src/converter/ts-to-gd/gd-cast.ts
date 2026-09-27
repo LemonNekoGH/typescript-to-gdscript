@@ -96,9 +96,9 @@ function groupCast(
 }
 
 /**
- * True when this expression emits GDScript with a bare infix operator
- * at its top level, so splicing it into another operator's operand
- * slot would let the two operators regroup.
+ * True when an operator spliced around this expression's GDScript could
+ * take part of it: a bare infix operator at its top level, a prefix
+ * operator, or a lambda.
  *
  * TS parenthesizes nothing for us here: an operand of `gd.ops.mul(a, b)`
  * or the value of `gd.is(v, T)` is a call ARGUMENT, so the source needs
@@ -108,11 +108,14 @@ function groupCast(
  *
  * The erased wrappers are looked through first — `gd.as(v, T)!` emits
  * exactly what `gd.as(v, T)` does. Parentheses are not: those are
- * written back out. Counted as infix: binary and ternary expressions,
- * a template literal (emitted as `"" + str(a) + …`), a `!` (emitted as
- * `not`, which binds looser than comparison), and `gd.as` / `gd.is`.
+ * written back out. Counted: binary and ternary expressions, a template
+ * literal (emitted as `"" + str(a) + …`), `gd.as` / `gd.is`, every
+ * prefix operator — `!` is emitted as `not`, which binds looser than
+ * comparison, and `-`, `+`, `~` bind looser than `is`, so `-n is int`
+ * reads `-(n is int)` — and a lambda, whose body runs to the end of the
+ * line: `func(): return 1 as Callable` casts the `1`.
  */
-function emitsBareInfix(node: ts.Expression): boolean {
+function splicesUnsafely(node: ts.Expression): boolean {
   let inner = node;
   while (
     ts.isNonNullExpression(inner) ||
@@ -125,12 +128,12 @@ function emitsBareInfix(node: ts.Expression): boolean {
   if (
     ts.isBinaryExpression(inner) ||
     ts.isConditionalExpression(inner) ||
-    ts.isTemplateExpression(inner)
+    ts.isTemplateExpression(inner) ||
+    ts.isPrefixUnaryExpression(inner) ||
+    ts.isArrowFunction(inner) ||
+    ts.isFunctionExpression(inner)
   ) {
     return true;
-  }
-  if (ts.isPrefixUnaryExpression(inner)) {
-    return inner.operator === ts.SyntaxKind.ExclamationToken;
   }
   if (!ts.isCallExpression(inner)) return false;
   const callee = inner.expression;
@@ -148,7 +151,7 @@ export function emitOperand(
   node: ts.Expression,
 ): string {
   const text = t.emitExpression(node);
-  return emitsBareInfix(node) ? `(${text})` : text;
+  return splicesUnsafely(node) ? `(${text})` : text;
 }
 
 /**

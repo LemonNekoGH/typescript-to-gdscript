@@ -39,3 +39,8 @@ func test_is_grouping(value, c: bool, a: int, b: float):
 	# looser than `is`, which would otherwise test only their last piece.
 	var negated = (not c) is bool
 	var text = ("a = " + str(a)) is String
+	# `-`, `+` and `~` bind looser than `is` as well.
+	var negative = (-a) is int
+	# A lambda's body runs to the end of the line, so a bare one would
+	# swallow the operator after it.
+	var wrapped = (func(): return a) as Callable
