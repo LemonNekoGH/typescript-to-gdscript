@@ -15,6 +15,28 @@ export class GodotObjectNames extends GodotObject {
 
   hit = gd.signal();
 
+  // `gd.getset` falls back to its value's type when the annotation is no
+  // GDScript type, and that type goes through the same name rules.
+  inferred_held: typeof this.held = gd.getset({
+    value: this.held,
+    get: () => {
+      return this.inferred_held;
+    },
+    set: (value) => {
+      this.inferred_held = value;
+    },
+  });
+
+  inferred_plain: typeof this.plain = gd.getset({
+    value: this.plain,
+    get: () => {
+      return this.inferred_plain;
+    },
+    set: (value) => {
+      this.inferred_plain = value;
+    },
+  });
+
   take(o: GodotObject): GodotObject {
     return o;
   }

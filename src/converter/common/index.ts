@@ -2,12 +2,7 @@ import ts from 'typescript';
 
 import type { GodotClassRegistry } from '../../typings/godot-registry.ts';
 import type { ResolvedExternalPackage } from '../../external-packages/index.ts';
-import {
-  gdClassSpelling,
-  isGdTypeName,
-  isRenamedAwayClassName,
-  isUserDeclared,
-} from './gd-names.ts';
+import { classifyTypeReferenceName } from './gd-names.ts';
 
 /**
  * Pre-derived lookup sets for `in`-operator diagnostics and variant/class type
@@ -373,83 +368,6 @@ export function tsTypeNodeToGdType(
     return null;
   }
 
-  return null;
-}
-
-/**
- * Classify a TS type-reference name and decide whether it should be emitted
- * as a GDScript type annotation.
- *
- * Only types that GDScript actually has are emitted:
- *   - User / Godot `class` declarations and `enum` declarations (resolved via
- *     the TS checker — user classes resolve locally even without the Godot
- *     typings loaded).
- *   - Godot built-in types recognised *by name* from the registry: classes
- *     (`Node`, `Node2D`, …), value-type constructors (`Vector2`, `Color`,
- *     `Dictionary`, …) and global enums (`Key`, `MouseButton`, …). The
- *     name-based check is what keeps Godot types working in test/program
- *     setups that don't load the Godot `.d.ts` typings.
- *
- * Everything else — type aliases, plain interfaces, `object`-like types,
- * dotted refs that don't resolve to a class/enum (`Node.ProcessMode`,
- * `Outer.SomeIface`) and unknown / unresolved names — is omitted (the bare
- * `var x` / `func f(x)` form is the idiomatic "untyped" GD). GD type hints are
- * optional, so dropping an unverifiable type is always safe; emitting a bogus
- * one would break the `.gd`.
- *
- * Omitting is always safe; emitting an annotation GDScript doesn't recognise
- * breaks the generated `.gd`. So when no registry is available the converter
- * can't recognise Godot built-ins by name — it only emits types it can prove
- * are classes/enums (via the checker) and drops the rest, rather than risk
- * leaking an invalid type.
- */
-function classifyTypeReferenceName(
-  typeNode: ts.TypeReferenceNode,
-  name: string,
-  checker: ts.TypeChecker,
-  registry?: GodotClassRegistry,
-): string | null {
-  // Resolve the symbol, following import aliases to the real declaration so
-  // that types imported from another file are classified by what they are,
-  // not by the `ImportSpecifier` binding.
-  let symbol = checker.getSymbolAtLocation(typeNode.typeName);
-  if (symbol && symbol.flags & ts.SymbolFlags.Alias) {
-    symbol = checker.getAliasedSymbol(symbol);
-  }
-  const declarations = symbol?.getDeclarations() ?? [];
-
-  // Godot built-ins are recognised by name, BEFORE the alias rule below:
-  // the dialect spells several of them as aliases (`type bool = boolean`,
-  // `type Callable = Function`) that rule would otherwise drop. Skipped
-  // when the name is the user's own, so their `type Color` still drops.
-  //
-  // The typings rename a few engine classes that clash with JS globals:
-  // `GodotObject` is GDScript's `Object`, while TS's own `Object` type is
-  // the plain-object interface — no GDScript type at all, even though the
-  // registry knows the name.
-  if (!isUserDeclared(declarations)) {
-    if (isRenamedAwayClassName(name)) return null;
-    const gdName = gdClassSpelling(name, declarations);
-    if (isGdTypeName(gdName, registry)) return gdName;
-  }
-
-  // Type aliases have no GDScript equivalent → omit.
-  if (declarations.some(ts.isTypeAliasDeclaration)) return null;
-
-  // User / Godot `class` and `enum` declarations are valid GD types.
-  if (
-    declarations.some(
-      (d) => ts.isClassDeclaration(d) || ts.isEnumDeclaration(d),
-    )
-  ) {
-    return gdClassSpelling(name, declarations);
-  }
-
-  // Whatever is left is a non-class type (interface, `object`-like, namespace),
-  // a dotted ref we can't verify (`Node.ProcessMode`, `Outer.SomeIface`), or an
-  // unknown / unresolved name — none provably a GD type. Omit the annotation:
-  // GD type hints are optional, so dropping a type is always safe, whereas
-  // emitting a bogus one breaks the generated GDScript.
   return null;
 }
 

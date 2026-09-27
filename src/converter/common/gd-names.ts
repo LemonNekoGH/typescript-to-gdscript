@@ -74,3 +74,95 @@ export function gdClassSpelling(
 export function isRenamedAwayClassName(name: string): boolean {
   return CLASS_NAME_CONFLICTS.has(name);
 }
+
+/**
+ * What a name means as a GDScript type when the name alone decides it:
+ * the GDScript spelling of a type the registry knows (`GodotObject` goes
+ * out as `Object`), or `null` for a name the typings gave away — TS's own
+ * `Object` type is the plain-object interface, no GDScript type at all,
+ * although the registry knows an `Object`. `undefined` when the name
+ * decides nothing: it is the user's own, or no GDScript type has it.
+ *
+ * Every path that turns a TS name into a GD annotation goes through here
+ * — a WRITTEN type (`classifyTypeReferenceName`) and the spelling of a
+ * resolved one (`gd.getset`'s inferred field type) — so they cannot
+ * disagree about the renamed classes.
+ */
+export function engineTypeName(
+  name: string,
+  declarations: readonly ts.Declaration[],
+  registry?: GodotClassRegistry,
+): string | null | undefined {
+  if (isUserDeclared(declarations)) return undefined;
+  if (isRenamedAwayClassName(name)) return null;
+  const gdName = gdClassSpelling(name, declarations);
+  return isGdTypeName(gdName, registry) ? gdName : undefined;
+}
+
+/**
+ * Classify a TS type-reference name and decide whether it should be emitted
+ * as a GDScript type annotation.
+ *
+ * Only types that GDScript actually has are emitted:
+ *   - User / Godot `class` declarations and `enum` declarations (resolved via
+ *     the TS checker — user classes resolve locally even without the Godot
+ *     typings loaded).
+ *   - Godot built-in types recognised *by name* from the registry: classes
+ *     (`Node`, `Node2D`, …), value-type constructors (`Vector2`, `Color`,
+ *     `Dictionary`, …) and global enums (`Key`, `MouseButton`, …). The
+ *     name-based check is what keeps Godot types working in test/program
+ *     setups that don't load the Godot `.d.ts` typings.
+ *
+ * Everything else — type aliases, plain interfaces, `object`-like types,
+ * dotted refs that don't resolve to a class/enum (`Node.ProcessMode`,
+ * `Outer.SomeIface`) and unknown / unresolved names — is omitted (the bare
+ * `var x` / `func f(x)` form is the idiomatic "untyped" GD). GD type hints are
+ * optional, so dropping an unverifiable type is always safe; emitting a bogus
+ * one would break the `.gd`.
+ *
+ * Omitting is always safe; emitting an annotation GDScript doesn't recognise
+ * breaks the generated `.gd`. So when no registry is available the converter
+ * can't recognise Godot built-ins by name — it only emits types it can prove
+ * are classes/enums (via the checker) and drops the rest, rather than risk
+ * leaking an invalid type.
+ */
+export function classifyTypeReferenceName(
+  typeNode: ts.TypeReferenceNode,
+  name: string,
+  checker: ts.TypeChecker,
+  registry?: GodotClassRegistry,
+): string | null {
+  // Resolve the symbol, following import aliases to the real declaration so
+  // that types imported from another file are classified by what they are,
+  // not by the `ImportSpecifier` binding.
+  let symbol = checker.getSymbolAtLocation(typeNode.typeName);
+  if (symbol && symbol.flags & ts.SymbolFlags.Alias) {
+    symbol = checker.getAliasedSymbol(symbol);
+  }
+  const declarations = symbol?.getDeclarations() ?? [];
+
+  // Godot built-ins are recognised by name, BEFORE the alias rule below:
+  // the dialect spells several of them as aliases (`type bool = boolean`,
+  // `type Callable = Function`) that rule would otherwise drop.
+  const engine = engineTypeName(name, declarations, registry);
+  if (engine !== undefined) return engine;
+
+  // Type aliases have no GDScript equivalent → omit.
+  if (declarations.some(ts.isTypeAliasDeclaration)) return null;
+
+  // User / Godot `class` and `enum` declarations are valid GD types.
+  if (
+    declarations.some(
+      (d) => ts.isClassDeclaration(d) || ts.isEnumDeclaration(d),
+    )
+  ) {
+    return gdClassSpelling(name, declarations);
+  }
+
+  // Whatever is left is a non-class type (interface, `object`-like, namespace),
+  // a dotted ref we can't verify (`Node.ProcessMode`, `Outer.SomeIface`), or an
+  // unknown / unresolved name — none provably a GD type. Omit the annotation:
+  // GD type hints are optional, so dropping a type is always safe, whereas
+  // emitting a bogus one breaks the generated GDScript.
+  return null;
+}

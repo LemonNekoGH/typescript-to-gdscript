@@ -28,7 +28,7 @@
 
 import ts from 'typescript';
 import { tsTypeNodeToGdType } from '../common/index.ts';
-import { isGdTypeName, isUserDeclared } from '../common/gd-names.ts';
+import { engineTypeName } from '../common/gd-names.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
 
 export function visitGdGetsetProperty(
@@ -313,21 +313,27 @@ function provableGdType(
   node: ts.PropertyDeclaration,
   t: TransformerDelegate,
 ): string | null {
+  // `T | null` is read as `T`: a union has no symbol of its own, and the
+  // name rules below need `T`'s declarations, not just its spelling.
+  const nonNull = t.ctx.checker.getNonNullableType(type);
   const name = t.ctx.checker
-    .typeToString(type, node, ts.TypeFormatFlags.NoTruncation)
-    .replace(/\s*\|\s*(null|undefined)$/, '')
+    .typeToString(nonNull, node, ts.TypeFormatFlags.NoTruncation)
     .trim();
 
   if (name === 'number') return 'float';
   if (name === 'boolean') return 'bool';
   if (name === 'string') return 'String';
 
-  // A name the user declared is theirs, whatever Godot calls it — the
-  // same gate `classifyTypeReferenceName` applies to written types.
-  const symbol = type.aliasSymbol ?? type.getSymbol();
-  if (isUserDeclared(symbol?.getDeclarations() ?? [])) return null;
-
-  return isGdTypeName(name, t.ctx.registry) ? name : null;
+  // The same name rules a written type goes through: the user's own
+  // name is theirs, and the renamed engine classes are respelled —
+  // `GodotObject` is GDScript's `Object`, while TS's `Object` is the
+  // plain-object interface, which a GD `Object` hint would refuse at
+  // runtime (a Dictionary is no Object).
+  const symbol = nonNull.aliasSymbol ?? nonNull.getSymbol();
+  return (
+    engineTypeName(name, symbol?.getDeclarations() ?? [], t.ctx.registry) ??
+    null
+  );
 }
 
 function extractFunctionRefName(expr: ts.Expression): string | null {
