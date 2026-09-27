@@ -9,6 +9,7 @@ import {
   GodotClassRegistry,
   parseGodotVersion,
 } from '../../src/typings/godot-registry.js';
+import { godotSourceDocDirs } from '../../src/typings/xml-parser.js';
 
 const GODOT_DOCS_DIR = join(__dirname, '../../vendor/godot/doc/classes');
 const GODOT_GDSCRIPT_DOCS_DIR = join(
@@ -464,6 +465,27 @@ describe('Godot Registry: Version Detection', () => {
     expect(ver.minor).toBeGreaterThanOrEqual(0);
     expect(ver.short).toMatch(/^\d+\.\d+$/);
     expect(ver.full).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+});
+
+describe('Godot Registry: godotSourceDocDirs', () => {
+  const GODOT_SOURCE = join(__dirname, '../../vendor/godot');
+
+  it('reads doc/classes first, then every module in name order', () => {
+    const dirs = godotSourceDocDirs(GODOT_SOURCE).map((d) =>
+      d.replace(/\\/g, '/'),
+    );
+    expect(dirs[0]).toMatch(/\/doc\/classes$/);
+    const modules = dirs.slice(1).map((d) => d.split('/').at(-2)!);
+    expect(modules).toEqual([...modules].sort());
+    // The modules hold much of the API — the reason they are read at all.
+    for (const mod of ['gdscript', 'regex', 'csg', 'multiplayer', 'noise']) {
+      expect(modules).toContain(mod);
+    }
+  });
+
+  it('rejects a directory that is not a Godot source tree', () => {
+    expect(() => godotSourceDocDirs(tmpdir())).toThrow(/no doc\/classes/);
   });
 });
 

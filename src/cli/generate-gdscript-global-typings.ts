@@ -4,6 +4,7 @@ import { resolve, join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { generateGodotDocsTypings } from '../typings/godot-docs.ts';
 import { parseGodotVersion } from '../typings/godot-registry.ts';
+import { godotSourceDocDirs } from '../typings/xml-parser.ts';
 import { writeTypingsIndexDts } from './helpers.ts';
 
 /**
@@ -89,8 +90,12 @@ export function registerGenerateGdscriptGlobalTypingsCommand(
       'Generate TypeScript typings and class registry from Godot docs',
     )
     .option(
+      '--godot-source <dir>',
+      'A Godot source tree. Reads its whole class reference: `doc/classes/` plus every `modules/<module>/doc_classes/` — most of the API (RegEx, CSG, GridMap, the multiplayer nodes, …) is documented in the modules.',
+    )
+    .option(
       '--docs-dir <dirs...>',
-      'Godot XML class documentation directories. Accepts one or more paths — Godot ships docs across `doc/classes/` and `modules/<module>/doc_classes/` (notably `modules/gdscript/doc_classes/` for `@GDScript.xml`). Pass every dir whose XMLs you want included; later dirs override earlier ones for same-named classes.',
+      'Godot XML class documentation directories, for a layout `--godot-source` does not describe. Accepts one or more paths; later dirs override earlier ones for same-named classes, and they come after the `--godot-source` dirs.',
     )
     .option('--output-dir <dir>', 'Root typings output directory', 'typings')
     .option(
@@ -102,15 +107,25 @@ export function registerGenerateGdscriptGlobalTypingsCommand(
       // Variadic options collect into an array; commander gives us
       // either an array (when present), `undefined` (omitted), or
       // `true` (flag passed without a value — invalid here).
-      const rawDocsDirs: unknown = opts.docsDir;
+      const rawDocsDirs: unknown = opts.docsDir ?? [];
       if (
         !Array.isArray(rawDocsDirs) ||
-        rawDocsDirs.length === 0 ||
         !rawDocsDirs.every((d) => typeof d === 'string')
       ) {
-        fail('--docs-dir is required (one or more directories)');
+        fail('--docs-dir takes one or more directories');
       }
-      const docsDirs = rawDocsDirs.map((d) => resolve(d));
+      let sourceDirs: string[] = [];
+      if (typeof opts.godotSource === 'string') {
+        try {
+          sourceDirs = godotSourceDocDirs(resolve(opts.godotSource));
+        } catch (err) {
+          fail(err instanceof Error ? err.message : String(err));
+        }
+      }
+      const docsDirs = [...sourceDirs, ...rawDocsDirs.map((d) => resolve(d))];
+      if (docsDirs.length === 0) {
+        fail('pass --godot-source <dir> or --docs-dir <dirs...>');
+      }
 
       // Validate each path early. Variadic options consume positional
       // values until the next flag, so a stray non-dir argument (e.g.

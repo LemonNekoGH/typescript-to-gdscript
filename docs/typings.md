@@ -190,29 +190,28 @@ This command is automatically called by `initial-convert-gd-to-ts` and `watch` (
 
 Generate the bundled Godot **engine class** typings and class registry from Godot's XML class docs. The Godot version is auto-detected from `version.py` next to the docs (or `vendor/godot/version.py`).
 
-`--docs-dir` is **variadic** — pass every XML directory whose classes you want included. Godot ships docs across several locations (`doc/classes/` for the core, `modules/<module>/doc_classes/` for per-module additions like `@GDScript.xml`); listing them all in one invocation merges them into a single typings tree. Later dirs override earlier ones for same-named classes.
+Point `--godot-source` at a Godot source tree and it reads the whole class reference: `doc/classes/` for the core plus every `modules/<module>/doc_classes/`. The modules matter — `RegEx`, the CSG nodes, `GridMap`, `MultiplayerSpawner`, `FastNoiseLite`, the Ogg and MP3 streams and more are documented there, not in `doc/classes/`.
 
-Tip: place `--docs-dir` _last_ on the command line. Variadic options consume every following positional value until the next flag, so any options that come after will be wrongly absorbed.
+`--docs-dir` takes extra XML directories for a layout `--godot-source` doesn't describe. It is **variadic**, so place it _last_ on the command line — it consumes every following positional value until the next flag. Later dirs override earlier ones for same-named classes.
 
 Options:
 
-- `--docs-dir <dirs...>` — Godot XML class documentation directories (required, one or more).
+- `--godot-source <dir>` — A Godot source tree; reads `doc/classes/` and every `modules/*/doc_classes/`.
+- `--docs-dir <dirs...>` — Extra Godot XML class documentation directories. One of the two options is required.
 - `--output-dir <dir>` — Root typings output directory (default: `typings`).
 - `--override-dir <dir>` — User override directory for `.d.ts` files and `non-nullable.json` (combined with bundled defaults).
 - `--no-default-overrides` — Disable the bundled default overrides.
 
 ### Using it for a custom Godot build
 
-The Godot source tree contains the class XML you need under `doc/classes/` (core) and `modules/<name>/doc_classes/` (per-module / custom classes). Generate typings into a folder you control, then point both `tsconfig.json` and `tstogd.json` at it.
+The Godot source tree contains the class XML you need under `doc/classes/` (core) and `modules/<name>/doc_classes/` (per-module / custom classes) — `--godot-source` reads both, your custom modules included. Generate typings into a folder you control, then point both `tsconfig.json` and `tstogd.json` at it.
 
 **1. Generate the typings from your Godot's docs.** Pick an output directory outside `node_modules` (so it survives reinstalls), e.g. `_godot-typings/`:
 
 ```bash
 tstogd generate-gdscript-global-typings \
   --output-dir _godot-typings \
-  --docs-dir /path/to/your-godot/doc/classes \
-            /path/to/your-godot/modules/gdscript/doc_classes \
-            /path/to/your-godot/modules/your_custom_module/doc_classes
+  --godot-source /path/to/your-godot
 ```
 
 This writes `_godot-typings/classes/`, `_godot-typings/godot-class-registry.json`, and copies the static `globals/` + `index.d.ts` into it — a complete, self-contained typings tree.
@@ -268,7 +267,7 @@ Godot's XML docs don't capture everything TypeScript wants — some methods are 
 tstogd generate-gdscript-global-typings \
   --output-dir _godot-typings \
   --override-dir my-overrides \
-  --docs-dir /path/to/your-godot/doc/classes
+  --godot-source /path/to/your-godot
 ```
 
 Your directory is **combined with the bundled defaults** (defaults loaded first, your dir second). Pass `--no-default-overrides` to drop the bundled set entirely and use only yours. Conflicts resolve **by declaration name**: if both you and the bundled set override the same class `X`, your declaration of `X` replaces the bundled one _as a whole_ (re-list any bundled members you still want). Classes you don't touch keep their bundled overrides. An override directory can contain two kinds of files:

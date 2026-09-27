@@ -3,12 +3,10 @@ import { join } from 'path';
 import { readFileSync, mkdtempSync, rmSync, readdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { generateGodotDocsTypings } from '../../src/typings/godot-docs.js';
+import { godotSourceDocDirs } from '../../src/typings/xml-parser.js';
 
-const GODOT_DOCS_DIR = join(__dirname, '../../vendor/godot/doc/classes');
-const GODOT_GDSCRIPT_DOCS_DIR = join(
-  __dirname,
-  '../../vendor/godot/modules/gdscript/doc_classes',
-);
+// The same class reference `yarn generate:godot-typings` reads.
+const GODOT_DOC_DIRS = godotSourceDocDirs(join(__dirname, '../../vendor/godot'));
 const OVERRIDE_DIR = join(__dirname, '../../typings-overrides');
 const VERSION_CLASSES_DIR = join(__dirname, '../../typings/classes');
 
@@ -18,7 +16,7 @@ describe('Godot Docs: typings generation', () => {
 
     try {
       generateGodotDocsTypings({
-        classDocsDir: [GODOT_DOCS_DIR, GODOT_GDSCRIPT_DOCS_DIR],
+        classDocsDir: GODOT_DOC_DIRS,
         outputDir: tmpDir,
         overrideDirs: [OVERRIDE_DIR],
       });

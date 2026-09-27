@@ -206,12 +206,14 @@ Generate the bundled Godot **engine class** typings (`classes/` + `godot-class-r
 ```bash
 tstogd generate-gdscript-global-typings \
   --output-dir typings \
-  --docs-dir vendor/godot/doc/classes vendor/godot/modules/gdscript/doc_classes
+  --godot-source vendor/godot
 ```
 
 Options:
 
-- `--docs-dir <dirs...>` — **Required.** One or more Godot XML doc directories. Later dirs override earlier ones for same-named classes. Place this flag **last** (variadic — it consumes following positionals).
+- `--godot-source <dir>` — A Godot source tree. Reads its whole class reference: `doc/classes/` plus every `modules/<module>/doc_classes/`, where much of the API lives (`RegEx`, CSG, `GridMap`, the multiplayer nodes, …).
+- `--docs-dir <dirs...>` — Extra Godot XML doc directories, for a layout `--godot-source` doesn't describe. Later dirs override earlier ones for same-named classes. Place this flag **last** (variadic — it consumes following positionals).
+- One of the two is required.
 - `--output-dir <dir>` — Root typings output directory (default: `typings`).
 - `--override-dir <dir>` — User override directory for `.d.ts` files + `non-nullable.json` (combined with bundled defaults).
 - `--no-default-overrides` — Disable the bundled default overrides.

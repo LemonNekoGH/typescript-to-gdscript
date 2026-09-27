@@ -3,7 +3,7 @@
  * Parses Godot's XML class reference files into structured data.
  */
 
-import { readFileSync, readdirSync } from 'fs';
+import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import type { GodotEnumInfo } from './godot-registry.ts';
 
@@ -395,4 +395,32 @@ export function parseAllClassXmls(
   }
 
   return classes;
+}
+
+/**
+ * Every class-reference directory in a Godot source tree: `doc/classes`
+ * first, then each `modules/<name>/doc_classes`, sorted by module name so
+ * the result does not depend on directory-listing order.
+ *
+ * Godot documents most of its API in the modules, not in `doc/classes` —
+ * `RegEx`, the CSG nodes, `GridMap`, `MultiplayerSpawner`, `FastNoiseLite`,
+ * the Ogg/MP3 streams, `WebSocketPeer` all live there — so a list that
+ * names only `doc/classes` plus `modules/gdscript/doc_classes` leaves out
+ * hundreds of classes. The tree is read rather than a list kept.
+ */
+export function godotSourceDocDirs(godotSourceDir: string): string[] {
+  const core = join(godotSourceDir, 'doc', 'classes');
+  if (!existsSync(core)) {
+    throw new Error(
+      `Not a Godot source tree: ${godotSourceDir} has no doc/classes directory`,
+    );
+  }
+  const modulesDir = join(godotSourceDir, 'modules');
+  const moduleDirs = existsSync(modulesDir)
+    ? readdirSync(modulesDir)
+        .sort()
+        .map((name) => join(modulesDir, name, 'doc_classes'))
+        .filter((dir) => existsSync(dir))
+    : [];
+  return [core, ...moduleDirs];
 }
