@@ -1,6 +1,8 @@
 extends Node
 class_name ControlFlow
 
+var health: int = 100
+
 func test_if():
 	if health > 50:
 		print("healthy")

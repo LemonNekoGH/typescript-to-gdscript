@@ -14,15 +14,15 @@ var a1 = [0, 1]
 var a2 = ['a', 'b']
 
 func test_operators():
-	var a: int = 10
-	var b: int = 3
-	var c: bool = a > b and a != 0
-	var d: bool = a < b or b == 0
-	var e: bool = not c
-	var f: int = a + b
-	var g: float = a / b
-	var h: int = a % b
-	var i: bool = a > b and not a == 0
+    var a: int = 10
+    var b: int = 3
+    var c: bool = a > b and a != 0
+    var d: bool = a < b or b == 0
+    var e: bool = not c
+    var f: int = a + b
+    var g: float = a / b
+    var h: int = a % b
+    var i: bool = a > b and not a == 0
 
 
 func test_vector_math():
@@ -35,7 +35,7 @@ func test_multiple_vector_math():
     var v3 = v1 + v2 + v1
     var v4 = v1 * v2 - v1
     var v5 = v1 - v2 * v2 + v1 / v2
-    var v6 = v1 - 2 * 1 + v1 / v2
+    var v6 = v1 - v2 * 1 + v1 / v2
     var _a1 = a1 + a2
     var _a2 = get_tree().get_nodes_in_group("a") + get_tree().get_nodes_in_group("b")
     for n in get_tree().get_nodes_in_group("a") + get_tree().get_nodes_in_group("b"):

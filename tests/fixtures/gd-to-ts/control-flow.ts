@@ -1,8 +1,10 @@
 export class ControlFlow extends Node {
+  health: int = 100;
+
   test_if() {
-    if (health > 50) {
+    if (this.health > 50) {
       print("healthy");
-    } else if (health > 20) {
+    } else if (this.health > 20) {
       print("wounded");
     } else {
       print("critical");

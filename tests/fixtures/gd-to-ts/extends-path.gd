@@ -1,4 +1,4 @@
-extends "res://some_script.gd"
+extends "res://const.gd"
 
 var value: int = 42
 

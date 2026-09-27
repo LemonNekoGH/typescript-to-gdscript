@@ -8,9 +8,9 @@ func run():
     super.print_data()
     tanh(1.1)
     get_joint_bone()
-    add_spacer.call()
-    add_spacer()
-    add_recent_preset()
+    add_spacer.call(false)
+    add_spacer(false)
+    add_recent_preset(Color.RED)
     var v1 = vertical
     var v2 = TextServerManager
 

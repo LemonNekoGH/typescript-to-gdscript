@@ -1,6 +1,8 @@
 extends Node
 class_name Expressions
 
+var health: int = 100
+
 func test_expressions():
 	var arr = [1, 2, 3]
 	var dict = {"key": "value", "num": 42}

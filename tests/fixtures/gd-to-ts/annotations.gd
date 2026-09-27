@@ -6,7 +6,7 @@ const v = 0
 
 @export_group("group")
 @export var health: int = 100
-@export_file var name: String
+@export_file var file_name: String
 @export_file("*.txt") var info: String
 @onready var label: Label = $Label
 

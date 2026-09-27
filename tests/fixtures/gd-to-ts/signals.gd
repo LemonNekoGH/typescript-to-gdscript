@@ -1,6 +1,8 @@
 extends Node
 class_name Signals
 
+var health: int = 100
+
 signal health_changed(old_value: int, new_value: int)
 signal died
 signal score_updated(score: float)

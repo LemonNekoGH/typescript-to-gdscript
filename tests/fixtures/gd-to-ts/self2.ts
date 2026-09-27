@@ -6,9 +6,9 @@ export class Self2 extends Self {
     super.print_data();
     tanh(1.1);
     get_joint_bone();
-    this.add_spacer.call();
-    this.add_spacer();
-    this.add_recent_preset();
+    this.add_spacer.call(false);
+    this.add_spacer(false);
+    this.add_recent_preset(Color.RED);
     let v1 = this.vertical;
     let v2 = TextServerManager;
   }
