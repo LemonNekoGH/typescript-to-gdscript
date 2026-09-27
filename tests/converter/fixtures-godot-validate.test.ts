@@ -52,25 +52,22 @@ const SKIP = new Map<string, string>([
     'preloads a sibling .gd that does not exist in a one-file project',
   ],
   [
-    'extends-path',
-    '`extends "res://super-script-parent.gd"` points at a sibling fixture',
-  ],
-  [
     'gd-eval-comments',
     'preloads a sibling .gd that does not exist in a one-file project',
   ],
-  [
-    'super-script-child',
-    'extends the sibling fixture `SuperScriptParent`, which a one-file project does not have',
-  ],
-  [
-    'super-preload-child',
-    '`extends "res://super-script-parent.gd"` points at a sibling fixture',
-  ],
-  [
-    'super-global-child',
-    'extends the sibling fixture `SuperScriptParent`, which a one-file project does not have',
-  ],
+]);
+
+/**
+ * Sibling fixtures a fixture's output refers to — by `class_name` or by
+ * `res://` path — copied into its project, so it is checked against the
+ * script it extends rather than skipped for not having one.
+ */
+const SIBLINGS = new Map<string, string[]>([
+  ['extends-path', ['super-script-parent']],
+  ['super-script-child', ['super-script-parent']],
+  ['super-preload-child', ['super-script-parent']],
+  ['super-global-child', ['super-script-parent']],
+  ['super-unknown-child', ['super-addon-base']],
 ]);
 
 const FIXTURES = readdirSync(FIXTURES_DIR)
@@ -100,10 +97,12 @@ async function setupProject(fixtureName: string): Promise<string> {
       'config/name="Fixture"',
     ].join('\n'),
   );
-  copyFileSync(
-    join(FIXTURES_DIR, `${fixtureName}.gd`),
-    join(projectDir, `${fixtureName}.gd`),
-  );
+  for (const name of [fixtureName, ...(SIBLINGS.get(fixtureName) ?? [])]) {
+    copyFileSync(
+      join(FIXTURES_DIR, `${name}.gd`),
+      join(projectDir, `${name}.gd`),
+    );
+  }
   try {
     await execFileAsync(
       GODOT_PATH,
