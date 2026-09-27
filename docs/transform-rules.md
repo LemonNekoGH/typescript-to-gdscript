@@ -63,7 +63,7 @@ export abstract class Player extends CharacterBody2D {
   @exports speed: float = 200.0;
   @export_range(0, 100) health: int = 100;
   @export_group('Stats') damage: int = 10;
-  @onready sprite: Sprite2D;
+  @onready sprite: Sprite2D = this.get_node('Sprite2D');
 
   // Signals — named tuple labels become GD arg names
   health_changed = gd.signal<[from: int, to: int]>();
@@ -232,7 +232,7 @@ var health: int = 100
 @export_group("Stats")
 var damage: int = 10
 @onready
-var sprite: Sprite2D
+var sprite: Sprite2D = self.get_node("Sprite2D")
 # Signals — named tuple labels become GD arg names
 signal health_changed(from: int, to: int)
 signal hit_at(arg1: int, arg2: int)
@@ -386,6 +386,19 @@ A type annotation (`x: T`, `func f() -> T`, `var x: T`) is only emitted when `T`
 | `TSOnly<T>`                                          | **omitted**   | Explicit opt-out — keeps the type on the TS side and out of the `.gd`.                                                                                                                                                                                                                  |
 
 The guiding principle: GD type hints are **optional**, so the converter only emits a type it can prove is valid GDScript and drops anything it can't — dropping a type is always safe, emitting a wrong one breaks the `.gd`. Godot built-ins are matched by **name** against the class registry (so they keep their annotation even when the Godot `.d.ts` typings aren't loaded); user types are classified by resolving their declaration through the TS checker.
+
+## Fields without an initializer
+
+GDScript gives every `var` a value up front — `null` for an object, `0` / `false` / `Vector2()` for a value type. The recommended `strict` config flags a TS field with no initializer (`TS2564`), and for an object type it has a point: `target: Node2D` promises a node where GDScript starts with `null`. Write the form that says what actually happens:
+
+```typescript
+@onready sprite: Sprite2D = this.get_node('Sprite2D'); // @onready exists to defer an initializer
+@exports target!: Node2D; // set before use — by the editor, or in _ready()
+hp: int = 0; // a value type: write the default GDScript uses anyway
+cached: Node | null = null; // may really be absent
+```
+
+The `!` is TypeScript-only and disappears from the `.gd`. These are the forms [GD → TS migration](./gd-to-ts-migration.md) produces too, so hand-written and migrated code read alike.
 
 ## Operators
 
@@ -685,7 +698,7 @@ Decorators are written as bare global names declared in `typings/classes/_global
 export class Player extends Node {
   @exports speed: float = 200.0; // ← note plural; see below
   @export_range(0, 100) health: int = 100;
-  @onready sprite: Sprite2D;
+  @onready sprite: Sprite2D = this.get_node('Sprite2D');
 }
 ```
 
