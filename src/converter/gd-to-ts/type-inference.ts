@@ -1,4 +1,5 @@
 import { SyntaxType, type SyntaxNode } from '../../parser/gdscript/types.ts';
+import { sanitizeClassName } from '../../typings/type-mapping.ts';
 import type { GodotClassRegistry } from '../../typings/godot-registry.ts';
 import type { GdToTsContext } from './context.ts';
 import { escapeUnderscoreClassName } from '../common/index.ts';
@@ -240,8 +241,11 @@ export function gdTypeToTs(gdType: string): string | null {
         const tsValue = value ? (gdTypeToTs(value) ?? value) : 'unknown';
         return `Dictionary<${tsKey}, ${tsValue}>`;
       }
-      // Class type or unknown — keep as-is
-      return gdType;
+      // Class type or unknown — keep as-is, except an engine class the
+      // typings renamed to dodge a JS global: GDScript's `Object` is TS's
+      // `GodotObject`, and TS's own `Object` type is the plain-object
+      // interface, a different thing entirely.
+      return sanitizeClassName(gdType);
   }
 }
 

@@ -373,6 +373,8 @@ Lowercase TypeScript primitive names map to GDScript's PascalCase value-type nam
 
 TypeScript already owns the name `Object`, so the typings call Godot's base class `GodotObject`. Write `GodotObject` as a type (`node: GodotObject`); it goes out as `Object`. As a value, `Object` is the engine class in TS too, so `Object.CONNECT_ONE_SHOT` reads the same in both languages. TypeScript's own `Object` type is the plain-object interface, which has no GDScript type, so an annotation with it is dropped.
 
+Converting GDScript to TypeScript does the reverse: every `Object` in a type position (annotations, returns, signal arguments, `Array[Object]`) becomes `GodotObject`, while `Object.new()`, `is Object`, `as Object`, and `extends Object` keep `Object`.
+
 ## Type annotations — what gets emitted
 
 A type annotation (`x: T`, `func f() -> T`, `var x: T`) is only emitted when `T` is something GDScript actually has. The converter classifies the referenced type and **drops the annotation** (emitting the bare, untyped `var x` / `func f(x)` form) for anything without a GD equivalent:
