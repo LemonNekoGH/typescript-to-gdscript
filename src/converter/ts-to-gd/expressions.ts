@@ -1,8 +1,7 @@
 import ts from 'typescript';
 import { classifyInRhsType } from './diagnostics.ts';
+import { tryEmitGdAs, tryEmitGdIs } from './gd-cast.ts';
 import {
-  tryEmitGdAs,
-  tryEmitGdIs,
   tryEmitGdUnspellableGlobal,
   tryEmitGdDict,
   tryEmitGdOps,
