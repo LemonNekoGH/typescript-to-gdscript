@@ -100,12 +100,14 @@ export function simplifyTypeName(type: string): string {
 
 /**
  * The value an assignment-like diagnostic is about. Some point at the
- * LHS or a keyword rather than the value: a variable or property name
- * (→ its initializer), an assignment's left side (→ its right side), a
+ * LHS or a keyword rather than the value: a parameter, whose whole
+ * declaration TypeScript spans (→ its default), a variable or property
+ * name (→ its initializer), an assignment's left side (→ its right side), a
  * `return` keyword (→ the returned expression). Anything else is the
  * value already.
  */
 export function assignedValueNode(node: ts.Node): ts.Node {
+  if (ts.isParameter(node) && node.initializer) return node.initializer;
   const parent = node.parent;
   if (
     ts.isIdentifier(node) &&

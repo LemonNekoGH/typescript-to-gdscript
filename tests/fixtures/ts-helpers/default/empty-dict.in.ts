@@ -7,6 +7,10 @@ export class TestEmptyDict extends Node {
   by_name: Dictionary<string, int> = {};
   untyped: Dictionary = {};
 
+  take(d: Dictionary<Node, int> = {}): void {
+    print(d);
+  }
+
   fresh(): Dictionary<Node, float> {
     let local: Dictionary<Node, float> = {};
     local = {};

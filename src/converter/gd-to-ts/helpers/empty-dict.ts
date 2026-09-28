@@ -19,8 +19,23 @@ import {
   findNodeAt,
 } from './explicit-convert.ts';
 
-const EMPTY_LITERAL_INTO_TYPED_DICT =
-  /type '\{\}' is not assignable to (?:parameter of )?type 'DictionaryKeyMethods</i;
+/**
+ * True when the value has to be a typed-key dictionary. Read from the
+ * checker, not the diagnostic's wording, which changes across TypeScript
+ * versions and locales. A bare `Dictionary` is the same interface, but
+ * `{}` fits that one and draws no diagnostic to get here.
+ */
+function expectsKeyMethodsDictionary(
+  checker: ts.TypeChecker,
+  node: ts.Expression,
+): boolean {
+  const type = checker.getContextualType(node);
+  if (!type) return false;
+  const parts = type.isUnion() ? type.types : [type];
+  return parts.some(
+    (part) => part.getSymbol()?.getName() === 'DictionaryKeyMethods',
+  );
+}
 
 /** Rewrite each `{}` TypeScript refuses as a typed dictionary to `gd.dict([])`. */
 export function collectEmptyDictFixes(
@@ -28,6 +43,7 @@ export function collectEmptyDictFixes(
   filePaths: Set<string>,
 ): Map<string, SourceFix[]> {
   const fixesByFile = new Map<string, SourceFix[]>();
+  const checker = program.getTypeChecker();
 
   for (const sourceFile of program.getSourceFiles()) {
     if (!filePaths.has(sourceFile.fileName)) continue;
@@ -36,8 +52,6 @@ export function collectEmptyDictFixes(
     for (const diag of program.getSemanticDiagnostics(sourceFile)) {
       if (!TS_ASSIGNMENT_ERROR_CODES.has(diag.code)) continue;
       if (diag.start === undefined || diag.length === undefined) continue;
-      const text = ts.flattenDiagnosticMessageText(diag.messageText, '\n');
-      if (!EMPTY_LITERAL_INTO_TYPED_DICT.test(text)) continue;
 
       const found = findNodeAt(sourceFile, diag.start, diag.length);
       if (!found) continue;
@@ -45,6 +59,7 @@ export function collectEmptyDictFixes(
       if (!ts.isObjectLiteralExpression(node) || node.properties.length > 0) {
         continue;
       }
+      if (!expectsKeyMethodsDictionary(checker, node)) continue;
       fixes.push({
         start: node.getStart(sourceFile),
         end: node.getEnd(),
