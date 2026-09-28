@@ -10,6 +10,9 @@ class Inner extends \
 	var count = 0
 
 var items: Array = [1, 2]
+# A type may run over lines inside its brackets, too.
+var by_name: Dictionary[String, \
+	Object] = {}
 
 
 func after_keywords(a: int, b: int, ok: bool) -> int:
@@ -47,7 +50,8 @@ func in_chains(n: Node, items: Array) -> void:
 		count, node_name, first, child, listed, member_item, where)
 
 
-func with_comments(a: int, items: Array) -> int:
+func with_comments(a: int, items: Array[\
+		int]) -> int:
 	var grouped = (
 		# leading comment
 		a)

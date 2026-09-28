@@ -11,6 +11,7 @@ import { emitExpr } from './expressions.ts';
 import { emitBody } from './statements.ts';
 import { widenInType } from './functions.ts';
 import { escapeTsBindingName } from './identifiers.ts';
+import { firstSyntaxChild, typeSourceText } from './syntax-children.ts';
 
 // ─── Comments ─────────────────────────────────────────────────
 
@@ -85,7 +86,7 @@ export function emitSignalParamTypes(
   for (const child of paramsNode.namedChildren) {
     if (child.type === SyntaxType.TypedParameter) {
       const typeNode = child.childForFieldName('type');
-      const rawType = typeNode?.text ?? '';
+      const rawType = typeNode ? typeSourceText(typeNode) : '';
       const baseType = typeNode
         ? escapeSelfClassType(gdTypeToTs(rawType, ctx.registry), ctx)
         : 'any';
@@ -482,7 +483,7 @@ export function emitTypeAnnotation(
     return ''; // := inferred — omit type in TS
   }
   if (typeNode.type === SyntaxType.Type) {
-    const inner = typeNode.namedChildren[0]?.text ?? typeNode.text;
+    const inner = typeSourceText(firstSyntaxChild(typeNode) ?? typeNode);
     // Qualify class-level enum/inner class types. Handles both bare
     // (`State` → `ClassName.State`) and qualified
     // (`Config.Inner` → `_Anonym.Config.Inner`) forms.
@@ -495,7 +496,7 @@ export function emitTypeAnnotation(
     const tsType = escapeSelfClassType(gdTypeToTs(inner, ctx.registry), ctx);
     return tsType ? `: ${tsType}` : '';
   }
-  const raw = typeNode.text;
+  const raw = typeSourceText(typeNode);
   const qualified = qualifyClassType(raw, ctx.classTypeNames, ctx.className);
   if (qualified) return `: ${qualified}`;
   const tsType = escapeSelfClassType(gdTypeToTs(raw, ctx.registry), ctx);

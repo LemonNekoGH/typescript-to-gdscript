@@ -30,7 +30,7 @@ import {
   getAnnotations,
 } from './members.ts';
 import { emitExpr } from './expressions.ts';
-import { firstSyntaxChild } from './syntax-children.ts';
+import { firstSyntaxChild, typeSourceText } from './syntax-children.ts';
 
 // ─── extends helpers ─────────────────────────────────────────────
 
@@ -129,8 +129,8 @@ export function emitFileScopeClass(
       if (typeNode) {
         extendsClass =
           typeNode.type === SyntaxType.Type
-            ? (typeNode.namedChildren[0]?.text ?? typeNode.text)
-            : typeNode.text;
+            ? typeSourceText(firstSyntaxChild(typeNode) ?? typeNode)
+            : typeSourceText(typeNode);
       }
     }
   }

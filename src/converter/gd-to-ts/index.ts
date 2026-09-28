@@ -9,7 +9,7 @@ import {
 } from './context.ts';
 import { extractGdTypeName, inferExprTypeStatic } from './type-inference.ts';
 import { emitSourceFile } from './source-emitter.ts';
-import { firstSyntaxChild } from './syntax-children.ts';
+import { firstSyntaxChild, typeSourceText } from './syntax-children.ts';
 
 // Re-export public types
 export type { GdToTsContext } from './context.ts';
@@ -144,8 +144,8 @@ export function parseGdClassInfo(
       if (typeNode) {
         extendsClass =
           typeNode.type === SyntaxType.Type
-            ? (typeNode.namedChildren[0]?.text ?? typeNode.text)
-            : typeNode.text;
+            ? typeSourceText(firstSyntaxChild(typeNode) ?? typeNode)
+            : typeSourceText(typeNode);
       }
     } else if (child.type === SyntaxType.ClassNameStatement) {
       // `parseGdClassInfo` builds the user-class index keyed on the GD

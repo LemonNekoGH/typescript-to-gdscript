@@ -3,6 +3,7 @@ import { sanitizeClassName } from '../../typings/type-mapping.ts';
 import type { GodotClassRegistry } from '../../typings/godot-registry.ts';
 import type { GdToTsContext } from './context.ts';
 import { escapeUnderscoreClassName } from '../common/index.ts';
+import { firstSyntaxChild, typeSourceText } from './syntax-children.ts';
 
 // ─── Type Inference (for gd.ops detection) ──────────────────
 
@@ -20,12 +21,12 @@ export function isStaticFunction(node: SyntaxNode): boolean {
 /** Extract raw GD type name from a type node */
 export function extractGdTypeName(typeNode: SyntaxNode): string | null {
   if (typeNode.type === SyntaxType.Type) {
-    return typeNode.namedChildren[0]?.text ?? typeNode.text;
+    return typeSourceText(firstSyntaxChild(typeNode) ?? typeNode);
   }
   if (typeNode.type === SyntaxType.InferredType) {
     return null;
   }
-  return typeNode.text;
+  return typeSourceText(typeNode);
 }
 
 /** Infer type from expression without context (for parseGdClassInfo). Only handles constructor calls. */

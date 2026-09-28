@@ -13,7 +13,7 @@ import { emitBody } from './statements.ts';
 import { emitExpr } from './expressions.ts';
 import { isReferenceType } from '../common/index.ts';
 import { escapeTsBindingName } from './identifiers.ts';
-import { firstSyntaxChild } from './syntax-children.ts';
+import { firstSyntaxChild, typeSourceText } from './syntax-children.ts';
 
 /**
  * Widen a TS type for an IN position (function parameter, setter value,
@@ -230,7 +230,7 @@ export function emitParams(paramsNode: SyntaxNode, ctx: GdToTsContext): string {
           ?.text ?? '',
       );
       const typeNode = declaredTypeNode(child);
-      const rawType = typeNode?.text ?? '';
+      const rawType = typeNode ? typeSourceText(typeNode) : '';
       const baseType = escapeSelfClassType(
         qualifyClassType(rawType, ctx.classTypeNames, ctx.className) ??
           (typeNode ? gdTypeToTs(rawType, ctx.registry) : null),
@@ -262,7 +262,7 @@ export function emitParams(paramsNode: SyntaxNode, ctx: GdToTsContext): string {
       );
       const typeNode = declaredTypeNode(child);
       const value = child.childForFieldName('value');
-      const rawType = typeNode?.text ?? '';
+      const rawType = typeNode ? typeSourceText(typeNode) : '';
       const baseType = escapeSelfClassType(
         qualifyClassType(rawType, ctx.classTypeNames, ctx.className) ??
           (typeNode ? gdTypeToTs(rawType, ctx.registry) : null),
@@ -297,7 +297,7 @@ export function emitParams(paramsNode: SyntaxNode, ctx: GdToTsContext): string {
             ?.text ?? '',
         );
         const typeNode = inner.childForFieldName('type');
-        const rawType = typeNode?.text ?? '';
+        const rawType = typeNode ? typeSourceText(typeNode) : '';
         const tsType = gdTypeToTs(rawType, ctx.registry);
         // GDScript varargs always collect into an Array. The mapped TS type
         // for `Array` is already `Array<unknown>`, so use it directly.
@@ -327,14 +327,14 @@ export function emitReturnType(
 ): string {
   let tsType: string | null;
   if (typeNode.type === SyntaxType.Type) {
-    const inner = typeNode.namedChildren[0]?.text ?? typeNode.text;
+    const inner = typeSourceText(firstSyntaxChild(typeNode) ?? typeNode);
     tsType = escapeSelfClassType(
       qualifyClassType(inner, ctx.classTypeNames, ctx.className) ??
         gdTypeToTs(inner, ctx.registry),
       ctx,
     );
   } else {
-    const raw = typeNode.text;
+    const raw = typeSourceText(typeNode);
     tsType = escapeSelfClassType(
       qualifyClassType(raw, ctx.classTypeNames, ctx.className) ??
         gdTypeToTs(raw, ctx.registry),

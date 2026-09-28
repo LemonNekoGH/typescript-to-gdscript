@@ -25,3 +25,21 @@ export function firstSyntaxChild(node: SyntaxNode): SyntaxNode | undefined {
 export function syntaxChildren(node: SyntaxNode): SyntaxNode[] {
   return node.namedChildren.filter((c) => !c.isExtra);
 }
+
+/**
+ * A type's source text without extras. Inside its brackets a type may run
+ * over several lines — `Array[\` + newline + `int]` — and the raw `.text`
+ * keeps the `\`, the line break and the indentation, which then leaked
+ * into the TypeScript annotation and kept a name from matching anything.
+ * A type holds no `#` and no string, so both extras can go by their text;
+ * what is left is the type as it would read on one line.
+ */
+export function typeSourceText(node: SyntaxNode): string {
+  return node.text
+    .replace(/#[^\n]*/g, '')
+    .replace(/\\\r?\n/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/([[(]) /g, '$1')
+    .replace(/ ([\]),])/g, '$1')
+    .trim();
+}

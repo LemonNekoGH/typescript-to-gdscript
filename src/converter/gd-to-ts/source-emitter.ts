@@ -50,7 +50,7 @@ import {
   emitFileScopeClass,
   formatExtendsForTs,
 } from './file-scope-emitter.ts';
-import { firstSyntaxChild } from './syntax-children.ts';
+import { firstSyntaxChild, typeSourceText } from './syntax-children.ts';
 
 // ─── Source File ─────────────────────────────────────────────
 
@@ -222,8 +222,8 @@ function scanScriptClassHeader(root: SyntaxNode): ScriptClassHeader {
       if (typeNode) {
         extendsClass =
           typeNode.type === SyntaxType.Type
-            ? (typeNode.namedChildren[0]?.text ?? typeNode.text)
-            : typeNode.text;
+            ? typeSourceText(firstSyntaxChild(typeNode) ?? typeNode)
+            : typeSourceText(typeNode);
       }
     } else if (child.type === SyntaxType.ClassNameStatement) {
       // Capture the raw `class_name` text. The escape decision is made

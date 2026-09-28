@@ -8,6 +8,8 @@ export class LineContinuations extends LineContinuationsBase {
   // A `\` continuation, or a comment inside brackets, may sit between any two
   // tokens. The value after it is what matters.
   items: Array<any> = [1, 2];
+  // A type may run over lines inside its brackets, too.
+  by_name: Dictionary<string, GodotObject> = {};
 
   after_keywords(a: int, b: int, ok: boolean): int {
     let negated = !ok;
@@ -31,7 +33,7 @@ export class LineContinuations extends LineContinuationsBase {
     print(count, node_name, first, child, listed, member_item, where);
   }
 
-  with_comments(a: int, items: Array<any>): int {
+  with_comments(a: int, items: Array<int>): int {
     let grouped = (a);
     return items[grouped];
   }
