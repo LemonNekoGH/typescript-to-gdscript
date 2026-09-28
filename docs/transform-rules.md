@@ -373,7 +373,7 @@ Lowercase TypeScript primitive names map to GDScript's PascalCase value-type nam
 
 TypeScript already owns the name `Object`, so the typings call Godot's base class `GodotObject`. Write `GodotObject` as a type (`node: GodotObject`); it goes out as `Object`. As a value, `Object` is the engine class in TS too, so `Object.CONNECT_ONE_SHOT` reads the same in both languages. TypeScript's own `Object` type is the plain-object interface, which has no GDScript type, so an annotation with it is dropped.
 
-`extends` names a class, so it takes `GodotObject` as well: `extends Object` is an error. It would type-check, since the value `Object` is aliased to the engine class, but it reads as the JS object, and anything that follows a base class through its declaration (such as deciding whether a `super()` call can go) would not find one.
+`extends` names a class, so it takes `GodotObject` as well: `extends Object` is an error. It would type-check, since the value `Object` is aliased to the engine class, but it reads as the JS object. One name per role: `GodotObject` wherever a class is named, `Object` only as a value.
 
 Converting GDScript to TypeScript does the reverse: every `Object` in a type position (annotations, returns, signal arguments, `Array[Object]`) and in `extends Object` becomes `GodotObject`, while `Object.new()`, `is Object` and `as Object` keep `Object`.
 

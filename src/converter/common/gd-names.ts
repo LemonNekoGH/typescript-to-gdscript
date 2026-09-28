@@ -200,10 +200,8 @@ export function gdHeritageText(
  * `extends Object` — or null for any other base. In TypeScript `Object`
  * is TS's own name, the plain-object interface as a type; the engine
  * class is `GodotObject`. The value `Object` is aliased to it, so the
- * heritage type-checks, but it reads as the JS object and hides the class
- * from everything that follows a base by its declaration (`super()`
- * resolution among them). One name per role: `GodotObject` wherever a
- * class is named, `Object` only as a value.
+ * heritage type-checks, but it reads as the JS object. One name per role:
+ * `GodotObject` wherever a class is named, `Object` only as a value.
  */
 export function renamedAwayBaseError(
   checker: ts.TypeChecker,

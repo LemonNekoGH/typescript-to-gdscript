@@ -1,7 +1,6 @@
 import ts from 'typescript';
-import { isAmbient } from '../common/gd-names.ts';
+import { isAmbient, resolvedDeclarations } from '../common/gd-names.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
-import { resolvedDeclarations } from '../common/gd-names.ts';
 
 /**
  * True when GDScript can call the callee exactly as written.
