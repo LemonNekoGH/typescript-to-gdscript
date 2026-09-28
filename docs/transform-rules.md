@@ -404,7 +404,7 @@ hp: int = 0; // a value type: write the default GDScript uses anyway
 cached: Node | null = null; // may really be absent
 ```
 
-The `!` is TypeScript-only and disappears from the `.gd`. These are the forms [GD → TS migration](./gd-to-ts-migration.md) produces too, so hand-written and migrated code read alike.
+The `!` is TypeScript-only and disappears from the `.gd`. The `@onready` line type-checks as written only with [scene typings](./typings.md), which type `get_node('Sprite2D')` from the scene as a `Sprite2D`. Without them `get_node` returns `Node | null`, which a `Sprite2D` field rejects under `strict`. These are the forms [GD → TS migration](./gd-to-ts-migration.md) produces too, so hand-written and migrated code read alike.
 
 ## Operators
 
