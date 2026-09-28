@@ -150,8 +150,9 @@ function collectMissingClassNames(
   for (const d of diags) {
     if (!TS_MISSING_NAME_CODES.has(d.code)) continue;
     const message = ts.flattenDiagnosticMessageText(d.messageText, '\n');
-    // TS phrases both diagnostics as `Cannot find name 'X'.` /
-    // `Cannot find namespace 'X'.`. Pull the quoted identifier.
+    // Each of these codes quotes the missing name first — `Cannot find
+    // name 'X'.`, `Cannot find namespace 'X'.`, and the "Did you mean
+    // 'Y'?" forms of both. Pull that first quoted identifier.
     const m = message.match(/'([^']+)'/);
     if (!m) continue;
     const name = m[1]!;

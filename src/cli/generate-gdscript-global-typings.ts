@@ -51,7 +51,7 @@ function detectGodotVersion(docsDirs: string[]): string | null {
   const distinct = [...new Set(hits.map((h) => h.short))];
   if (distinct.length > 1) {
     console.warn(
-      `[WARN] --docs-dir entries resolve to conflicting Godot versions (${distinct.join(', ')}). Using "${hits[0]!.short}" from ${hits[0]!.versionFile}. Make sure all docs dirs come from the same Godot tree.`,
+      `[WARN] The class-reference directories resolve to conflicting Godot versions (${distinct.join(', ')}). Using "${hits[0]!.short}" from ${hits[0]!.versionFile}. Make sure they all come from the same Godot tree.`,
     );
   }
   return hits[0]!.short;
@@ -153,7 +153,7 @@ export function registerGenerateGdscriptGlobalTypingsCommand(
       const version = detectGodotVersion(docsDirs);
       if (!version) {
         fail(
-          'Could not detect Godot version from vendor/godot/version.py near any of the given --docs-dir paths',
+          'Could not detect the Godot version: no version.py near any of the class-reference directories (--godot-source / --docs-dir)',
         );
       }
 
