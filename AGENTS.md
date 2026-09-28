@@ -36,7 +36,7 @@ This project converts TypeScript code to GDScript for the Godot game engine, wit
 
    **User-doc writing style** (README + `docs/*`): describe behavior simply and briefly — a few short sentences, not exhaustive mechanics. When a conversion or behavior isn't self-evident, add a one-line _why_ (e.g. "`.get()` returns `null` for a missing key instead of crashing"). Don't enumerate every skip-condition, edge case, or internal mechanism — that detail belongs in `PROJECT.md` only.
 
-6. **⚠️ ALL temporary directories MUST live under the OS temp dir** (`os.tmpdir()` from Node's `node:os` module). Never create tmp dirs inside the project tree (e.g. `.tmp-*` in tests, `.tstogd-cache` at the repo root, etc.). Use `join(tmpdir(), 'tstogd-<label>-<random>')` or similar. This applies to:
+6. **ALL temporary directories MUST live under the OS temp dir** (`os.tmpdir()` from Node's `node:os` module). Never create tmp dirs inside the project tree (e.g. `.tmp-*` in tests, `.tstogd-cache` at the repo root, etc.). Use `join(tmpdir(), 'tstogd-<label>-<random>')` or similar. This applies to:
    - Test fixtures that need scratch files
    - Cache directories
    - Any intermediate file written by the converter/helpers
@@ -44,7 +44,7 @@ This project converts TypeScript code to GDScript for the Godot game engine, wit
 
    Always clean them up (`rmSync(..., { recursive: true, force: true })`) in `finally` blocks.
 
-7. **⚠️ DO NOT hardcode data that can be derived from existing sources** — especially Godot class/type/method lists that live in the registry (`typings/<version>/godot-class-registry.json`, accessed via `resolveRegistry()` → `.getData()`). Never hardcode lists of Godot value types, variant constructors, packed arrays, signal names, class inheritance, etc. Always derive them from the registry at runtime (lazy + cached if needed for perf).
+7. **DO NOT hardcode data that can be derived from existing sources** — especially Godot class/type/method lists that live in the registry (`typings/<version>/godot-class-registry.json`, accessed via `resolveRegistry()` → `.getData()`). Never hardcode lists of Godot value types, variant constructors, packed arrays, signal names, class inheritance, etc. Always derive them from the registry at runtime (lazy + cached if needed for perf).
 
    Examples of things that MUST come from the registry:
    - Godot value/variant types (Vector2, Color, Rect2, Transform2D, ...)
@@ -57,100 +57,29 @@ This project converts TypeScript code to GDScript for the Godot game engine, wit
 
    If you think something genuinely needs to be hardcoded (e.g., a small set of TS-specific concepts that don't exist in Godot's XML), **ask the user for explicit permission first**. Default answer is "derive it from the registry".
 
-8. **⚠️ Keep source files under 500 lines.** If a file grows beyond this, split it into logical modules. This ensures each file can be fully read in one pass, makes edits more targeted, and reduces risk of accidentally breaking unrelated code. Auto-generated files (e.g. tree-sitter `types.ts`) are exempt.
+8. **Keep source files under 500 lines.** If a file grows beyond this, split it into logical modules. This ensures each file can be fully read in one pass, makes edits more targeted, and reduces risk of accidentally breaking unrelated code. Auto-generated files (e.g. tree-sitter `types.ts`) are exempt.
 
 9. **Always run tests and build after completing some task**
 
 10. **⚠️ Use Claude plans, not standalone `.md` design/spec files.** When brainstorming or planning an implementation, write the output as a Claude plan (via `EnterPlanMode` → plan file under `~/.claude/plans/`). Do not create `.md` design/spec files in the project tree (e.g. `docs/superpowers/specs/*.md`). Claude plans are visible in the Claude app and are the canonical place for planning artifacts. If a spec `.md` file already exists and the information has been captured in a Claude plan, delete the `.md` file.
 
-11. **⚠️ Correctness over completeness.** Generated output (GDScript, typings, source maps) must always be correct **by semantics** — it must mean what the TypeScript meant. It may still contain GDScript errors: Godot reports those itself, and a `.gd` it refuses is a visible failure, not a wrong program. When the converter cannot _prove_ that emitting something is correct, drop it rather than guess — **but only when dropping keeps the result correct.** This holds for optional constructs like type annotations: a missing type hint is always safe (GDScript types are optional), whereas a wrong one changes what the `.gd` means, so prefer dropping more over emitting something that _might_ be wrong.
+11. **Correctness over completeness.** Generated output (GDScript, typings, source maps) must always be correct **by semantics** — it must mean what the TypeScript meant. It may still contain GDScript errors: Godot reports those itself, and a `.gd` it refuses is a visible failure, not a wrong program. When the converter cannot _prove_ that emitting something is correct, drop it rather than guess — **but only when dropping keeps the result correct.** This holds for optional constructs like type annotations: a missing type hint is always safe (GDScript types are optional), whereas a wrong one changes what the `.gd` means, so prefer dropping more over emitting something that _might_ be wrong.
 
     The flip side: when silently skipping (or emitting a best-effort guess) would produce an **incorrect or misleading** result rather than a merely less-complete one, **raise an error/diagnostic and fail loudly** — surfacing an unknown/unsupported/ambiguous construct is always better than silently doing nothing and shipping wrong output. Never silently swallow something that changes behavior.
 
     The two halves draw one line: **diagnose a semantic divergence, not a Godot error.** A construct whose GDScript would silently do something else is the converter's to reject, because nothing downstream can catch it. A construct Godot simply refuses to parse needs no converter rule — duplicating the engine's own check buys little and costs a false-positive risk that blocks valid code.
 
-12. **⚠️ General rules over special cases. Do not grow the converter to patch a narrow gap.** The default answer to "the converter could special-case this" is **no**. Before proposing one, weigh three things out loud:
+12. **General rules over special cases. Do not grow the converter to patch a narrow gap.** The default answer to "the converter could special-case this" is **no**. Before proposing one, weigh three things out loud:
     - **How general is it?** A rule that covers a whole class of constructs is worth far more than one that covers a single shape. If it fires on one narrow pattern, that alone is strong evidence it doesn't belong in the converter.
     - **What does it cost?** Extra checker queries, extra state, extra branches in the emitter. Complexity added for one narrow case is paid on every other case, forever.
     - **What does it drift?** A special case that changes emitted semantics anywhere outside the exact shape it targets is disqualified outright.
 
 ## Development Guidelines
 
-### Philosophy
-
-#### Core Beliefs
-
-- **Incremental progress over big bangs** - Small changes that compile and pass tests
-- **Learning from existing code** - Study and plan before implementing
-- **Pragmatic over dogmatic** - Adapt to project reality
-- **Clear intent over clever code** - Be boring and obvious
-
-#### Simplicity
-
-- **Single responsibility** per function/class
-- **Avoid premature abstractions**
-- **No clever tricks** - choose the boring solution
-- If you need to explain it, it's too complex
-
-### Technical Standards
-
-#### Architecture Principles
-
-- **Composition over inheritance** - Use dependency injection
-- **Interfaces over singletons** - Enable testing and flexibility
-- **Explicit over implicit** - Clear data flow and dependencies
-- **Test-driven when possible** - Never disable tests, fix them
-
-#### Error Handling
-
-- **Fail fast** with descriptive messages
-- **Include context** for debugging
-- **Handle errors** at appropriate level
-- **Never** silently swallow exceptions
-
-### Project Integration
-
-#### Learn the Codebase
-
-- Find similar features/components
-- Identify common patterns and conventions
-- Use same libraries/utilities when possible
-- Follow existing test patterns
-
-#### Tooling
-
-- Use project's existing build system
-- Use project's existing test framework
-- Use project's formatter/linter settings
-- Don't introduce new tools without strong justification
-
-#### Code Style
-
-- Follow existing conventions in the project
-- Refer to linter configurations and .editorconfig, if present
-- Text files should always end with an empty line
-
-### MCP Tool Use
-
-- Use Context7 to validate current documentation about software libraries
-- Use searxng if your primary Web Search or Fetch tools fail
-- Use Tavily ONLY when searxng doesn't give you enough information
-
-### Important Reminders
-
-**NEVER**:
-
-- Use `--no-verify` to bypass commit hooks
-- Disable tests instead of fixing them
-- Commit code that doesn't compile
-- Make assumptions - verify with existing code
-
-**ALWAYS**:
-
-- Commit working code incrementally
-- Update plan documentation as you go
-- Learn from existing implementations
-- Stop after 3 failed attempts and reassess
+- Don't disable tests to get a green run; fix them.
+- Don't commit code that doesn't compile.
+- Verify assumptions against existing code rather than guessing.
+- Stop after 3 failed attempts and reassess.
 
 ---
 
