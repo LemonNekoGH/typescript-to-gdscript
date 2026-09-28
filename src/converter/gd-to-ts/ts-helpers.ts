@@ -14,6 +14,7 @@ import type { GodotClassRegistry } from '../../typings/godot-registry.ts';
 
 import { collectOperatorFixes } from './helpers/operator-fix.ts';
 import { collectExplicitConvertFixes } from './helpers/explicit-convert.ts';
+import { collectEmptyDictFixes } from './helpers/empty-dict.ts';
 import { collectReadyFieldTypeFixes } from './helpers/ready-field-types.ts';
 import {
   collectExtendsTypeFixes,
@@ -205,6 +206,11 @@ export function runTsHelpers(options: TsHelperOptions): TsHelperResult {
           },
         ]
       : []),
+    {
+      name: 'empty-dict',
+      collect: (program, filePaths) =>
+        collectEmptyDictFixes(program, filePaths),
+    },
     ...(registry
       ? [
           {

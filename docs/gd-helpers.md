@@ -67,6 +67,8 @@ var dict = {
 }
 ```
 
+The key and value types come from where the result goes, and the entries are checked against them. `let d: Dictionary<Node, int> = gd.dict([[node, 1]])` is typed, and a string value there is an error. That also makes `gd.dict([])` the empty dictionary for a class key, where `{}` does not type-check: an object literal only fits a dictionary whose keys are strings or numbers. Where nothing typed receives it, the result is an untyped `Dictionary`, so mixed keys work as before.
+
 Constraints (enforced by the converter):
 
 - Exactly one argument, which must be an **array literal**.

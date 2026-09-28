@@ -99,6 +99,36 @@ export function simplifyTypeName(type: string): string {
 }
 
 /**
+ * The value an assignment-like diagnostic is about. Some point at the
+ * LHS or a keyword rather than the value: a variable or property name
+ * (→ its initializer), an assignment's left side (→ its right side), a
+ * `return` keyword (→ the returned expression). Anything else is the
+ * value already.
+ */
+export function assignedValueNode(node: ts.Node): ts.Node {
+  const parent = node.parent;
+  if (
+    ts.isIdentifier(node) &&
+    (ts.isVariableDeclaration(parent) || ts.isPropertyDeclaration(parent)) &&
+    parent.name === node &&
+    parent.initializer
+  ) {
+    return parent.initializer;
+  }
+  if (
+    ts.isBinaryExpression(parent) &&
+    parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+    parent.left === node
+  ) {
+    return parent.right;
+  }
+  if (ts.isReturnStatement(parent) && parent.expression) {
+    return parent.expression;
+  }
+  return node;
+}
+
+/**
  * Find the node at a given position -- used for argument expressions.
  * Returns the smallest node that covers exactly the given position+length.
  */
@@ -163,34 +193,9 @@ export function collectExplicitConvertFixes(
       const gdTarget = TS_TO_GD_TYPE_NAMES.get(target) ?? target;
       if (!registry.canVariantConvert(gdSource, gdTarget)) continue;
 
-      let node = findNodeAt(sourceFile, diag.start, diag.length);
-      if (!node) continue;
-
-      // Some diagnostics point at the LHS / keyword rather than the value
-      // expression. Redirect to the actual value we want to wrap.
-      {
-        const parent = node.parent;
-        if (
-          ts.isIdentifier(node) &&
-          (ts.isVariableDeclaration(parent) ||
-            ts.isPropertyDeclaration(parent)) &&
-          parent.name === node &&
-          parent.initializer
-        ) {
-          // Variable/property name -> use initializer
-          node = parent.initializer;
-        } else if (
-          ts.isBinaryExpression(parent) &&
-          parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
-          parent.left === node
-        ) {
-          // Assignment LHS -> use RHS
-          node = parent.right;
-        } else if (ts.isReturnStatement(parent) && parent.expression) {
-          // `return` keyword -> use returned expression
-          node = parent.expression;
-        }
-      }
+      const found = findNodeAt(sourceFile, diag.start, diag.length);
+      if (!found) continue;
+      const node = assignedValueNode(found);
 
       const start = node.getStart(sourceFile);
       const end = node.getEnd();

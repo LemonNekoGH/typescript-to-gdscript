@@ -114,8 +114,17 @@ declare const gd: {
    * @example
    * gd.dict([[key1, 'value'], [key2, 'value'], ['str_key', 'value']])
    * // becomes: {key1: "value", key2: "value", "str_key": "value"}
+   *
+   * The key and value types come from where the result goes, and the
+   * entries are checked against them, so it fits a `Dictionary<Node, int>`
+   * — which an object literal cannot, `{}` included. They are never
+   * inferred from the entries: a key typed `this` or a subclass would make
+   * a dictionary TypeScript refuses as `Dictionary<Node, int>` (its key is
+   * invariant). With nowhere typed to go, the result is untyped.
    */
-  readonly dict: (entries: [unknown, unknown][]) => Dictionary;
+  readonly dict: <K = unknown, V = unknown>(
+    entries: [NoInfer<K>, NoInfer<V>][],
+  ) => DictionaryKeyMethods<K, V>;
 
   /**
    * GDScript `match` statement. Transforms to `match value:` with pattern cases in GDScript.

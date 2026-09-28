@@ -221,6 +221,33 @@ class TypeDictTest extends Node {
       ['key', 'value'],
     ]);
   }
+
+  // Entries of one key type and one value type make a typed dictionary,
+  // and an empty one takes its types from where it goes — which an object
+  // literal cannot do for a class key.
+  test_typed_dict(node: Node, other: Node2D) {
+    const typed: Dictionary<Node, int> = gd.dict([
+      [node, 1],
+      [other, 2],
+    ]);
+    const empty: Dictionary<Node, int> = gd.dict([]);
+    // A subclass key still fits: the types come from the destination.
+    const subclass_key: Dictionary<Node, int> = gd.dict([[other, 1]]);
+    const self_key: Dictionary<Node, int> = gd.dict([[this, 1]]);
+    const value: int = typed.get(node);
+    // @ts-expect-error — a value of the wrong type
+    const wrong: Dictionary<Node, int> = gd.dict([[node, 'x']]);
+    // @ts-expect-error — `{}` has no typed find_key for a class key
+    const literal: Dictionary<Node, int> = {};
+    // With nothing typed to go to, it stays untyped — mixed keys included.
+    const loose = gd.dict([]);
+    loose.set(node, 1);
+    loose.set('key', 'value');
+    const mixed: Dictionary = gd.dict([
+      [node, 1],
+      ['key', 'value'],
+    ]);
+  }
 }
 
 // ─── getters / setters ───────────────────────────────

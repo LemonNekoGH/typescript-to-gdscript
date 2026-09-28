@@ -76,6 +76,13 @@ Runs alongside operator fix. Detects TS2345/TS2322/TS2739/TS2740/TS2741 assignme
 </details>
 
 <details>
+<summary><b>Empty dictionary helper</b></summary>
+
+Runs alongside explicit convert. GDScript's `{}` fills any typed dictionary, but in TypeScript an object literal only fits one whose keys are strings or numbers: `var by_node: Dictionary[Node, int] = {}` would come out as a TS2322 error. Each `{}` TypeScript refuses as a class-keyed dictionary becomes `gd.dict([])`, the same empty dictionary, which takes its key and value types from where it goes. It converts back to `{}`.
+
+</details>
+
+<details>
 <summary><b>Extends type helper</b></summary>
 
 Detects TS7006 ("Parameter X implicitly has an any type") on method parameters where the method overrides one inherited from a parent class. Copies the parameter types from the parent class signature, preserving type aliases (`float`, `int`) by using the syntactic type text from the parent's `.d.ts`. Example:
