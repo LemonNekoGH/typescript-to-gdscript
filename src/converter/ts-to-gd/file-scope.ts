@@ -19,7 +19,7 @@
  */
 
 import ts from 'typescript';
-import { gdHeritageText } from '../common/gd-names.ts';
+import { gdHeritageText, renamedAwayBaseError } from '../common/gd-names.ts';
 import { tsTypeNodeToGdType } from '../common/index.ts';
 import type { ImportEntry } from './imports.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
@@ -215,6 +215,8 @@ export function emitFileScopeClass(
         hasExtends = true;
         const baseType = clause.types[0]!;
         const baseExpr = baseType.expression;
+        const renamedAway = renamedAwayBaseError(t.ctx.checker, baseExpr);
+        if (renamedAway) t.addDiagnostic(baseExpr, 'error', renamedAway);
         const baseText = gdHeritageText(
           t.ctx.checker,
           baseExpr,

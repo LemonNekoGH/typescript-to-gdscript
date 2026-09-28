@@ -373,7 +373,9 @@ Lowercase TypeScript primitive names map to GDScript's PascalCase value-type nam
 
 TypeScript already owns the name `Object`, so the typings call Godot's base class `GodotObject`. Write `GodotObject` as a type (`node: GodotObject`); it goes out as `Object`. As a value, `Object` is the engine class in TS too, so `Object.CONNECT_ONE_SHOT` reads the same in both languages. TypeScript's own `Object` type is the plain-object interface, which has no GDScript type, so an annotation with it is dropped.
 
-Converting GDScript to TypeScript does the reverse: every `Object` in a type position (annotations, returns, signal arguments, `Array[Object]`) becomes `GodotObject`, while `Object.new()`, `is Object`, `as Object`, and `extends Object` keep `Object`.
+`extends` names a class, so it takes `GodotObject` as well: `extends Object` is an error. It would type-check, since the value `Object` is aliased to the engine class, but it reads as the JS object, and anything that follows a base class through its declaration (such as deciding whether a `super()` call can go) would not find one.
+
+Converting GDScript to TypeScript does the reverse: every `Object` in a type position (annotations, returns, signal arguments, `Array[Object]`) and in `extends Object` becomes `GodotObject`, while `Object.new()`, `is Object` and `as Object` keep `Object`.
 
 ## Type annotations — what gets emitted
 
@@ -934,6 +936,7 @@ The converter rejects TS features that have no faithful GDScript equivalent. Eac
 | **File-scope `const`/`let`/`var`**                                                                                        | GDScript doesn't allow top-level mutable bindings outside a class. Wrap in a class.                                                                          |
 | **Multiple `export class` per file**                                                                                      | Each `.gd` is one class. Split additional classes into separate files, or use inner classes via namespace merging.                                           |
 | **Missing `extends` clause**                                                                                              | GDScript defaults to `RefCounted` — declare the base explicitly (`RefCounted`, `Node`, `Resource`, ...).                                                     |
+| **`extends Object`**                                                                                                      | TypeScript's `Object` is its own name; the typings call Godot's class `GodotObject`. Write `extends GodotObject` — it goes out as `extends Object`.          |
 | **`import Foo from '...'`** (default import)                                                                              | GDScript has no default-export concept.                                                                                                                      |
 | **`import * as ns from '...'`** (namespace)                                                                               | Same reason.                                                                                                                                                 |
 | **Namespace member without `export`**                                                                                     | The paired class can only see `export`ed members from the namespace.                                                                                         |

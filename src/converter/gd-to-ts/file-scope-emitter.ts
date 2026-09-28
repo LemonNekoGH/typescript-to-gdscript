@@ -31,6 +31,7 @@ import {
 } from './members.ts';
 import { emitExpr } from './expressions.ts';
 import { firstSyntaxChild, typeSourceText } from './syntax-children.ts';
+import { sanitizeClassName } from '../../typings/type-mapping.ts';
 
 // ─── extends helpers ─────────────────────────────────────────────
 
@@ -49,7 +50,9 @@ export function formatExtendsForTs(extendsClass: string): string {
   if (extendsClass.startsWith('"') || extendsClass.startsWith("'")) {
     return `preload(${extendsClass})`;
   }
-  return extendsClass;
+  // GDScript's `Object` is `GodotObject` in the typings, and `extends
+  // Object` is an error on the way back to GDScript.
+  return sanitizeClassName(extendsClass);
 }
 
 // ─── File-scope `const` lift ─────────────────────────────────────

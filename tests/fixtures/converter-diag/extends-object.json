@@ -1,0 +1,12 @@
+[
+  {
+    "message": "`extends Object` names TypeScript's `Object`, not Godot's class. Extend `GodotObject`",
+    "severity": "error",
+    "line": 5
+  },
+  {
+    "message": "`extends Object` names TypeScript's `Object`, not Godot's class. Extend `GodotObject`",
+    "severity": "error",
+    "line": 8
+  }
+]

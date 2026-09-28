@@ -1,5 +1,5 @@
 export namespace GodotObjectTypes {
-  export class Inner extends Object {}
+  export class Inner extends GodotObject {}
 }
 
 export class GodotObjectTypes extends Node {

@@ -21,7 +21,7 @@
  */
 
 import ts from 'typescript';
-import { gdHeritageText } from '../common/gd-names.ts';
+import { gdHeritageText, renamedAwayBaseError } from '../common/gd-names.ts';
 import { isAnonymousClassName } from '../common/index.ts';
 import type { ImportEntry } from './imports.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
@@ -133,6 +133,8 @@ export function emitClassHeader(
           const path = (expr.arguments[0] as ts.StringLiteralLike).text;
           extendsClause = `extends "${path}"`;
         } else {
+          const renamedAway = renamedAwayBaseError(t.ctx.checker, expr);
+          if (renamedAway) t.addDiagnostic(expr, 'error', renamedAway);
           const baseText = gdHeritageText(
             t.ctx.checker,
             expr,

@@ -119,7 +119,7 @@ class SignalPropertyTest extends Node {
 
 // ─── GodotObject ─────────────────────────────────
 
-class GodotObjectTest extends Object {
+class GodotObjectTest extends GodotObject {
   test_fn(value: string): number {
     return 0;
   }

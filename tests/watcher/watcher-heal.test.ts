@@ -77,14 +77,16 @@ describe('Watcher self-heal: error-driven reconversion of stale dependents', () 
     const aPath = join(tsDir, 'a.ts');
     writeFileSync(
       bPath,
-      ['export class Foo extends Object {', '  x: number = 1;', '}'].join('\n'),
+      ['export class Foo extends RefCounted {', '  x: number = 1;', '}'].join(
+        '\n',
+      ),
     );
     writeFileSync(
       aPath,
       [
         "import { Foo } from './b.ts';",
         '',
-        'export class A extends Object {',
+        'export class A extends RefCounted {',
         '  field: Foo = new Foo();',
         '}',
       ].join('\n'),
@@ -126,7 +128,7 @@ describe('Watcher self-heal: error-driven reconversion of stale dependents', () 
         '  x: number;',
         '}',
         '',
-        'export class _B extends Object {',
+        'export class _B extends RefCounted {',
         '}',
       ].join('\n'),
     );

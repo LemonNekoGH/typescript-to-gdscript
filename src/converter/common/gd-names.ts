@@ -3,6 +3,7 @@ import type { GodotClassRegistry } from '../../typings/godot-registry.ts';
 import {
   CLASS_NAME_CONFLICTS,
   godotClassName,
+  sanitizeClassName,
 } from '../../typings/type-mapping.ts';
 
 /**
@@ -192,4 +193,31 @@ export function gdHeritageText(
   return ts.isIdentifier(expr)
     ? gdClassSpelling(expr.text, resolvedDeclarations(checker, expr))
     : expr.getText(sourceFile);
+}
+
+/**
+ * The error for an `extends` naming a class the typings gave away —
+ * `extends Object` — or null for any other base. In TypeScript `Object`
+ * is TS's own name, the plain-object interface as a type; the engine
+ * class is `GodotObject`. The value `Object` is aliased to it, so the
+ * heritage type-checks, but it reads as the JS object and hides the class
+ * from everything that follows a base by its declaration (`super()`
+ * resolution among them). One name per role: `GodotObject` wherever a
+ * class is named, `Object` only as a value.
+ */
+export function renamedAwayBaseError(
+  checker: ts.TypeChecker,
+  expr: ts.Expression,
+): string | null {
+  if (!ts.isIdentifier(expr) || !isRenamedAwayClassName(expr.text)) {
+    return null;
+  }
+  if (isUserDeclared(resolvedDeclarations(checker, expr))) return null;
+  const name = expr.text;
+  const renamed = sanitizeClassName(name);
+  return (
+    `\`extends ${name}\` names TypeScript's \`${name}\`, not Godot's class. ` +
+    `Extend \`${renamed}\`, the typings' name for it — it goes out as ` +
+    `\`extends ${name}\`.`
+  );
 }

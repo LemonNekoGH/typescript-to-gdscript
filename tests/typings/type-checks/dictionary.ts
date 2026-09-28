@@ -53,7 +53,7 @@ class DictionaryTest extends Node {
   }
 
   test_godot_object_vie_extends() {
-    class Test extends Object {}
+    class Test extends GodotObject {}
 
     let obj = new Test();
     obj.get_class();
