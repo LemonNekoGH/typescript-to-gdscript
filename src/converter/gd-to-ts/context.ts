@@ -103,6 +103,16 @@ export function isGlobalName(name: string, ctx: GdToTsContext): boolean {
 }
 
 /**
+ * The class a GDScript class extends: its `extends`, or `RefCounted`, the
+ * base Godot gives a class that names none. Both the emitted TS `extends`
+ * and the inherited-member lookup use it, so a bare `get_reference_count()`
+ * in such a class gets its `this.` like any inherited member.
+ */
+export function implicitBase(extendsClass: string | null | undefined): string {
+  return extendsClass || 'RefCounted';
+}
+
+/**
  * Resolves all inherited members for a class, walking through user classes and Godot registry.
  */
 export function resolveAllInheritedMembers(
@@ -128,7 +138,7 @@ export function resolveAllInheritedMembers(
     const userClass = userClasses.get(current);
     if (userClass) {
       for (const name of userClass.members) allMembers.add(name);
-      current = userClass.extends || null;
+      current = implicitBase(userClass.extends);
     } else {
       break;
     }

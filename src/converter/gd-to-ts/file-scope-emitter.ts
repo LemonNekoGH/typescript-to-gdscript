@@ -16,7 +16,11 @@
  */
 
 import { SyntaxType, type SyntaxNode } from '../../parser/gdscript/types.ts';
-import { type GdToTsContext, resolveAllInheritedMembers } from './context.ts';
+import {
+  type GdToTsContext,
+  implicitBase,
+  resolveAllInheritedMembers,
+} from './context.ts';
 import { buildClassScope, withClassScope } from './class-scope.ts';
 import { emitFunction, emitConstructor } from './functions.ts';
 import {
@@ -137,14 +141,12 @@ export function emitFileScopeClass(
   // inside `withClassScope` so exceptions during body emission can't
   // leak scope state into sibling classes.
   const scope = buildClassScope(className, bodyStatements, ctx);
-  if (extendsClass) {
-    const inherited = resolveAllInheritedMembers(
-      extendsClass,
-      ctx.userClasses,
-      ctx.registry,
-    );
-    for (const name of inherited) scope.classMembers.add(name);
-  }
+  const inherited = resolveAllInheritedMembers(
+    implicitBase(extendsClass),
+    ctx.userClasses,
+    ctx.registry,
+  );
+  for (const name of inherited) scope.classMembers.add(name);
 
   const { memberLines, namespaceLines } = withClassScope(ctx, scope, () =>
     emitInnerClassBody(bodyStatements, ctx),
@@ -153,7 +155,7 @@ export function emitFileScopeClass(
   // Inner classes with no explicit `extends` default to `RefCounted`
   // in Godot — surface that explicitly in TS so the generated typings
   // carry the correct base-class member set.
-  const resolvedExtends = extendsClass || 'RefCounted';
+  const resolvedExtends = implicitBase(extendsClass);
   const extendsClause = ` extends ${formatExtendsForTs(resolvedExtends)}`;
   const abstractKeyword = isAbstract ? 'abstract ' : '';
   const body = memberLines.join('\n').replace(/\n+$/, '');

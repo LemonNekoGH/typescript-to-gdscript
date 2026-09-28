@@ -31,6 +31,7 @@ import {
 import {
   type GdToTsContext,
   resolveAllInheritedMembers,
+  implicitBase,
   resolveInheritedMemberTypes,
 } from './context.ts';
 import { buildClassScope, withClassScope } from './class-scope.ts';
@@ -65,19 +66,15 @@ export function emitSourceFile(root: SyntaxNode, ctx: GdToTsContext): string {
   // children (extends / class_name / annotations / comments) are
   // ignored by the collector, so passing the full list is safe.
   const scope = buildClassScope(className, root.namedChildren, ctx);
-  if (header.extendsClass) {
-    const inherited = resolveAllInheritedMembers(
-      header.extendsClass,
-      ctx.userClasses,
-      ctx.registry,
-    );
-    for (const name of inherited) scope.classMembers.add(name);
-    resolveInheritedMemberTypes(
-      header.extendsClass,
-      ctx.userClasses,
-      scope.classMemberTypes,
-    );
+  const base = implicitBase(header.extendsClass);
+  for (const name of resolveAllInheritedMembers(
+    base,
+    ctx.userClasses,
+    ctx.registry,
+  )) {
+    scope.classMembers.add(name);
   }
+  resolveInheritedMemberTypes(base, ctx.userClasses, scope.classMemberTypes);
 
   // Everything that emits member / lifted-decl lines needs to see
   // THIS class's scope on `ctx`. The wrapper installs the scope on
@@ -91,7 +88,7 @@ export function emitSourceFile(root: SyntaxNode, ctx: GdToTsContext): string {
   // generated `.d.ts` typings carry correct inherited-member info —
   // otherwise consumers would see `class Foo {}` and lose access to
   // `RefCounted`'s methods (`reference`, `unreference`, etc.).
-  const resolvedExtends = header.extendsClass || 'RefCounted';
+  const resolvedExtends = implicitBase(header.extendsClass);
   const extendsClause = ` extends ${formatExtendsForTs(resolvedExtends)}`;
   const abstractKeyword = header.isAbstractClass ? 'abstract ' : '';
   // Class-level annotations (`@tool`, `@icon`, …) emit on their own
