@@ -17,9 +17,8 @@ import type { TransformDiagnostic } from '../converter/common/index.ts';
  *    constructor has run. Nothing here is ever run as JavaScript, and
  *    GDScript's `_init` has no such rule: `self` is live throughout,
  *    and the parent `_init` runs only if the script calls it. So
- *    `super()` is optional in a TS constructor here, and whether it
- *    reaches the `.gd` is decided by `resolveSuperCall` on the
- *    converter side.
+ *    `super()` is optional in a TS constructor here; one that is
+ *    written goes out as written.
  *
  * Diagnostics a user opted into stay visible even when they fire on
  * every file — `noFallthroughCasesInSwitch` (TS7029) is incompatible

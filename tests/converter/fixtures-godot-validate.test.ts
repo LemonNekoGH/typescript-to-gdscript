@@ -58,6 +58,20 @@ const SKIP = new Map<string, string>([
 ]);
 
 /**
+ * Godot errors a fixture exists to produce, matched exhaustively in both
+ * directions. Unlike SKIP, these fixtures ARE validated: each pins output
+ * the converter passes through on purpose, because Godot reports it at
+ * parse time and a converter rule would only duplicate that (AGENTS.md
+ * rule 11) — so the test asserts Godot does report it, and nothing else.
+ */
+const EXPECTED_ERRORS = new Map<string, string[]>([
+  [
+    'super-engine-base',
+    ['Cannot call the parent class\' virtual function "_init()"'],
+  ],
+]);
+
+/**
  * Sibling fixtures a fixture's output refers to — by `class_name` or by
  * `res://` path — copied into its project, so it is checked against the
  * script it extends rather than skipped for not having one.
@@ -67,7 +81,6 @@ const SIBLINGS = new Map<string, string[]>([
   ['super-script-child', ['super-script-parent']],
   ['super-preload-child', ['super-script-parent']],
   ['super-global-child', ['super-script-parent']],
-  ['super-unknown-child', ['super-addon-base']],
 ]);
 
 const FIXTURES = readdirSync(FIXTURES_DIR)
@@ -140,14 +153,22 @@ describe.concurrent('TS to GD: fixture output parses in Godot', () => {
       });
 
       expect(result.godotAvailable).toBe(true);
+      const errors = result.diagnostics.map((d) => `${d.line}: ${d.message}`);
+      const missing: string[] = [];
+      for (const expected of EXPECTED_ERRORS.get(fixtureName) ?? []) {
+        const i = errors.findIndex((e) => e.includes(expected));
+        if (i === -1) missing.push(expected);
+        else errors.splice(i, 1);
+      }
       // Name the fixture INSIDE the compared value, not just in the
       // test title: vitest collapses failure blocks whose rendered
       // error is identical and prints only one of them, which
       // silently attributes another fixture's error to this one.
-      expect({
+      expect({ fixture: fixtureName, errors, missing }).toEqual({
         fixture: fixtureName,
-        errors: result.diagnostics.map((d) => `${d.line}: ${d.message}`),
-      }).toEqual({ fixture: fixtureName, errors: [] });
+        errors: [],
+        missing: [],
+      });
     }, 90000);
   }
 });

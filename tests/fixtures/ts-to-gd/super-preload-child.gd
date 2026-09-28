@@ -1,5 +1,5 @@
-# A base named by path. `preload(...)` always names a SCRIPT, so the
-# call is kept — and the arguments are no reason to report it.
+# A base named by path: `super(5)` goes out as written, and reaches the
+# `_init` of the script at that path.
 extends "res://super-script-parent.gd"
 
 func _init():

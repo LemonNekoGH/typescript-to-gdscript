@@ -20,7 +20,6 @@ import { godotClassName } from '../../typings/type-mapping.ts';
 import { effectiveParent } from './effective-parent.ts';
 import { emitLambda } from './lambda.ts';
 import { VOID_OPERATOR_ERROR } from './void-value.ts';
-import { resolveSuperCall } from './super-call.ts';
 import {
   binaryOperator,
   emitIncrement,
@@ -34,9 +33,10 @@ export function emitExpression(
   node: ts.Expression,
 ): string {
   // `super` is a name GDScript has too, in both the call and the
-  // receiver position. Whether the member behind it is reachable is
-  // Godot's to report at parse time; only a bare `super()` is decided
-  // here, where the call is emitted (`resolveSuperCall`).
+  // receiver position, and it goes out as written — a bare `super()`
+  // included. Whether anything answers it (a parent `_init`, a method
+  // rather than an engine virtual) is Godot's to report, and it does so
+  // when it parses the script (AGENTS.md rule 11).
   if (node.kind === ts.SyntaxKind.SuperKeyword) return 'super';
 
   // Identifiers
@@ -576,16 +576,6 @@ export function emitCallExpression(
       'Optional chaining (`?.`) is not supported in GDScript',
     );
   }
-
-  // A rejected construct emits its `# ERROR:` marker and nothing else,
-  // so `--emit-on-error` output still parses; `emitStatements` fills
-  // the emptied body with `pass`.
-  const superCall = resolveSuperCall(t, node);
-  if (superCall?.kind === 'unsupported') {
-    t.addDiagnostic(node, 'error', superCall.message);
-    return '';
-  }
-  if (superCall?.kind === 'drop') return '';
 
   checkPromiseUsedAsValue(t, node);
 

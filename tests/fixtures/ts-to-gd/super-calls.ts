@@ -1,10 +1,9 @@
 export class SuperCalls extends Node2D {
-  // `super()` is optional here, but when written against a provable
-  // engine base it has nothing to call — `_init` is a virtual, a slot
-  // the engine calls rather than code it provides — and Godot rejects
-  // it. No parent `_init` runs either way, so it is dropped.
+  // `super()` is optional in a constructor: GDScript's `_init` has no
+  // JavaScript rule demanding it. Directly under an engine class there is
+  // no parent `_init` to call at all, and a `super()` here would be
+  // Godot's parse error to report.
   constructor() {
-    super();
     print("built");
   }
 

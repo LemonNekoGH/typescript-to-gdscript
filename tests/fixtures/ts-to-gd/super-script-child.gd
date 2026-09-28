@@ -1,5 +1,5 @@
-# Imported script base: both the constructor call and the method call
-# resolve to code the parent declares, so both are kept.
+# Imported script base: the constructor call and the method call go out
+# as written, and both reach code the parent declares.
 class_name SuperScriptChild
 extends SuperScriptParent
 

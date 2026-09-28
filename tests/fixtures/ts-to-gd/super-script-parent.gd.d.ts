@@ -5,9 +5,7 @@
 import type { SuperScriptParent as ScriptClass } from './super-script-parent';
 
 declare global {
-  // Makes `SuperScriptParent` usable without an import. Ambient but NOT
-  // an engine class, so `super` resolution must follow it through to
-  // the script behind it rather than read it as a dead end.
+  // Makes `SuperScriptParent` usable without an import.
   class SuperScriptParent extends ScriptClass {}
 
   // What `preload("res://super-script-parent.gd")` returns — without it
