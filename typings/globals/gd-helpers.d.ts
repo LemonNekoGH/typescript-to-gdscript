@@ -115,16 +115,17 @@ declare const gd: {
    * gd.dict([[key1, 'value'], [key2, 'value'], ['str_key', 'value']])
    * // becomes: {key1: "value", key2: "value", "str_key": "value"}
    *
-   * The key and value types come from where the result goes, and the
-   * entries are checked against them, so it fits a `Dictionary<Node, int>`
-   * — which an object literal cannot, `{}` included. They are never
-   * inferred from the entries: a key typed `this` or a subclass would make
-   * a dictionary TypeScript refuses as `Dictionary<Node, int>` (its key is
+   * The dictionary type comes from where the result goes — class keys,
+   * string keys or number keys alike — and the entries are checked
+   * against its key and value types, so it fits a `Dictionary<Node, int>`,
+   * which an object literal cannot, `{}` included. It is never inferred
+   * from the entries: a key typed `this` or a subclass would make a
+   * dictionary TypeScript refuses as `Dictionary<Node, int>` (its key is
    * invariant). With nowhere typed to go, the result is untyped.
    */
-  readonly dict: <K = unknown, V = unknown>(
-    entries: [NoInfer<K>, NoInfer<V>][],
-  ) => DictionaryKeyMethods<K, V>;
+  readonly dict: <D = Dictionary>(
+    entries: NoInfer<GdDictEntry<NonNullable<D>>>[],
+  ) => D;
 
   /**
    * GDScript `match` statement. Transforms to `match value:` with pattern cases in GDScript.
@@ -391,3 +392,19 @@ interface Promise<T> {
    */
   finally(onfinally?: (() => void) | undefined | null): Promise<T>;
 }
+
+/**
+ * The `[key, value]` entry type of a dictionary type, for `gd.dict`. A
+ * string- or number-keyed `Dictionary<K, V>` is an index signature, any
+ * other key a `DictionaryKeyMethods` surface; `keyof` tells the index
+ * forms apart (a string index also admits numbers, so the pattern alone
+ * cannot), and a surface is read last because an index type matches its
+ * pattern too.
+ */
+type GdDictEntry<D> = string extends keyof D
+  ? [string, D[keyof D]]
+  : number extends keyof D
+    ? [number, D[keyof D]]
+    : D extends DictionaryKeyMethods<infer K, infer V>
+      ? [K, V]
+      : [unknown, unknown];

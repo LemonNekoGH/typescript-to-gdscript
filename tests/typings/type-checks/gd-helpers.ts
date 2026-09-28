@@ -235,6 +235,11 @@ class TypeDictTest extends Node {
     const subclass_key: Dictionary<Node, int> = gd.dict([[other, 1]]);
     const self_key: Dictionary<Node, int> = gd.dict([[this, 1]]);
     const value: int = typed.get(node);
+    // String and number keys take their types from the destination too.
+    const by_name: Dictionary<string, int> = gd.dict([['hp', 1]]);
+    const by_index: Dictionary<int, string> = gd.dict([[1, 'a']]);
+    // @ts-expect-error — a value of the wrong type for a string key
+    const wrong_name: Dictionary<string, int> = gd.dict([['hp', 'x']]);
     // @ts-expect-error — a value of the wrong type
     const wrong: Dictionary<Node, int> = gd.dict([[node, 'x']]);
     // @ts-expect-error — `{}` has no typed find_key for a class key

@@ -16,6 +16,11 @@ func process(data: Dictionary[String, int]) -> Dictionary[int, String]:
 var by_node: Dictionary[Node, int] = {}
 
 func fresh() -> Dictionary[Node, float]:
+	# A variable key into a string-keyed dictionary: `gd.dict`, typed from
+	# where it goes.
+	var key = "hp"
+	var named: Dictionary[String, int] = {key: 1}
+	print(named)
 	var nodes: Dictionary[Node, float] = {self: 1.0}
 	nodes = {}
 	return {}

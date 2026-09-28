@@ -14,6 +14,13 @@ export class DictGenerics extends Node {
   by_node: Dictionary<Node, int> = {};
 
   fresh(): Dictionary<Node, float> {
+    // A variable key into a string-keyed dictionary: `gd.dict`, typed from
+    // where it goes.
+    let key = "hp";
+    let named: Dictionary<string, int> = gd.dict([
+      [key, 1],
+    ]);
+    print(named);
     let nodes: Dictionary<Node, float> = gd.dict([
       [this, 1.0],
     ]);
