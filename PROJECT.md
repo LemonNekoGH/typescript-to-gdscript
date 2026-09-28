@@ -58,6 +58,7 @@ src/
     ts-to-gd/            # transformer.ts (AST visitor), emitter.ts (line/col + sourcemap), index.ts, switch.ts (`switch` → `match`), statement-body.ts (break targets, `pass` fallback), gd-match.ts (`gd.match` + shared pattern emitter, split from gd-helpers.ts for the 500-line cap), gd-cast.ts (`gd.as` / `gd.is` and operand grouping), operator-tokens.ts (TS operator → GD spelling, `++`/`--`)
     gd-to-ts/index.ts    # convertGdToTs() with typed AST, scope tracking, GodotClassRegistry
     gd-to-ts/match.ts    # `match` → `switch` (simple patterns) or `gd.match()` (bindings/guards/array/dict)
+    gd-to-ts/operators.ts  # emitBinaryOp / emitUnaryOp and the `%Unique/Child` path check (split out of expressions.ts for the 500-line cap)
     gd-to-ts/syntax-children.ts  # firstSyntaxChild() / syntaxChildren(): named children without the grammar's extras (`\` continuations, comments)
     gd-to-ts/ts-helpers.ts  # TS-based post-processing (operator fix, explicit convert, ready field types, extends type)
     common/index.ts      # TransformContext, TransformDiagnostic, TransformResult, tsTypeToGdType()
