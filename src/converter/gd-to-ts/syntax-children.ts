@@ -1,4 +1,4 @@
-import type { SyntaxNode } from '../../parser/gdscript/types.ts';
+import { SyntaxType, type SyntaxNode } from '../../parser/gdscript/types.ts';
 
 // The GDScript grammar declares `\` line continuations and `#` comments
 // as extras (`extras` in tree-sitter-gdscript's grammar.js): they may sit
@@ -32,9 +32,12 @@ export function syntaxChildren(node: SyntaxNode): SyntaxNode[] {
  * keeps the `\`, the line break and the indentation, which then leaked
  * into the TypeScript annotation and kept a name from matching anything.
  * A type holds no `#` and no string, so both extras can go by their text;
- * what is left is the type as it would read on one line.
+ * what is left is the type as it would read on one line. An `extends`
+ * target can be a string, though — a script path — and is returned as
+ * written: a `#` or a run of spaces there is part of the path.
  */
 export function typeSourceText(node: SyntaxNode): string {
+  if (node.type === SyntaxType.String) return node.text;
   return node.text
     .replace(/#[^\n]*/g, '')
     .replace(/\\\r?\n/g, '')

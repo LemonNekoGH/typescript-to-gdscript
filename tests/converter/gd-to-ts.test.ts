@@ -735,6 +735,20 @@ describe('GD to TS: emitted TypeScript parses', () => {
   });
 });
 
+describe('GD to TS: `extends` by path', () => {
+  // A path with nowhere to exist can't be a fixture, which Godot checks.
+  it('keeps the path as written, `#` and spaces included', () => {
+    const result = convertGdToTs({
+      source: 'extends "res://odd  dir/boss#2.gd"\n\nvar hp = 1\n',
+      filePath: join(FIXTURES_DIR, 'extends-odd-path.gd'),
+      registry,
+    });
+    expect(result.code).toContain(
+      'extends preload("res://odd  dir/boss#2.gd")',
+    );
+  });
+});
+
 describe('GD to TS: globals TypeScript cannot spell', () => {
   function convert(source: string) {
     return convertGdToTs({
