@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { convertTsToGd } from '../../src/converter/ts-to-gd/index.js';
 import { createTsProgram } from '../../src/parser/typescript/index.js';
-import { collectTsDiagnostics } from '../../src/checker/ts-diagnostics.js';
+import ts from 'typescript';
+import {
+  NOISE_CODES,
+  collectTsDiagnostics,
+} from '../../src/checker/ts-diagnostics.js';
 import { readFileSync, readdirSync } from 'fs';
 import { join, basename, resolve } from 'path';
 import { fileURLToPath } from 'url';
@@ -98,6 +102,46 @@ for (const d of collectTsDiagnostics(program, FIXTURES_DIR)) {
   list.push(`  ${d.line}:${d.column} ${d.message}`);
   tsDiagnosticsByFile.set(key, list);
 }
+
+describe('TS to GD: the fixture program type-checks', () => {
+  // Each fixture looks its diagnostics up by its own path. One filed
+  // under any other spelling of it — or under a file that is no fixture
+  // — would pass every per-fixture check unseen.
+  it('reports each input diagnostic under a fixture', () => {
+    const fixtureKeys = new Set(
+      fixtureFiles.map((name) => resolve(FIXTURES_DIR, `${name}.ts`)),
+    );
+    const stray = [...tsDiagnosticsByFile.entries()]
+      .filter(([file]) => !fixtureKeys.has(file))
+      .map(([file, messages]) => `${file}\n${messages.join('\n')}`);
+    expect(stray.join('\n'), 'diagnostics outside any fixture').toBe('');
+  });
+
+  // The hand-written mirrors of generated script typings are declaration
+  // files, which the project checker skips — so they are checked here.
+  it('type-checks the *.gd.d.ts mirrors', () => {
+    const mirrors = program
+      .getSourceFiles()
+      .filter(
+        (sf) =>
+          sf.fileName.endsWith('.gd.d.ts') &&
+          resolve(sf.fileName).startsWith(resolve(FIXTURES_DIR)),
+      );
+    expect(mirrors.length).toBeGreaterThan(0);
+    const errors = mirrors.flatMap((sf) =>
+      [
+        ...program.getSyntacticDiagnostics(sf),
+        ...program.getSemanticDiagnostics(sf),
+      ]
+        .filter((d) => !NOISE_CODES.has(d.code))
+        .map(
+          (d) =>
+            `${basename(sf.fileName)}: TS${d.code} ${ts.flattenDiagnosticMessageText(d.messageText, ' ')}`,
+        ),
+    );
+    expect(errors.join('\n'), 'errors in the mirrors').toBe('');
+  });
+});
 
 describe('TS to GD: Fixture-based tests', () => {
   for (const fixtureName of fixtureFiles) {
