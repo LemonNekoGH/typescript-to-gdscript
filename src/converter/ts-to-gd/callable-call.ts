@@ -1,6 +1,7 @@
 import ts from 'typescript';
 import { isAmbient } from '../common/gd-names.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
+import { resolvedDeclarations } from '../common/gd-names.ts';
 
 /**
  * True when GDScript can call the callee exactly as written.
@@ -22,23 +23,6 @@ function isNamedCallTarget(callee: ts.Expression): boolean {
     ts.isPropertyAccessExpression(callee) ||
     callee.kind === ts.SyntaxKind.SuperKeyword
   );
-}
-
-/**
- * True when the callee resolves to something GDScript has a name for.
- * An import is followed to what it binds, so a helper imported from
- * another file is judged by its declaration rather than by the import
- * specifier standing in for it.
- */
-export function declarationsOf(
-  t: TransformerDelegate,
-  callee: ts.Expression,
-): readonly ts.Declaration[] {
-  let symbol = t.ctx.checker.getSymbolAtLocation(callee);
-  if (symbol && symbol.flags & ts.SymbolFlags.Alias) {
-    symbol = t.ctx.checker.getAliasedSymbol(symbol);
-  }
-  return symbol?.getDeclarations() ?? [];
 }
 
 /**
@@ -70,7 +54,7 @@ function resolvesToNamedFunction(
   t: TransformerDelegate,
   callee: ts.Expression,
 ): boolean {
-  return declarationsOf(t, callee).some(isNamedFunction);
+  return resolvedDeclarations(t.ctx.checker, callee).some(isNamedFunction);
 }
 
 /**
@@ -123,7 +107,7 @@ export function isCallableMemberCall(
   t: TransformerDelegate,
   callee: ts.Expression,
 ): boolean {
-  const decls = declarationsOf(t, callee);
+  const decls = resolvedDeclarations(t.ctx.checker, callee);
   if (decls.length === 0) return isCallableValueCall(t, callee);
   return !decls.some(isNamedFunction);
 }

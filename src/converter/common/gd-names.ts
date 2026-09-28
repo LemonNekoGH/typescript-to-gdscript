@@ -135,11 +135,7 @@ export function classifyTypeReferenceName(
   // Resolve the symbol, following import aliases to the real declaration so
   // that types imported from another file are classified by what they are,
   // not by the `ImportSpecifier` binding.
-  let symbol = checker.getSymbolAtLocation(typeNode.typeName);
-  if (symbol && symbol.flags & ts.SymbolFlags.Alias) {
-    symbol = checker.getAliasedSymbol(symbol);
-  }
-  const declarations = symbol?.getDeclarations() ?? [];
+  const declarations = resolvedDeclarations(checker, typeNode.typeName);
 
   // Godot built-ins are recognised by name, BEFORE the alias rule below:
   // the dialect spells several of them as aliases (`type bool = boolean`,
@@ -165,4 +161,35 @@ export function classifyTypeReferenceName(
   // GD type hints are optional, so dropping a type is always safe, whereas
   // emitting a bogus one breaks the generated GDScript.
   return null;
+}
+
+/**
+ * The declarations a name resolves to, an import followed to what it
+ * binds — so something imported from another file is judged by its
+ * declaration, not by the import specifier standing in for it.
+ */
+export function resolvedDeclarations(
+  checker: ts.TypeChecker,
+  node: ts.Node,
+): readonly ts.Declaration[] {
+  let symbol = checker.getSymbolAtLocation(node);
+  if (symbol && symbol.flags & ts.SymbolFlags.Alias) {
+    symbol = checker.getAliasedSymbol(symbol);
+  }
+  return symbol?.getDeclarations() ?? [];
+}
+
+/**
+ * An `extends` expression as GDScript spells it: a class name respelled
+ * where the typings renamed it (`GodotObject` → `Object`), anything else
+ * as written.
+ */
+export function gdHeritageText(
+  checker: ts.TypeChecker,
+  expr: ts.Expression,
+  sourceFile: ts.SourceFile,
+): string {
+  return ts.isIdentifier(expr)
+    ? gdClassSpelling(expr.text, resolvedDeclarations(checker, expr))
+    : expr.getText(sourceFile);
 }

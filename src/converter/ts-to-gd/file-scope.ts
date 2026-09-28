@@ -19,8 +19,7 @@
  */
 
 import ts from 'typescript';
-import { gdClassSpelling } from '../common/gd-names.ts';
-import { declarationsOf } from './callable-call.ts';
+import { gdHeritageText } from '../common/gd-names.ts';
 import { tsTypeNodeToGdType } from '../common/index.ts';
 import type { ImportEntry } from './imports.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
@@ -216,9 +215,11 @@ export function emitFileScopeClass(
         hasExtends = true;
         const baseType = clause.types[0]!;
         const baseExpr = baseType.expression;
-        const baseText = ts.isIdentifier(baseExpr)
-          ? gdClassSpelling(baseExpr.text, declarationsOf(t, baseExpr))
-          : baseExpr.getText(t.ctx.sourceFile);
+        const baseText = gdHeritageText(
+          t.ctx.checker,
+          baseExpr,
+          t.ctx.sourceFile,
+        );
         // Same import-aware extends-rewrite as the script class:
         // when extending an imported anonymous class, GDScript needs
         // the path-literal form.

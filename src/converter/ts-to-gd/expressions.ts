@@ -14,12 +14,8 @@ import {
   resolveOwnClassRef,
 } from './own-class-ref.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
-import {
-  declarationsOf,
-  isCallableMemberCall,
-  isCallableValueCall,
-} from './callable-call.ts';
-import { gdClassSpelling } from '../common/gd-names.ts';
+import { isCallableMemberCall, isCallableValueCall } from './callable-call.ts';
+import { gdClassSpelling, resolvedDeclarations } from '../common/gd-names.ts';
 import { godotClassName } from '../../typings/type-mapping.ts';
 import { effectiveParent } from './effective-parent.ts';
 import { emitLambda } from './lambda.ts';
@@ -57,7 +53,7 @@ export function emitExpression(
     // actually renamed is worth asking the checker about.
     return godotClassName(text) === text
       ? text
-      : gdClassSpelling(text, declarationsOf(t, node));
+      : gdClassSpelling(text, resolvedDeclarations(t.ctx.checker, node));
   }
 
   // this -> self. Inside a `static` member there is no `self` in
