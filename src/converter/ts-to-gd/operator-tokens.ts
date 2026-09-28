@@ -103,12 +103,38 @@ export function unaryOperator(op: ts.PrefixUnaryOperator): string {
   }
 }
 
+/** Parentheses, or a wrapper the emitter erases (`!`, `as`, `satisfies`, `<T>`). */
+function isOuterWrapper(node: ts.Node): node is ts.Expression & {
+  expression: ts.Expression;
+} {
+  return (
+    ts.isParenthesizedExpression(node) ||
+    ts.isNonNullExpression(node) ||
+    ts.isAsExpression(node) ||
+    ts.isSatisfiesExpression(node) ||
+    ts.isTypeAssertionExpression(node)
+  );
+}
+
+/**
+ * An expression with the parentheses and erased wrappers around it taken
+ * off — for a statement or a `for` incrementor, where they mean nothing
+ * in GDScript, and around an assignment they are an error:
+ * `(this.n++);` has to go out as `self.n += 1`, not `(self.n += 1)`.
+ */
+export function withoutOuterWrappers(expr: ts.Expression): ts.Expression {
+  let inner = expr;
+  while (isOuterWrapper(inner)) inner = inner.expression;
+  return inner;
+}
+
 /**
  * `++` / `--` on either side, as GDScript's `+= 1` / `-= 1` — which is a
  * statement there, not a value. Only where the result is discarded (an
- * expression statement, a `for` incrementor) is that the same thing;
- * anywhere else the TS reads the value, and that is reported. Null for
- * any other unary operator.
+ * expression statement, a `for` incrementor, through any parentheses) is
+ * that the same thing; anywhere else the TS reads the value, and that is
+ * reported, with `null` left in its place so `--emit-on-error` output
+ * still parses. Null for any other unary operator.
  *
  * The prefix form used to emit nothing but its operand: `++this.n`
  * became `self.n`, and the increment was lost.
@@ -124,10 +150,12 @@ export function emitIncrement(
         ? '-='
         : null;
   if (op === null) return null;
-  const p = node.parent;
+  let site: ts.Node = node;
+  while (isOuterWrapper(site.parent)) site = site.parent;
+  const p = site.parent;
   const discarded =
     ts.isExpressionStatement(p) ||
-    (ts.isForStatement(p) && p.incrementor === node);
+    (ts.isForStatement(p) && p.incrementor === site);
   if (!discarded) {
     t.addDiagnostic(
       node,
@@ -136,6 +164,7 @@ export function emitIncrement(
         `equivalent: GDScript's \`${op} 1\` is a statement. Move it to a ` +
         `statement of its own.`,
     );
+    return 'null';
   }
   return `${t.emitExpression(node.operand)} ${op} 1`;
 }

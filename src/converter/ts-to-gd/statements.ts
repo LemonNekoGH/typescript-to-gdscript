@@ -1,6 +1,7 @@
 import ts from 'typescript';
 import { tsTypeNodeToGdType } from '../common/index.ts';
 import { isGdEvalCall, processGdEval, emitGdEval } from './gd-helpers.ts';
+import { withoutOuterWrappers } from './operator-tokens.ts';
 import { isGdMatchCall, visitGdMatchStatement } from './gd-match.ts';
 import type { TransformerDelegate } from './transformer-types.ts';
 import { isVoidExpression } from './void-value.ts';
@@ -48,12 +49,12 @@ export function visitStatement(
     } else if (isGdMatchCall(node.expression)) {
       visitGdMatchStatement(t, node.expression as ts.CallExpression);
     } else {
-      // An expression that emits nothing leaves no statement behind —
-      // the bare `super()` TypeScript forces on a derived constructor
-      // is the case that reaches here. `emitStatements` turns a body
-      // that ends up empty into `pass`, so there is nothing to hold
-      // the line open for.
-      const text = t.emitExpression(node.expression);
+      // Parentheses around a whole statement mean nothing in GDScript,
+      // and around an assignment they are an error (`withoutOuterWrappers`).
+      // An expression that emits nothing leaves no statement behind;
+      // `emitStatements` turns a body that ends up empty into `pass`, so
+      // there is nothing to hold the line open for.
+      const text = t.emitExpression(withoutOuterWrappers(node.expression));
       if (text !== '') t.emitter.writeLine(text, pos.line, pos.col);
     }
   } else if (ts.isReturnStatement(node)) {
@@ -328,7 +329,7 @@ export function visitForStatement(
   if (node.incrementor) {
     const incPos = t.getLineAndCol(node.incrementor);
     t.emitter.writeLine(
-      t.emitExpression(node.incrementor),
+      t.emitExpression(withoutOuterWrappers(node.incrementor)),
       incPos.line,
       incPos.col,
     );

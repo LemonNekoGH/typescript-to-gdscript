@@ -36,6 +36,15 @@ func switch_break_marker(value: int):
 			# ERROR: `break` has no GDScript equivalent inside a `match` branch. Branches never fall through, so a case ends on its own — remove the `break`, and restructure the case if it needs to exit early.
 			pass
 
+# A rejected OPERATOR leaves `null` where its value would go: the
+# operator itself would fail the whole `--emit-on-error` file in Godot.
+func rejected_operators(k: int) -> void:
+	# ERROR: The `>>>` operator has no GDScript equivalent
+	var unsigned = null
+	# ERROR: `++` used as a value has no GDScript equivalent: GDScript's `+= 1` is a statement. Move it to a statement of its own.
+	var before = null
+	print(unsigned, before)
+
 # Erased down to nothing, so the block still needs `pass`.
 func type_only_alone(value: int):
 	if value > 0:

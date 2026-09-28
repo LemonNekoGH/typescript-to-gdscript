@@ -81,6 +81,8 @@ export class MyClass extends Node {
     k **= 2;
     ++k;
     --k;
+    // Parentheses around a statement change nothing.
+    (k++);
     for (let i = 0; i < 3; ++i) {
       print(i);
     }

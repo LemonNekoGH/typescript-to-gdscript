@@ -828,7 +828,9 @@ export function emitBinaryExpression(
         `The \`${ts.tokenToString(kind)}\` operator has no GDScript equivalent`,
       );
     }
-    return `${left} ${ts.tokenToString(kind)} ${right}`;
+    // Reported; `null` keeps `--emit-on-error` output parseable, where the
+    // operator itself would fail the whole file in Godot.
+    return 'null';
   }
   return `${left} ${op} ${right}`;
 }

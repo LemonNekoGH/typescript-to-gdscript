@@ -39,6 +39,14 @@ export class UnsupportedBody extends Node {
     }
   }
 
+  // A rejected OPERATOR leaves `null` where its value would go: the
+  // operator itself would fail the whole `--emit-on-error` file in Godot.
+  rejected_operators(k: int): void {
+    let unsigned = k >>> 1;
+    let before = k++;
+    print(unsigned, before);
+  }
+
   // Erased down to nothing, so the block still needs `pass`.
   type_only_alone(value: int) {
     if (value > 0) {

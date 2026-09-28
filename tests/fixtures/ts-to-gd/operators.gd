@@ -77,6 +77,8 @@ func test_compound_assignment() -> void:
 	k **= 2
 	k += 1
 	k -= 1
+	# Parentheses around a statement change nothing.
+	k += 1
 	var i = 0
 	while i < 3:
 		print(i)
