@@ -580,7 +580,7 @@ export function emitBinaryOp(node: SyntaxNode, ctx: GdToTsContext): string {
   ) {
     const lifted =
       left?.type === SyntaxType.UnaryOperator &&
-      left.children.find((c) => !c.isNamed)?.text === 'not';
+      isNegation(left.children.find((c) => !c.isNamed)?.text);
     const operand = lifted ? firstSyntaxChild(left) : left;
     const leftStr = operand ? emitExpr(operand, ctx) : '';
     const rightStr = right ? emitExpr(right, ctx) : '';
@@ -597,7 +597,7 @@ export function emitBinaryOp(node: SyntaxNode, ctx: GdToTsContext): string {
     left.type === SyntaxType.UnaryOperator
   ) {
     const unaryOp = left.children.find((c) => !c.isNamed)?.text;
-    if (unaryOp === 'not') {
+    if (isNegation(unaryOp)) {
       const innerLeft = firstSyntaxChild(left);
       const innerLeftStr = innerLeft ? emitExpr(innerLeft, ctx) : '';
       const rightStr = right ? emitExpr(right, ctx) : '';
@@ -739,6 +739,15 @@ function isGdBoolExpression(node: SyntaxNode): boolean {
   // `true` / `false` literals
   if (node.text === 'true' || node.text === 'false') return true;
   return false;
+}
+
+/**
+ * GDScript spells logical negation two ways, `not` and `!`, and both bind
+ * alike (verified at runtime: `!x == y` is `not (x == y)`), so every lift
+ * of a leading negation over a comparison has to know both.
+ */
+function isNegation(op: string | undefined): boolean {
+  return op === 'not' || op === '!';
 }
 
 export function emitUnaryOp(node: SyntaxNode, ctx: GdToTsContext): string {

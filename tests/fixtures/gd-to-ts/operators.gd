@@ -91,3 +91,7 @@ func test_not_in(items: Array, key: String):
     var present: bool = key in items
     var lifted: bool = not key in items
     var double_not: bool = not key not in items
+    # `!` is the same operator as `not` and binds the same way.
+    var bang_lifted: bool = !key in items
+    var bang_double: bool = !key not in items
+    var bang_compare: bool = !key == "k"

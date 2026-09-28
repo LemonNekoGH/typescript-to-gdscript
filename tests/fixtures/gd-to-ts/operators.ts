@@ -93,5 +93,9 @@ export class Operators extends Node {
     let present: boolean = key in items;
     let lifted: boolean = !(key in items);
     let double_not: boolean = !!(key in items);
+    // `!` is the same operator as `not` and binds the same way.
+    let bang_lifted: boolean = !(key in items);
+    let bang_double: boolean = !!(key in items);
+    let bang_compare: boolean = !(key === "k");
   }
 }
