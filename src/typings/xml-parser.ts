@@ -399,7 +399,9 @@ export function parseAllClassXmls(
 
 /**
  * Every class-reference directory in a Godot source tree: `doc/classes`
- * first, then each `modules/<name>/doc_classes`, sorted by module name so
+ * first, then each `modules/<name>/doc_classes`, then each
+ * `platform/<name>/doc_classes` — the three roots Godot's own
+ * `doc/Makefile` builds the class reference from — each sorted by name so
  * the result does not depend on directory-listing order.
  *
  * Godot documents most of its API in the modules, not in `doc/classes` —
@@ -415,12 +417,18 @@ export function godotSourceDocDirs(godotSourceDir: string): string[] {
       `Not a Godot source tree: ${godotSourceDir} has no doc/classes directory`,
     );
   }
-  const modulesDir = join(godotSourceDir, 'modules');
-  const moduleDirs = existsSync(modulesDir)
-    ? readdirSync(modulesDir)
-        .sort()
-        .map((name) => join(modulesDir, name, 'doc_classes'))
-        .filter((dir) => existsSync(dir))
-    : [];
-  return [core, ...moduleDirs];
+  return [
+    core,
+    ...docClassDirsUnder(join(godotSourceDir, 'modules')),
+    ...docClassDirsUnder(join(godotSourceDir, 'platform')),
+  ];
+}
+
+/** Each `<root>/<name>/doc_classes` that exists, sorted by `<name>`. */
+function docClassDirsUnder(root: string): string[] {
+  if (!existsSync(root)) return [];
+  return readdirSync(root)
+    .sort()
+    .map((name) => join(root, name, 'doc_classes'))
+    .filter((dir) => existsSync(dir));
 }

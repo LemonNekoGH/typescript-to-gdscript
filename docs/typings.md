@@ -190,13 +190,13 @@ This command is automatically called by `initial-convert-gd-to-ts` and `watch` (
 
 Generate the bundled Godot **engine class** typings and class registry from Godot's XML class docs. The Godot version is auto-detected from `version.py` next to the docs (or `vendor/godot/version.py`).
 
-Point `--godot-source` at a Godot source tree and it reads the whole class reference: `doc/classes/` for the core plus every `modules/<module>/doc_classes/`. The modules matter — `RegEx`, the CSG nodes, `GridMap`, `MultiplayerSpawner`, `FastNoiseLite`, the Ogg and MP3 streams and more are documented there, not in `doc/classes/`.
+Point `--godot-source` at a Godot source tree and it reads the whole class reference, from the same three places Godot's own documentation build does: `doc/classes/` for the core, every `modules/<module>/doc_classes/`, and every `platform/<platform>/doc_classes/` (the editor's export platforms). The modules matter — `RegEx`, the CSG nodes, `GridMap`, `MultiplayerSpawner`, `FastNoiseLite`, the Ogg and MP3 streams and more are documented there, not in `doc/classes/`.
 
 `--docs-dir` takes extra XML directories for a layout `--godot-source` doesn't describe. It is **variadic**, so place it _last_ on the command line — it consumes every following positional value until the next flag. Later dirs override earlier ones for same-named classes.
 
 Options:
 
-- `--godot-source <dir>` — A Godot source tree; reads `doc/classes/` and every `modules/*/doc_classes/`.
+- `--godot-source <dir>` — A Godot source tree; reads `doc/classes/`, every `modules/*/doc_classes/` and every `platform/*/doc_classes/`.
 - `--docs-dir <dirs...>` — Extra Godot XML class documentation directories. One of the two options is required.
 - `--output-dir <dir>` — Root typings output directory (default: `typings`).
 - `--override-dir <dir>` — User override directory for `.d.ts` files and `non-nullable.json` (combined with bundled defaults).
@@ -204,7 +204,7 @@ Options:
 
 ### Using it for a custom Godot build
 
-The Godot source tree contains the class XML you need under `doc/classes/` (core) and `modules/<name>/doc_classes/` (per-module / custom classes) — `--godot-source` reads both, your custom modules included. Generate typings into a folder you control, then point both `tsconfig.json` and `tstogd.json` at it.
+The Godot source tree contains the class XML you need under `doc/classes/` (core) and `modules/<name>/doc_classes/` (per-module / custom classes) — `--godot-source` reads both, including custom modules you placed under `modules/`. A module built from outside the tree (SCons `custom_modules=`) is not there: add its `doc_classes/` with `--docs-dir`. Generate typings into a folder you control, then point both `tsconfig.json` and `tstogd.json` at it.
 
 **1. Generate the typings from your Godot's docs.** Pick an output directory outside `node_modules` (so it survives reinstalls), e.g. `_godot-typings/`:
 

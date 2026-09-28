@@ -211,7 +211,7 @@ tstogd generate-gdscript-global-typings \
 
 Options:
 
-- `--godot-source <dir>` — A Godot source tree. Reads its whole class reference: `doc/classes/` plus every `modules/<module>/doc_classes/`, where much of the API lives (`RegEx`, CSG, `GridMap`, the multiplayer nodes, …).
+- `--godot-source <dir>` — A Godot source tree. Reads its whole class reference, as Godot's own documentation build does: `doc/classes/`, every `modules/<module>/doc_classes/` (where much of the API lives — `RegEx`, CSG, `GridMap`, the multiplayer nodes, …) and every `platform/<platform>/doc_classes/`.
 - `--docs-dir <dirs...>` — Extra Godot XML doc directories, for a layout `--godot-source` doesn't describe. Later dirs override earlier ones for same-named classes. Place this flag **last** (variadic — it consumes following positionals).
 - One of the two is required.
 - `--output-dir <dir>` — Root typings output directory (default: `typings`).

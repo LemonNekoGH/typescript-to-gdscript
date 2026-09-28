@@ -485,13 +485,23 @@ describe('Godot Registry: Version Detection', () => {
 describe('Godot Registry: godotSourceDocDirs', () => {
   const GODOT_SOURCE = join(__dirname, '../../vendor/godot');
 
-  it('reads doc/classes first, then every module in name order', () => {
+  it('reads doc/classes, then every module, then every platform, each in name order', () => {
     const dirs = godotSourceDocDirs(GODOT_SOURCE).map((d) =>
       d.replace(/\\/g, '/'),
     );
     expect(dirs[0]).toMatch(/\/doc\/classes$/);
-    const modules = dirs.slice(1).map((d) => d.split('/').at(-2)!);
+    const under = (root: string) =>
+      dirs
+        .filter((d) => d.includes(`/${root}/`))
+        .map((d) => d.split('/').at(-2)!);
+    const modules = under('modules');
+    const platforms = under('platform');
+    expect(dirs).toHaveLength(1 + modules.length + platforms.length);
+    expect(dirs.slice(1, 1 + modules.length).every((d) => d.includes('/modules/'))).toBe(true);
     expect(modules).toEqual([...modules].sort());
+    expect(platforms).toEqual([...platforms].sort());
+    // Godot's own doc/Makefile reads platform/ too: the export platforms.
+    expect(platforms).toContain('android');
     // The modules hold much of the API — the reason they are read at all.
     for (const mod of ['gdscript', 'regex', 'csg', 'multiplayer', 'noise']) {
       expect(modules).toContain(mod);
