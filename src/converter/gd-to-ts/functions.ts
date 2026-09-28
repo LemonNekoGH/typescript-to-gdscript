@@ -216,7 +216,7 @@ export function emitParams(paramsNode: SyntaxNode, ctx: GdToTsContext): string {
         const sigParam = handlerInfo.params[paramIndex]!;
         const tsType = widenInType(
           sigParam.gdType,
-          gdTypeToTs(sigParam.gdType, ctx.registry),
+          gdTypeToTs(sigParam.gdType, ctx.registry, ctx.userClasses),
           ctx,
         );
         params.push(tsType ? `${pname}: ${tsType}` : pname);
@@ -233,7 +233,9 @@ export function emitParams(paramsNode: SyntaxNode, ctx: GdToTsContext): string {
       const rawType = typeNode ? typeSourceText(typeNode) : '';
       const baseType = escapeSelfClassType(
         qualifyClassType(rawType, ctx.classTypeNames, ctx.className) ??
-          (typeNode ? gdTypeToTs(rawType, ctx.registry) : null),
+          (typeNode
+            ? gdTypeToTs(rawType, ctx.registry, ctx.userClasses)
+            : null),
         ctx,
       );
       const tsType = widenInType(rawType, baseType, ctx);
@@ -265,7 +267,9 @@ export function emitParams(paramsNode: SyntaxNode, ctx: GdToTsContext): string {
       const rawType = typeNode ? typeSourceText(typeNode) : '';
       const baseType = escapeSelfClassType(
         qualifyClassType(rawType, ctx.classTypeNames, ctx.className) ??
-          (typeNode ? gdTypeToTs(rawType, ctx.registry) : null),
+          (typeNode
+            ? gdTypeToTs(rawType, ctx.registry, ctx.userClasses)
+            : null),
         ctx,
       );
       const valueText = value?.text?.trim() ?? '';
@@ -298,7 +302,7 @@ export function emitParams(paramsNode: SyntaxNode, ctx: GdToTsContext): string {
         );
         const typeNode = inner.childForFieldName('type');
         const rawType = typeNode ? typeSourceText(typeNode) : '';
-        const tsType = gdTypeToTs(rawType, ctx.registry);
+        const tsType = gdTypeToTs(rawType, ctx.registry, ctx.userClasses);
         // GDScript varargs always collect into an Array. The mapped TS type
         // for `Array` is already `Array<unknown>`, so use it directly.
         // For any other type, it's already an array-like form.
@@ -330,14 +334,14 @@ export function emitReturnType(
     const inner = typeSourceText(firstSyntaxChild(typeNode) ?? typeNode);
     tsType = escapeSelfClassType(
       qualifyClassType(inner, ctx.classTypeNames, ctx.className) ??
-        gdTypeToTs(inner, ctx.registry),
+        gdTypeToTs(inner, ctx.registry, ctx.userClasses),
       ctx,
     );
   } else {
     const raw = typeSourceText(typeNode);
     tsType = escapeSelfClassType(
       qualifyClassType(raw, ctx.classTypeNames, ctx.className) ??
-        gdTypeToTs(raw, ctx.registry),
+        gdTypeToTs(raw, ctx.registry, ctx.userClasses),
       ctx,
     );
   }

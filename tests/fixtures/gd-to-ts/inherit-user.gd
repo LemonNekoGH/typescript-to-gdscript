@@ -1,6 +1,8 @@
 extends EnemyBase
 
 var velocity_target = -100
+# An engine enum named through the script base that inherits it.
+var mode: EnemyBase.MotionMode = MOTION_MODE_GROUNDED
 var toggle = true
 
 func _physics_process(delta):

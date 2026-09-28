@@ -1,7 +1,8 @@
 import { SyntaxType, type SyntaxNode } from '../../parser/gdscript/types.ts';
 import { sanitizeClassName } from '../../typings/type-mapping.ts';
 import type { GodotClassRegistry } from '../../typings/godot-registry.ts';
-import type { GdToTsContext } from './context.ts';
+import type { GdToTsContext, UserClassInfo } from './context.ts';
+import { implicitBase } from './context.ts';
 import { escapeUnderscoreClassName } from '../common/index.ts';
 import { firstSyntaxChild, typeSourceText } from './syntax-children.ts';
 
@@ -208,6 +209,7 @@ export function escapeSelfClassType(
 export function gdTypeToTs(
   gdType: string,
   registry?: GodotClassRegistry,
+  userClasses?: ReadonlyMap<string, UserClassInfo>,
 ): string | null {
   switch (gdType) {
     case 'int':
@@ -234,16 +236,18 @@ export function gdTypeToTs(
       // Array[T] -> Array<T>
       if (gdType.startsWith('Array[')) {
         const inner = gdType.slice(6, -1);
-        const tsInner = gdTypeToTs(inner, registry);
+        const tsInner = gdTypeToTs(inner, registry, userClasses);
         return `Array<${tsInner ?? inner}>`;
       }
       // Dictionary[K, V] -> Dictionary<K, V>
       if (gdType.startsWith('Dictionary[')) {
         const inner = gdType.slice(11, -1);
         const [key, value] = splitTopLevelTypeArgs(inner);
-        const tsKey = key ? (gdTypeToTs(key, registry) ?? key) : 'unknown';
+        const tsKey = key
+          ? (gdTypeToTs(key, registry, userClasses) ?? key)
+          : 'unknown';
         const tsValue = value
-          ? (gdTypeToTs(value, registry) ?? value)
+          ? (gdTypeToTs(value, registry, userClasses) ?? value)
           : 'unknown';
         return `Dictionary<${tsKey}, ${tsValue}>`;
       }
@@ -251,7 +255,7 @@ export function gdTypeToTs(
       // it only through its values (`static readonly
       // PROCESS_MODE_INHERIT: int`), never as a type, so the type is what
       // those values are. `Node.ProcessMode` itself is no TS type (TS2702).
-      if (isEngineClassEnum(gdType, registry)) return 'int';
+      if (isEngineClassEnum(gdType, registry, userClasses)) return 'int';
       // Class type or unknown — keep as-is, except an engine class the
       // typings renamed to dodge a JS global: GDScript's `Object` is TS's
       // `GodotObject`, and TS's own `Object` type is the plain-object
@@ -283,12 +287,27 @@ export function splitTopLevelTypeArgs(inner: string): string[] {
   return args;
 }
 
-/** True for `Class.Enum` naming an enum of an engine class. */
+/**
+ * True for `Class.Enum` naming an enum of an engine class — named through
+ * the engine class itself or through a script class that inherits it
+ * (`MyControl.LayoutPreset`). A script class in between that declares a
+ * member of that name owns it: its own enum, which TypeScript declares.
+ */
 function isEngineClassEnum(
   gdType: string,
   registry: GodotClassRegistry | undefined,
+  userClasses: ReadonlyMap<string, UserClassInfo> | undefined,
 ): boolean {
   const dot = gdType.indexOf('.');
   if (dot <= 0 || !registry) return false;
-  return registry.isClassEnum(gdType.slice(0, dot), gdType.slice(dot + 1));
+  const enumName = gdType.slice(dot + 1);
+  let owner = gdType.slice(0, dot);
+  const seen = new Set<string>();
+  while (!registry.hasClass(owner)) {
+    const cls = userClasses?.get(owner);
+    if (!cls || seen.has(owner) || cls.members.has(enumName)) return false;
+    seen.add(owner);
+    owner = implicitBase(cls.extends);
+  }
+  return registry.isClassEnum(owner, enumName);
 }

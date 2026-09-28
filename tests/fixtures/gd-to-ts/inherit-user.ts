@@ -1,5 +1,7 @@
 export class _InheritUser extends EnemyBase {
   velocity_target = -100;
+  // An engine enum named through the script base that inherits it.
+  mode: int = this.MOTION_MODE_GROUNDED;
   toggle = true;
 
   _physics_process(delta) {
