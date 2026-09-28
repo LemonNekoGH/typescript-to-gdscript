@@ -1,3 +1,56 @@
+## [0.1.7](https://github.com/nnn3d/typescript-to-gdscript/compare/v0.1.6...v0.1.7) (2026-09-28)
+
+### Features
+
+* **ts-to-gd:** convert super, dropping or reporting what godot cannot reach ([219688f](https://github.com/nnn3d/typescript-to-gdscript/commit/219688f7f75bab841efa59d3d1444732fceb21f5))
+* **ts-to-gd:** reject extends Object in favour of extends GodotObject ([8e85d8d](https://github.com/nnn3d/typescript-to-gdscript/commit/8e85d8d108f4f20c83b552a6e97d775c4a9de57c))
+* **typings:** read every godot module's class reference ([ea03945](https://github.com/nnn3d/typescript-to-gdscript/commit/ea03945a2a1c7f3f06f70740d7dbd096ba161da6))
+* **typings:** read godot's platform class reference too ([9b781b5](https://github.com/nnn3d/typescript-to-gdscript/commit/9b781b565ff2c9afd613887fe6738f60ceea80c8))
+* **typings:** record engine virtual methods in the class registry ([6cb2dc5](https://github.com/nnn3d/typescript-to-gdscript/commit/6cb2dc54fb6caf04dd2ea4593d7073aa7ae60833))
+
+### Bug Fixes
+
+* **checker:** stop requiring a super call in a derived constructor ([ebdb5a0](https://github.com/nnn3d/typescript-to-gdscript/commit/ebdb5a0c1eb9535f208dda59c5aa3d5c9829dacb))
+* **gd-to-ts:** emit a function-body const as a local binding ([b10fd1c](https://github.com/nnn3d/typescript-to-gdscript/commit/b10fd1c0ff59727fb6c194864ed70113a0181623))
+* **gd-to-ts:** import a base class typescript reports as a likely typo ([7da95e0](https://github.com/nnn3d/typescript-to-gdscript/commit/7da95e018c13237bc8a5ee33affdfad76f90309f))
+* **gd-to-ts:** inherit refcounted's members where no extends is written ([b058680](https://github.com/nnn3d/typescript-to-gdscript/commit/b058680d7555de3f796ca50a0d5a63101e8890fa))
+* **gd-to-ts:** keep an extends path verbatim ([b0dfd85](https://github.com/nnn3d/typescript-to-gdscript/commit/b0dfd856c3cf1de4a8fec96293349546fbb3d049))
+* **gd-to-ts:** keep argument comments out of value positions ([cdd6598](https://github.com/nnn3d/typescript-to-gdscript/commit/cdd65986e786fb56118dac77f7dace702b4506ae))
+* **gd-to-ts:** leave a walrus-defaulted parameter untyped ([addc6af](https://github.com/nnn3d/typescript-to-gdscript/commit/addc6af7ffac19bedb4fddcf63d42079dad5e8b1))
+* **gd-to-ts:** let a class-keyed dictionary start empty ([d240d88](https://github.com/nnn3d/typescript-to-gdscript/commit/d240d883898169d098abf4b5af45b6cf54780a4c))
+* **gd-to-ts:** lift a leading ! over a comparison like not ([7d5487a](https://github.com/nnn3d/typescript-to-gdscript/commit/7d5487a52adc9fc2e2b92dff2aad3e6fd8c0916f))
+* **gd-to-ts:** lift a leading not over a not-in comparison ([50bb532](https://github.com/nnn3d/typescript-to-gdscript/commit/50bb53284584ba59ae18879dab33a3270329c094))
+* **gd-to-ts:** qualify inherited engine enum values like constants ([0608b28](https://github.com/nnn3d/typescript-to-gdscript/commit/0608b2890c627540d31931ca59b06fe0aec3a01c))
+* **gd-to-ts:** read a lua-style dictionary key as a stringname ([d2ea276](https://github.com/nnn3d/typescript-to-gdscript/commit/d2ea276c401bf4c5fa07f2e947436a6dbf9d5e8f))
+* **gd-to-ts:** read a type split over lines as one line ([99a1438](https://github.com/nnn3d/typescript-to-gdscript/commit/99a143857e9101effce6805ce230e573da2b2623))
+* **gd-to-ts:** read the value past a line continuation or leading comment ([7990cb0](https://github.com/nnn3d/typescript-to-gdscript/commit/7990cb0fcd2498ac770c54379dbe15541f1c0e9d))
+* **gd-to-ts:** rewrite an empty parameter default to gd.dict too ([32a9115](https://github.com/nnn3d/typescript-to-gdscript/commit/32a9115c9e6eb8252d5f5607134f0f2dc1245e47))
+* **gd-to-ts:** skip line continuations in match pattern lists ([43280cf](https://github.com/nnn3d/typescript-to-gdscript/commit/43280cfb93cdc66cc0f908a4e4ada8600e5d9287))
+* **gd-to-ts:** translate the two-word not-in operator ([3dd5971](https://github.com/nnn3d/typescript-to-gdscript/commit/3dd59710934415a6607cda71c621f1644df2e2e4))
+* **gd-to-ts:** type an engine class enum as int ([e6a2459](https://github.com/nnn3d/typescript-to-gdscript/commit/e6a2459c1e2f2313f149350449b1abf9605f1072))
+* **gd-to-ts:** type an engine enum named through a script class as int ([4914e14](https://github.com/nnn3d/typescript-to-gdscript/commit/4914e140fe76346b27fee747f4cd715c2c6bb91d))
+* **gd-to-ts:** type godot's Object as GodotObject ([ee0e9e8](https://github.com/nnn3d/typescript-to-gdscript/commit/ee0e9e85b1f5b9eb26964b75ce87a4dbb65bb1d3))
+* **ts-to-gd:** accept a parenthesized increment and keep rejected operators parseable ([f6343ed](https://github.com/nnn3d/typescript-to-gdscript/commit/f6343edfb043689df174d48ed131e3557fdf8c86))
+* **ts-to-gd:** drop a super call only when the base is provably an engine class ([f167a2c](https://github.com/nnn3d/typescript-to-gdscript/commit/f167a2cdd7628f8729f93f285a6c9b246ee1c36a))
+* **ts-to-gd:** group gd.as and gd.is by their real godot precedence ([08762a6](https://github.com/nnn3d/typescript-to-gdscript/commit/08762a68405500b1ebb04493b89f6e7984f9a6fd))
+* **ts-to-gd:** group unary gd.ops results, prefix operators and lambdas ([7dd34a9](https://github.com/nnn3d/typescript-to-gdscript/commit/7dd34a9d2871118e6b662329e42b9d90224822e8))
+* **ts-to-gd:** parenthesize gd.as and gd.is in receiver position ([f7784d6](https://github.com/nnn3d/typescript-to-gdscript/commit/f7784d668af474ba96d573661725056d674d40d8))
+* **ts-to-gd:** parenthesize infix operands of gd.ops helpers ([dd5f7c7](https://github.com/nnn3d/typescript-to-gdscript/commit/dd5f7c7649b5bdae73758112ca3f2966dd1d94b6))
+* **ts-to-gd:** reject constructor parameter properties instead of dropping them ([e2c978e](https://github.com/nnn3d/typescript-to-gdscript/commit/e2c978e0c53b9a30e45ed0164497b94723bce357))
+* **ts-to-gd:** report operators godot lacks instead of emitting ?? ([76a0e1e](https://github.com/nnn3d/typescript-to-gdscript/commit/76a0e1e1b1c64cc19b3e2a088463ed1908ba414a))
+* **ts-to-gd:** respell object and godotobject in types gd.getset infers ([1cf1fdb](https://github.com/nnn3d/typescript-to-gdscript/commit/1cf1fdb32c5fb9fa0719fb0906696fbf856b61e2))
+* **ts-to-gd:** spell the engine's GodotObject as godot's Object ([ed9cf22](https://github.com/nnn3d/typescript-to-gdscript/commit/ed9cf223d7ff30f75944b2a39ccba6f8638d6f08))
+* **ts-to-gd:** type a bare export whose type cannot be proven as Variant ([29b2a49](https://github.com/nnn3d/typescript-to-gdscript/commit/29b2a4990701eb166b394c10c976176636fb7f3b))
+* **typings:** accept a NodePath value in the node lookup methods ([7161884](https://github.com/nnn3d/typescript-to-gdscript/commit/716188456491c9befe136be872047fbdaebd984a))
+* **typings:** give Signal.connect its flags parameter and error return ([b28eb95](https://github.com/nnn3d/typescript-to-gdscript/commit/b28eb955d0ffd7506b6b896c71af894b32295eca))
+* **typings:** let gd.as target scalars and abstract classes ([805d338](https://github.com/nnn3d/typescript-to-gdscript/commit/805d338b29ce6d9ace971903f9cb52746e647010))
+* **typings:** stop the xml member and signal patterns swallowing tags ([f824c69](https://github.com/nnn3d/typescript-to-gdscript/commit/f824c69b7b38eb0e419334d071cb298c291edf43))
+* **typings:** type gd.dict from its destination for every key type ([eb35454](https://github.com/nnn3d/typescript-to-gdscript/commit/eb3545409ec1aa18100ce62378d75baa84b05ff9))
+* **typings:** type Node.create_tween as never returning null ([0a84a20](https://github.com/nnn3d/typescript-to-gdscript/commit/0a84a2036a86a911b39feb64463f850e661ea869))
+
+### Reverts
+
+* **test:** let vitest use every core again ([29a0c8d](https://github.com/nnn3d/typescript-to-gdscript/commit/29a0c8d1701d3f6bb98bec2ca82a3283b1b45407))
 ## [0.1.6](https://github.com/nnn3d/typescript-to-gdscript/compare/v0.1.5...v0.1.6) (2026-09-24)
 
 ### Features
