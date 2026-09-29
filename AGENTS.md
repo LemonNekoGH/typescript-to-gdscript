@@ -2,20 +2,20 @@
 
 This project converts TypeScript code to GDScript for the Godot game engine, with utilities for typings generation, linting, and watch mode.
 
-**For project structure, implementation status, conversion rules, and edge cases, see [PROJECT.md](./PROJECT.md).** Read it with the Read tool whenever you need architecture context.
+**For project structure and implementation status, see [PROJECT.md](./PROJECT.md).** Conversion rules and subsystem edge cases live in `AGENTS.md` files next to the code (`src/converter/`, `src/converter/ts-to-gd/`, `src/converter/gd-to-ts/`, `src/typings/`, `src/ts-plugin/`, `tests/`); PROJECT.md lists them.
 
 ---
 
 ## Core Rules (must follow)
 
-1. **Keep `PROJECT.md` in sync with all user-facing docs.** The user-facing docs are `README.md` **and** the `docs/` folder (`docs/cli.md`, `docs/configuration.md`, `docs/transform-rules.md`, `docs/gd-helpers.md`, `docs/typings.md`, `docs/ide-integration.md`, `docs/gd-to-ts-migration.md`, `docs/development.md`); `PROJECT.md` is the internal mirror. Whenever you add or change any of:
+1. **Keep `PROJECT.md` in sync with all user-facing docs.** The user-facing docs are `README.md` **and** the `docs/` folder (`docs/cli.md`, `docs/configuration.md`, `docs/transform-rules.md`, `docs/gd-helpers.md`, `docs/typings.md`, `docs/ide-integration.md`, `docs/gd-to-ts-migration.md`, `docs/development.md`); `PROJECT.md` plus the subsystem `AGENTS.md` files are the internal mirror. Whenever you add or change any of:
    - Features (user-facing or internal)
    - CLI flags or commands
    - Type helpers (gd namespace, symbols, etc.)
    - Conversion rules (TS ↔ GDScript mappings)
    - Known edge cases or workarounds
 
-   update `PROJECT.md` **and** the right user doc(s) so the two stay consistent. For each user-facing change, decide the best home among `README.md` / `docs/*` — README for the overview, pitch, and quick start; the matching `docs/*` page for detailed reference. **If the best place is unclear, ask the user before writing.** Do this as part of completing the work — not as a follow-up task, and not only when asked.
+   update the internal notes (`PROJECT.md` for structure and status, the subsystem `AGENTS.md` for its edge cases) **and** the right user doc(s) so they stay consistent. For each user-facing change, decide the best home among `README.md` / `docs/*` — README for the overview, pitch, and quick start; the matching `docs/*` page for detailed reference. **If the best place is unclear, ask the user before writing.** Do this as part of completing the work — not as a follow-up task, and not only when asked.
 
 2. **Ask the user** if you find transformation cases with problems or ambiguous semantics. Don't guess silently.
 
@@ -31,7 +31,8 @@ This project converts TypeScript code to GDScript for the Godot game engine, wit
 5. **Documentation split**:
    - `README.md` — user-facing overview, pitch, quick start (what users see first on GitHub)
    - `docs/*.md` — user-facing detailed reference (CLI, configuration, transform rules, gd helpers, typings, IDE integration, migration, development)
-   - `PROJECT.md` — internal architecture, structure, edge cases (mirrors the user docs above)
+   - `PROJECT.md` — internal architecture, structure, implementation status (mirrors the user docs above)
+   - `src/**/AGENTS.md`, `tests/AGENTS.md` — internal edge cases per subsystem; the `CLAUDE.md` beside each only imports it
    - `AGENTS.md` — this file, rules only
 
    **User-doc writing style** (README + `docs/*`): describe behavior simply and briefly — a few short sentences, not exhaustive mechanics. When a conversion or behavior isn't self-evident, add a one-line _why_ (e.g. "`.get()` returns `null` for a missing key instead of crashing"). Don't enumerate every skip-condition, edge case, or internal mechanism — that detail belongs in `PROJECT.md` only.
@@ -94,4 +95,4 @@ This project converts TypeScript code to GDScript for the Godot game engine, wit
 - **Main converters**: `src/converter/ts-to-gd/`, `src/converter/gd-to-ts/`
 - **Typings generation**: `src/typings/scenes.ts` (scene/script typings), `src/typings/godot-docs.ts` (Godot class typings from XML)
 
-For anything else — file layout, implementation details, what's implemented, edge cases — see [PROJECT.md](./PROJECT.md).
+For anything else — file layout, implementation details, what's implemented — see [PROJECT.md](./PROJECT.md); edge cases are in the subsystem `AGENTS.md` files it lists.

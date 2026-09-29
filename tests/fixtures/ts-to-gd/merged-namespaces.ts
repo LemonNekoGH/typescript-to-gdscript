@@ -5,8 +5,8 @@
 //
 // The enum is `Palette` and not `Color` because Godot rejects a member
 // named after a builtin type ("cannot have the same name as a builtin
-// type") and the converter does not yet catch that — see PROJECT.md
-// "Known Edge Cases". Keeping the old name would make this fixture fail the
+// type") and the converter does not yet catch that — see
+// src/converter/AGENTS.md, "Edge Cases". Keeping the old name would make this fixture fail the
 // Godot-validate test for a reason that has nothing to do with
 // namespace merging.
 
